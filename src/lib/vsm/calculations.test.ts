@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest'
+import {
+  SHIFT_MINUTES,
+  WORKING_DAYS_PER_YEAR,
+  calculateDailyDemand,
+  calculateKpis,
+} from './calculations'
+
+describe('calculateDailyDemand', () => {
+  it('returns null when annual throughput is not set', () => {
+    expect(calculateDailyDemand(null)).toBeNull()
+  })
+
+  it('returns null when annual throughput is zero or negative', () => {
+    expect(calculateDailyDemand(0)).toBeNull()
+    expect(calculateDailyDemand(-10)).toBeNull()
+  })
+
+  it('divides annual throughput by the working-days constant', () => {
+    expect(calculateDailyDemand(WORKING_DAYS_PER_YEAR * 100)).toBe(100)
+  })
+})
+
+describe('calculateKpis', () => {
+  it('returns zeroed-out KPIs for an empty VSM', () => {
+    const result = calculateKpis({ processes: [], buffers: [], annualThroughput: null })
+
+    expect(result.totalCycleTimeMinutes).toBe(0)
+    expect(result.totalLeadTimeDays).toBe(0)
+    expect(result.valueAddedRatioPercent).toBeNull()
+    expect(result.taktTimeMinutes).toBeNull()
+    expect(result.dailyDemand).toBeNull()
+  })
+
+  it('sums cycle times across all processes', () => {
+    const result = calculateKpis({
+      processes: [{ cycleTime: 3.5 }, { cycleTime: 2 }, { cycleTime: 1.5 }],
+      buffers: [],
+      annualThroughput: null,
+    })
+
+    expect(result.totalCycleTimeMinutes).toBe(7)
+  })
+
+  it('computes lead time in days from buffer WIP and daily demand', () => {
+    // daily demand = 50'000 / 250 = 200 units/day
+    // buffer of 400 units -> 2 days of supply
+    const result = calculateKpis({
+      processes: [],
+      buffers: [{ wipCount: 400 }],
+      annualThroughput: 50_000,
+    })
+
+    expect(result.dailyDemand).toBe(200)
+    expect(result.totalLeadTimeDays).toBe(2)
+  })
+
+  it('sums lead time across multiple buffers', () => {
+    const result = calculateKpis({
+      processes: [],
+      buffers: [{ wipCount: 400 }, { wipCount: 200 }],
+      annualThroughput: 50_000,
+    })
+
+    expect(result.totalLeadTimeDays).toBe(3)
+  })
+
+  it('computes value-added ratio as processing time over lead time', () => {
+    // lead time = 2 days = 2880 minutes; processing time = 28.8 minutes -> 1%
+    const result = calculateKpis({
+      processes: [{ cycleTime: 28.8 }],
+      buffers: [{ wipCount: 400 }],
+      annualThroughput: 50_000,
+    })
+
+    expect(result.valueAddedRatioPercent).toBeCloseTo(1, 5)
+  })
+
+  it('returns null value-added ratio when lead time is zero', () => {
+    const result = calculateKpis({
+      processes: [{ cycleTime: 10 }],
+      buffers: [],
+      annualThroughput: 50_000,
+    })
+
+    expect(result.valueAddedRatioPercent).toBeNull()
+  })
+
+  it('computes takt time as shift minutes over daily demand', () => {
+    const result = calculateKpis({
+      processes: [],
+      buffers: [],
+      annualThroughput: 50_000, // daily demand 200
+    })
+
+    expect(result.taktTimeMinutes).toBeCloseTo(SHIFT_MINUTES / 200, 5)
+  })
+})

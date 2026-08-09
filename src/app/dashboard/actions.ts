@@ -1,0 +1,131 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+
+export async function signOut() {
+  const supabase = await createClient()
+  await supabase.auth.signOut()
+  redirect('/login')
+}
+
+async function currentUserOrgId(): Promise<{ orgId: string } | { error: string }> {
+  const supabase = await createClient()
+  const { data } = await supabase.auth.getClaims()
+  const userId = data?.claims?.sub
+  if (!userId) redirect('/login')
+
+  const { data: membership } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!membership) return { error: 'Keine Organisation gefunden.' }
+  return { orgId: membership.organization_id }
+}
+
+export async function createProject(formData: FormData) {
+  const name = (formData.get('name') as string | null)?.trim()
+  if (!name) {
+    redirect('/dashboard?error=' + encodeURIComponent('Projektname darf nicht leer sein.'))
+  }
+
+  const orgResult = await currentUserOrgId()
+  if ('error' in orgResult) {
+    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+  }
+
+  const supabase = await createClient()
+  const { data: project, error } = await supabase
+    .from('projects')
+    .insert({ organization_id: orgResult.orgId, name })
+    .select('id')
+    .single()
+
+  if (error || !project) {
+    redirect('/dashboard?error=' + encodeURIComponent(error?.message ?? 'Projekt konnte nicht erstellt werden.'))
+  }
+
+  redirect(`/editor/${project.id}`)
+}
+
+// Seeds a small, realistic example VSM (4 processes + 3 buffers) so a new
+// user sees a finished-looking result immediately instead of a blank canvas.
+export async function createExampleProject() {
+  const orgResult = await currentUserOrgId()
+  if ('error' in orgResult) {
+    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+  }
+
+  const supabase = await createClient()
+
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .insert({
+      organization_id: orgResult.orgId,
+      name: 'Beispiel: Wertstromanalyse Dreherei',
+      description: 'Beispielprojekt mit Beispieldaten zum Ausprobieren — jederzeit löschbar.',
+      annual_throughput: 50000,
+    })
+    .select('id')
+    .single()
+
+  if (projectError || !project) {
+    redirect('/dashboard?error=' + encodeURIComponent(projectError?.message ?? 'Beispiel konnte nicht erstellt werden.'))
+  }
+
+  const exampleProcesses = [
+    { name: 'Sägen', cycle_time: 1.2, oee: 82, wip: 0 },
+    { name: 'Drehen', cycle_time: 3.4, oee: 78, wip: 0 },
+    { name: 'Fräsen', cycle_time: 2.6, oee: 85, wip: 0 },
+    { name: 'Montage', cycle_time: 4.1, oee: 90, wip: 0 },
+  ]
+
+  // Note: no .order() here — PostgREST rejects ordering an insert's
+  // RETURNING by a column outside the .select() list. Multi-row INSERT
+  // preserves input order in practice, which is all we need to pair
+  // consecutive processes with a buffer below.
+  const { data: insertedProcesses, error: processesError } = await supabase
+    .from('processes')
+    .insert(exampleProcesses.map((p) => ({ ...p, project_id: project.id })))
+    .select('id')
+
+  if (processesError) {
+    redirect(
+      '/dashboard?error=' +
+        encodeURIComponent(`Beispiel-Prozesse konnten nicht angelegt werden: ${processesError.message}`)
+    )
+  }
+
+  if (insertedProcesses && insertedProcesses.length > 0) {
+    const bufferWip = [800, 400, 600]
+    // Boundary edges (supplier -> first process, last process -> customer)
+    // are just as required as the internal ones — without them the canvas
+    // renders no shipment arrow at either end of the chain.
+    const bufferRows = [
+      { project_id: project.id, from_process_id: null as string | null, to_process_id: insertedProcesses[0].id, wip_count: 0 },
+      ...insertedProcesses.slice(0, -1).map((p, i) => ({
+        project_id: project.id,
+        from_process_id: p.id as string | null,
+        to_process_id: insertedProcesses[i + 1].id as string | null,
+        wip_count: bufferWip[i] ?? 300,
+      })),
+      {
+        project_id: project.id,
+        from_process_id: insertedProcesses[insertedProcesses.length - 1].id as string | null,
+        to_process_id: null as string | null,
+        wip_count: 0,
+      },
+    ]
+    const { error: bufferError } = await supabase.from('inventory_buffers').insert(bufferRows)
+    if (bufferError) {
+      redirect(
+        '/dashboard?error=' +
+          encodeURIComponent(`Beispiel-Puffer konnten nicht angelegt werden: ${bufferError.message}`)
+      )
+    }
+  }
+
+  redirect(`/editor/${project.id}`)
+}
