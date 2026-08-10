@@ -93,10 +93,10 @@ export default function BenchmarkPanel({ processes, references }: Props) {
             label="Ø Zykluszeit"
             value={avgCycleTime}
             unit="min"
-            ref={cycleRef}
+            reference={cycleRef}
             higherIsBetter={false}
           />
-          <BenchmarkRow label="Ø OEE" value={avgOee} unit="%" ref={oeeRef} higherIsBetter />
+          <BenchmarkRow label="Ø OEE" value={avgOee} unit="%" reference={oeeRef} higherIsBetter />
         </div>
       </div>
     </div>
@@ -107,16 +107,16 @@ function BenchmarkRow({
   label,
   value,
   unit,
-  ref,
+  reference,
   higherIsBetter,
 }: {
   label: string
   value: number | null
   unit: string
-  ref: BenchmarkReference | undefined
+  reference: BenchmarkReference | undefined
   higherIsBetter: boolean
 }) {
-  if (value === null || !ref || ref.p25 === null || ref.median === null || ref.p75 === null) {
+  if (value === null || !reference || reference.p25 === null || reference.median === null || reference.p75 === null) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-300 p-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-500">
         {label}: keine Daten für diese Auswahl.
@@ -124,7 +124,11 @@ function BenchmarkRow({
     )
   }
 
-  const tier = classifyBenchmark(value, { p25: ref.p25, median: ref.median, p75: ref.p75 }, higherIsBetter)
+  const tier = classifyBenchmark(
+    value,
+    { p25: reference.p25, median: reference.median, p75: reference.p75 },
+    higherIsBetter
+  )
 
   return (
     <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
@@ -136,7 +140,7 @@ function BenchmarkRow({
         {value.toFixed(1)} {unit}
       </div>
       <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-        P25 {ref.p25} · Median {ref.median} · P75 {ref.p75} {unit}
+        P25 {reference.p25} · Median {reference.median} · P75 {reference.p75} {unit}
       </div>
     </div>
   )
