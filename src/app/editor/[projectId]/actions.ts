@@ -177,8 +177,9 @@ export async function updateProcessLane(projectId: string, processId: string, la
 
 // Re-wires the buffer chain to match a new left-to-right order — called
 // after a drag that changed which process comes before/after which. Repoints
-// existing rows rather than delete+insert so WIP/buffer_type/flow_style
-// survive the move; scenarioId scopes it the same way as the other actions.
+// existing rows rather than delete+insert so WIP/buffer_type/flow_style/
+// kanban_type survive the move; scenarioId scopes it the same way as the
+// other actions.
 export async function reorderProcesses(projectId: string, scenarioId: string | null, orderedProcessIds: string[]) {
   const supabase = await createClient()
 
@@ -263,10 +264,14 @@ export interface SetBufferWipInput {
   fromProcessId: string | null
   toProcessId: string | null
   wipCount: number
-  /** 'standard' (uncontrolled triangle, default) | 'supermarket' | 'fifo' */
+  /** 'standard' (uncontrolled triangle, default) | 'supermarket' | 'fifo' | 'continuous' (one-piece flow, no triangle) */
   bufferType?: string | null
   /** 'push' | 'pull' | 'shipment' | null (auto-derive from position/buffer_type) */
   flowStyle?: string | null
+  /** 'production' | 'transport' | null — icon variant for a supermarket's pull arrow.
+   *  Display-only distinction, not a full kanban-card simulation. Ignored for
+   *  non-supermarket buffers. */
+  kanbanType?: string | null
 }
 
 // Upserts the WIP count (and optionally the pull-system type) for the gap
@@ -291,11 +296,14 @@ export async function setBufferWip(projectId: string, scenarioId: string | null,
 
   const bufferType = input.bufferType ?? 'standard'
   const flowStyle = input.flowStyle ?? null
+  // Only a supermarket has a pull arrow to put a kanban icon on — drop the
+  // value for any other buffer type instead of storing stale state.
+  const kanbanType = bufferType === 'supermarket' ? (input.kanbanType ?? null) : null
 
   if (existing) {
     const { error } = await supabase
       .from('inventory_buffers')
-      .update({ wip_count: input.wipCount, buffer_type: bufferType, flow_style: flowStyle })
+      .update({ wip_count: input.wipCount, buffer_type: bufferType, flow_style: flowStyle, kanban_type: kanbanType })
       .eq('id', existing.id)
     if (error) throw new Error(error.message)
   } else {
@@ -307,6 +315,7 @@ export async function setBufferWip(projectId: string, scenarioId: string | null,
       wip_count: input.wipCount,
       buffer_type: bufferType,
       flow_style: flowStyle,
+      kanban_type: kanbanType,
     })
     if (error) throw new Error(error.message)
   }

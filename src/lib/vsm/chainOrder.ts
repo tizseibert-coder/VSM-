@@ -78,8 +78,9 @@ function edgeKey(edge: ChainEdge): string {
 /**
  * Diffs the current buffer edges against the edges implied by
  * `desiredOrder`, and reports the minimal set of rows to repoint so the
- * stored graph matches — preserving WIP/buffer_type/flow_style on rows that
- * just move to a different slot, rather than deleting and recreating them.
+ * stored graph matches — preserving WIP/buffer_type/flow_style/kanban_type on
+ * rows that just move to a different slot, rather than deleting and
+ * recreating them.
  */
 export function reconcileChainEdges(existing: ExistingEdge[], desiredOrder: string[]): ChainReconciliation {
   const desiredEdges = chainToEdges(desiredOrder)

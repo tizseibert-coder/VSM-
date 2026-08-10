@@ -203,6 +203,7 @@ export type Database = {
           flow_style: string | null
           from_process_id: string | null
           id: string
+          kanban_type: string | null
           project_id: string
           scenario_id: string | null
           to_process_id: string | null
@@ -216,6 +217,7 @@ export type Database = {
           flow_style?: string | null
           from_process_id?: string | null
           id?: string
+          kanban_type?: string | null
           project_id: string
           scenario_id?: string | null
           to_process_id?: string | null
@@ -229,6 +231,7 @@ export type Database = {
           flow_style?: string | null
           from_process_id?: string | null
           id?: string
+          kanban_type?: string | null
           project_id?: string
           scenario_id?: string | null
           to_process_id?: string | null
@@ -609,7 +612,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals["public"]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

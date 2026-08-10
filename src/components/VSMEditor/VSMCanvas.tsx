@@ -241,24 +241,46 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // block arrows; a supermarket's withdrawal side becomes a pull loop;
   // everything else is a plain "push" arrow — unless the user explicitly
   // overrides the style, which then applies to the whole connection.
+  // A 'continuous' buffer (one-piece flow) has no WIP triangle to leave a
+  // gap for, so it renders as one unbroken line straight from box to box.
   const materialSegments = useMemo(() => {
-    const segments: { points: [number, number, number, number]; kind: 'shipment' | 'push' | 'pull' }[] = []
+    const segments: {
+      points: [number, number, number, number]
+      kind: 'shipment' | 'push' | 'pull' | 'continuous'
+      kanbanType?: string | null
+      // Only set for 'continuous' segments — there's no BufferMarker sitting
+      // on top of them to click, so the line itself needs to carry enough
+      // to open the BufferEditPanel (see the click handler at render time).
+      fromId?: string | null
+      toId?: string | null
+    }[] = []
     for (const { buffer, fromPos, toPos } of edges) {
-      const { near, far } = splitSegmentAroundGap(fromPos, toPos, BUFFER_SIZE / 2 + 6)
       const isEdgeConn = !buffer.from_process_id || !buffer.to_process_id
       const isSupermarket = buffer.buffer_type === 'supermarket'
 
+      if (buffer.buffer_type === 'continuous' && !isEdgeConn) {
+        segments.push({
+          points: [fromPos.x, fromPos.y, toPos.x, toPos.y],
+          kind: 'continuous',
+          fromId: buffer.from_process_id,
+          toId: buffer.to_process_id,
+        })
+        continue
+      }
+
+      const { near, far } = splitSegmentAroundGap(fromPos, toPos, BUFFER_SIZE / 2 + 6)
+
       if (buffer.flow_style) {
         const kind = buffer.flow_style as 'push' | 'pull' | 'shipment'
-        segments.push({ points: [fromPos.x, fromPos.y, near.x, near.y], kind })
-        segments.push({ points: [far.x, far.y, toPos.x, toPos.y], kind })
+        segments.push({ points: [fromPos.x, fromPos.y, near.x, near.y], kind, kanbanType: buffer.kanban_type })
+        segments.push({ points: [far.x, far.y, toPos.x, toPos.y], kind, kanbanType: buffer.kanban_type })
         continue
       }
 
       const inKind: 'shipment' | 'push' = isEdgeConn ? 'shipment' : 'push'
       const outKind: 'shipment' | 'push' | 'pull' = isEdgeConn ? 'shipment' : isSupermarket ? 'pull' : 'push'
       segments.push({ points: [fromPos.x, fromPos.y, near.x, near.y], kind: inKind })
-      segments.push({ points: [far.x, far.y, toPos.x, toPos.y], kind: outKind })
+      segments.push({ points: [far.x, far.y, toPos.x, toPos.y], kind: outKind, kanbanType: buffer.kanban_type })
     }
     return segments
   }, [edges])
@@ -590,16 +612,65 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
             {materialSegments.map((seg, i) => {
               if (seg.kind === 'shipment') return <ShipmentArrow key={i} points={seg.points} />
-              if (seg.kind === 'pull') return <PullArrow key={i} points={seg.points} />
+              if (seg.kind === 'pull') return <PullArrow key={i} points={seg.points} kanbanType={seg.kanbanType} />
+              // 'continuous' (one-piece flow) uses the same plain arrow as
+              // 'push' — the only difference is that it was never split
+              // around a WIP triangle above, so it's a single unbroken line.
+              // With no BufferMarker sitting on it to click, the line itself
+              // opens the BufferEditPanel (widened via hitStrokeWidth so it's
+              // easy to hit precisely).
+              const isContinuous = seg.kind === 'continuous'
+              const isSelected =
+                isContinuous &&
+                selection?.kind === 'buffer' &&
+                selection.from === seg.fromId &&
+                selection.to === seg.toId
               return (
                 <Arrow
                   key={i}
                   points={seg.points}
-                  stroke={INK}
-                  fill={INK}
+                  stroke={isSelected ? ACCENT : INK}
+                  fill={isSelected ? ACCENT : INK}
                   strokeWidth={2}
                   pointerLength={9}
                   pointerWidth={9}
+                  hitStrokeWidth={isContinuous ? 16 : undefined}
+                  onClick={
+                    isContinuous
+                      ? () =>
+                          setSelection((current) =>
+                            current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
+                              ? null
+                              : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
+                          )
+                      : undefined
+                  }
+                  onTap={
+                    isContinuous
+                      ? () =>
+                          setSelection((current) =>
+                            current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
+                              ? null
+                              : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
+                          )
+                      : undefined
+                  }
+                  onMouseEnter={
+                    isContinuous
+                      ? (e) => {
+                          const stage = e.target.getStage()
+                          if (stage) stage.container().style.cursor = 'pointer'
+                        }
+                      : undefined
+                  }
+                  onMouseLeave={
+                    isContinuous
+                      ? (e) => {
+                          const stage = e.target.getStage()
+                          if (stage) stage.container().style.cursor = 'default'
+                        }
+                      : undefined
+                  }
                 />
               )
             })}
@@ -633,8 +704,12 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             {/* Buffer markers paint last (on top of both arrows and process
                 boxes) so the WIP triangle/icon is never hidden — it used to
                 be able to land under a box due to a since-fixed anchor bug,
-                this ordering is defense-in-depth against any future overlap. */}
+                this ordering is defense-in-depth against any future overlap.
+                A 'continuous' (one-piece flow) buffer has no symbol at all —
+                that's the whole point, a direct line with nothing sitting
+                on it — so it's skipped here entirely, not just left blank. */}
             {edges.map(({ buffer, fromPos, toPos }) => {
+              if (buffer.buffer_type === 'continuous') return null
               const mid = midpoint(fromPos, toPos)
               const fromId = buffer.from_process_id
               const toId = buffer.to_process_id
@@ -733,6 +808,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           currentWip={findBuffer(buffers, selection.from, selection.to)?.wip_count ?? 0}
           currentBufferType={findBuffer(buffers, selection.from, selection.to)?.buffer_type ?? 'standard'}
           currentFlowStyle={findBuffer(buffers, selection.from, selection.to)?.flow_style ?? ''}
+          currentKanbanType={findBuffer(buffers, selection.from, selection.to)?.kanban_type ?? ''}
           onClose={() => setSelection(null)}
         />
       )}
@@ -1106,6 +1182,7 @@ function BufferEditPanel({
   currentWip,
   currentBufferType,
   currentFlowStyle,
+  currentKanbanType,
   onClose,
 }: {
   projectId: string
@@ -1115,6 +1192,7 @@ function BufferEditPanel({
   currentWip: number
   currentBufferType: string
   currentFlowStyle: string
+  currentKanbanType: string
   onClose: () => void
 }) {
   const router = useRouter()
@@ -1122,6 +1200,7 @@ function BufferEditPanel({
   const [value, setValue] = useState(String(currentWip))
   const [bufferType, setBufferType] = useState(currentBufferType)
   const [flowStyle, setFlowStyle] = useState(currentFlowStyle)
+  const [kanbanType, setKanbanType] = useState(currentKanbanType)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -1142,6 +1221,7 @@ function BufferEditPanel({
           wipCount: n,
           bufferType,
           flowStyle: flowStyle || null,
+          kanbanType: kanbanType || null,
         })
         router.refresh()
         onClose()
@@ -1171,12 +1251,20 @@ function BufferEditPanel({
         <select
           id="buf-type"
           value={bufferType}
-          onChange={(e) => setBufferType(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value
+            setBufferType(next)
+            // Kanban icon variant only makes sense on a supermarket's pull
+            // arrow — drop it immediately when switching away so a stale
+            // choice doesn't silently linger until save.
+            if (next !== 'supermarket') setKanbanType('')
+          }}
           className={`mt-1 ${inputClass} w-40`}
         >
           <option value="standard">Standard (unkontrolliert)</option>
           <option value="supermarket">Supermarkt (Pull)</option>
           <option value="fifo">FIFO-Bahn</option>
+          <option value="continuous">Continuous Flow (One-Piece)</option>
         </select>
       </div>
       <div>
@@ -1195,6 +1283,22 @@ function BufferEditPanel({
           <option value="shipment">Shipment</option>
         </select>
       </div>
+      {bufferType === 'supermarket' && (
+        <div>
+          <label htmlFor="buf-kanban" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            Kanban-Typ
+          </label>
+          <select
+            id="buf-kanban"
+            value={kanbanType}
+            onChange={(e) => setKanbanType(e.target.value)}
+            className={`mt-1 ${inputClass} w-40`}
+          >
+            <option value="">Produktions-Kanban</option>
+            <option value="transport">Transport-Kanban</option>
+          </select>
+        </div>
+      )}
       {error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>
       )}
@@ -1487,7 +1591,17 @@ function FifoIcon({ stroke, strokeWidth }: { stroke: string; strokeWidth: number
 
 // Curved withdrawal-pull arrow with a small kanban card marker, used for
 // the downstream side of a supermarket instead of a straight push arrow.
-function PullArrow({ points }: { points: [number, number, number, number] }) {
+// `kanbanType` picks the card's icon variant — 'transport' (withdrawal
+// kanban, authorizes moving existing stock) vs the default production
+// kanban (authorizes making more). Display-only distinction, not a full
+// kanban-card simulation.
+function PullArrow({
+  points,
+  kanbanType,
+}: {
+  points: [number, number, number, number]
+  kanbanType?: string | null
+}) {
   const [x1, y1, x2, y2] = points
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
@@ -1511,17 +1625,28 @@ function PullArrow({ points }: { points: [number, number, number, number] }) {
         pointerLength={9}
         pointerWidth={9}
       />
-      <KanbanCardIcon x={controlX - 8} y={controlY - 10} />
+      <KanbanCardIcon x={controlX - 8} y={controlY - 10} kanbanType={kanbanType} />
     </>
   )
 }
 
-function KanbanCardIcon({ x, y }: { x: number; y: number }) {
+// Two icon variants for the small kanban card marker on a pull arrow:
+// production kanban (default — two text lines, "make more of this") and
+// transport/withdrawal kanban (a small arrow — "move existing stock here").
+// Intentionally just an icon swap, not a real kanban-card count/simulation.
+function KanbanCardIcon({ x, y, kanbanType }: { x: number; y: number; kanbanType?: string | null }) {
+  const isTransport = kanbanType === 'transport'
   return (
     <Group x={x} y={y}>
       <Rect width={16} height={12} fill="#ffffff" stroke={INK} strokeWidth={1} />
-      <Line points={[3, 4, 13, 4]} stroke={INK} strokeWidth={0.75} />
-      <Line points={[3, 8, 13, 8]} stroke={INK} strokeWidth={0.75} />
+      {isTransport ? (
+        <Arrow points={[3, 6, 13, 6]} stroke={INK} fill={INK} strokeWidth={1.25} pointerLength={4} pointerWidth={4} />
+      ) : (
+        <>
+          <Line points={[3, 4, 13, 4]} stroke={INK} strokeWidth={0.75} />
+          <Line points={[3, 8, 13, 8]} stroke={INK} strokeWidth={0.75} />
+        </>
+      )}
     </Group>
   )
 }

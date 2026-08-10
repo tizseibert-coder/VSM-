@@ -94,6 +94,7 @@ export async function createScenario(projectId: string, formData: FormData) {
         wip_count: b.wip_count,
         buffer_type: b.buffer_type,
         flow_style: b.flow_style,
+        kanban_type: b.kanban_type,
         x: b.x,
         y: b.y,
       }))
