@@ -10,6 +10,13 @@ export const SHIFT_MINUTES = 480
 
 export interface KpiProcessInput {
   cycleTime: number
+  /**
+   * Parallel operators at this station. Convention: each operator
+   * independently finishes a full unit, so N operators produce N units in
+   * one cycleTime — the station's *effective* (output) cycle time is
+   * cycleTime / operatorCount. Defaults to 1 (no change) when omitted.
+   */
+  operatorCount?: number
 }
 
 export interface KpiBufferInput {
@@ -36,8 +43,14 @@ export function calculateDailyDemand(annualThroughput: number | null): number | 
   return annualThroughput / WORKING_DAYS_PER_YEAR
 }
 
+/** cycleTime adjusted for parallel operators — see KpiProcessInput.operatorCount. Exported so capacity.ts can share the same convention. */
+export function effectiveCycleTime(process: KpiProcessInput): number {
+  const operatorCount = process.operatorCount && process.operatorCount > 0 ? process.operatorCount : 1
+  return process.cycleTime / operatorCount
+}
+
 export function calculateKpis(input: KpiInput): KpiResult {
-  const totalCycleTimeMinutes = input.processes.reduce((sum, p) => sum + p.cycleTime, 0)
+  const totalCycleTimeMinutes = input.processes.reduce((sum, p) => sum + effectiveCycleTime(p), 0)
   const dailyDemand = calculateDailyDemand(input.annualThroughput)
 
   const totalLeadTimeDays = dailyDemand

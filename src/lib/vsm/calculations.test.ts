@@ -42,6 +42,28 @@ describe('calculateKpis', () => {
     expect(result.totalCycleTimeMinutes).toBe(7)
   })
 
+  it("halves a process's cycle-time contribution when it has two operators", () => {
+    const result = calculateKpis({
+      processes: [{ cycleTime: 10, operatorCount: 2 }],
+      buffers: [],
+      annualThroughput: null,
+    })
+
+    expect(result.totalCycleTimeMinutes).toBe(5)
+  })
+
+  it('treats a missing or zero operatorCount as a single operator (no change)', () => {
+    const noField = calculateKpis({ processes: [{ cycleTime: 10 }], buffers: [], annualThroughput: null })
+    const zero = calculateKpis({
+      processes: [{ cycleTime: 10, operatorCount: 0 }],
+      buffers: [],
+      annualThroughput: null,
+    })
+
+    expect(noField.totalCycleTimeMinutes).toBe(10)
+    expect(zero.totalCycleTimeMinutes).toBe(10)
+  })
+
   it('computes lead time in days from buffer WIP and daily demand', () => {
     // daily demand = 50'000 / 250 = 200 units/day
     // buffer of 400 units -> 2 days of supply

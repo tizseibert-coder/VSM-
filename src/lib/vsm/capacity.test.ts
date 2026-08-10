@@ -39,4 +39,15 @@ describe('checkCapacity', () => {
     const result = checkCapacity({ cycleTime: 999, oee: 1 }, null)
     expect(result.isBottleneck).toBe(false)
   })
+
+  it('a second operator can resolve a bottleneck', () => {
+    // 10 / 100% OEE = 10 > takt 6 -> bottleneck with one operator
+    const oneOperator = checkCapacity({ cycleTime: 10, oee: 100 }, 6)
+    expect(oneOperator.isBottleneck).toBe(true)
+
+    // 10 / 2 operators / 100% OEE = 5 <= takt 6 -> resolved
+    const twoOperators = checkCapacity({ cycleTime: 10, oee: 100, operatorCount: 2 }, 6)
+    expect(twoOperators.effectiveCycleTime).toBe(5)
+    expect(twoOperators.isBottleneck).toBe(false)
+  })
 })

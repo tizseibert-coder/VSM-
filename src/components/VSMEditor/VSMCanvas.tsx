@@ -10,6 +10,8 @@ import { bufferGapIndices, findBuffer } from '@/lib/vsm/buffers'
 import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geometry'
 import { computeAutoFitScale, clampScale } from '@/lib/vsm/viewport'
 import { checkCapacity } from '@/lib/vsm/capacity'
+import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
+import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder } from '@/lib/vsm/chainOrder'
 import {
   customerCloudPosition,
@@ -48,7 +50,7 @@ const ACCENT = '#2563eb' // selection highlight, the one spot color allowed on t
 const BOTTLENECK = '#dc2626' // capacity-warning red — semantic, kept distinct from the accent
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
-const SUMMARY_WIDTH = 70
+const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
 
 type Selection =
   | { kind: 'process'; id: string }
@@ -113,6 +115,25 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   )
   const maxLane = processes.reduce((m, p) => Math.max(m, p.lane), 0)
 
+  // Methodology check: everything feeding the pacemaker should be pulled
+  // (supermarket/FIFO), not plain push — see findPushBeforePacemaker.
+  const pushBeforePacemaker = useMemo(
+    () =>
+      pacemaker
+        ? findPushBeforePacemaker(
+            chainOrder,
+            pacemaker.id,
+            buffers.map((b) => ({
+              fromProcessId: b.from_process_id,
+              toProcessId: b.to_process_id,
+              bufferType: b.buffer_type,
+              flowStyle: b.flow_style,
+            }))
+          )
+        : [],
+    [pacemaker, chainOrder, buffers]
+  )
+
   const positions = useMemo(() => {
     const map: Record<string, Point> = {}
     orderedProcesses.forEach((p, index) => {
@@ -131,7 +152,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   const kpis = useMemo(
     () =>
       calculateKpis({
-        processes: processes.map((p) => ({ cycleTime: p.cycle_time })),
+        processes: processes.map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count })),
         buffers: buffers.map((b) => ({ wipCount: b.wip_count })),
         annualThroughput: liveAnnualThroughput,
       }),
@@ -427,9 +448,12 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     <div className="mx-auto max-w-6xl px-6 py-6">
       {/* Live KPI bar */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiTile label="Bearbeitungszeit" value={`${kpis.totalCycleTimeMinutes.toFixed(1)} min`} />
         <KpiTile
-          label="Durchlaufzeit"
+          label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
+          value={`${kpis.totalCycleTimeMinutes.toFixed(1)} min`}
+        />
+        <KpiTile
+          label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
           value={
             kpis.totalLeadTimeDays > 0 || liveAnnualThroughput
               ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage`
@@ -437,7 +461,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           }
         />
         <KpiTile
-          label="Wertschöpfungsanteil"
+          label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
           value={
             kpis.valueAddedRatioPercent !== null
               ? `${kpis.valueAddedRatioPercent.toFixed(2)} %`
@@ -445,7 +469,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           }
         />
         <KpiTile
-          label="Taktzeit"
+          label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
           value={kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} min` : '–'}
         />
       </div>
@@ -475,8 +499,17 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
       {!pacemaker && processes.length > 0 && (
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          Kein Schrittmacher-Prozess festgelegt — die Produktionssteuerung sendet den Auftrag aktuell an alle
-          Prozesse. Lege im Prozess-Panel einen Schrittmacher fest, um das korrekt darzustellen.
+          Kein <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> festgelegt — die Produktionssteuerung
+          sendet den Auftrag aktuell an alle Prozesse. Lege im Prozess-Panel einen Schrittmacher fest, um das korrekt
+          darzustellen.
+        </p>
+      )}
+
+      {pushBeforePacemaker.length > 0 && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          Vor dem <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> läuft noch mind. eine Verbindung
+          als Push statt als Supermarkt/FIFO ({pushBeforePacemaker.length}×). Methodisch braucht alles vor dem
+          Schrittmacher ein Pull-System (Supermarkt oder FIFO) — sonst baut sich davor unkontrolliert Bestand auf.
         </p>
       )}
 
@@ -679,7 +712,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
               const pos = positions[process.id]
               if (!pos) return null
               const { isBottleneck } = checkCapacity(
-                { cycleTime: process.cycle_time, oee: process.oee },
+                { cycleTime: process.cycle_time, oee: process.oee, operatorCount: process.operator_count },
                 kpis.taktTimeMinutes
               )
               return (
@@ -842,7 +875,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
               className="w-40"
             />
           </Field>
-          <Field label="Zykluszeit (min)" htmlFor="qa-ct">
+          <Field label={<TermTooltip term="processCycleTime">Zykluszeit (min)</TermTooltip>} htmlFor="qa-ct">
             <input
               id="qa-ct"
               value={quickAddCt}
@@ -883,7 +916,7 @@ const primaryButtonClass =
 const secondaryButtonClass =
   'rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900'
 
-function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
+function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string; children: ReactNode }) {
   return (
     <div>
       <label htmlFor={htmlFor} className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -896,7 +929,7 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
   )
 }
 
-function KpiTile({ label, value }: { label: string; value: string }) {
+function KpiTile({ label, value }: { label: ReactNode; value: string }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="text-xs text-zinc-500 dark:text-zinc-500">{label}</div>
@@ -1090,13 +1123,13 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-ct" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Zykluszeit (min)
+            <TermTooltip term="processCycleTime">Zykluszeit (min)</TermTooltip>
           </label>
           <input id="ep-ct" value={cycleTime} onChange={(e) => setCycleTime(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
         <div>
           <label htmlFor="ep-co" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Rüstzeit C/O (min)
+            <TermTooltip term="changeoverTime">Rüstzeit C/O (min)</TermTooltip>
           </label>
           <input
             id="ep-co"
@@ -1107,13 +1140,13 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-oee" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            OEE (%)
+            <TermTooltip term="oee">OEE (%)</TermTooltip>
           </label>
           <input id="ep-oee" value={oee} onChange={(e) => setOee(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
         <div>
           <label htmlFor="ep-operators" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Bediener
+            <TermTooltip term="operatorCount">Bediener</TermTooltip>
           </label>
           <input
             id="ep-operators"
@@ -1124,7 +1157,7 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-before" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            WIP davor
+            <TermTooltip term="wip">WIP davor</TermTooltip>
           </label>
           <input
             id="ep-before"
@@ -1135,7 +1168,7 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-after" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            WIP danach
+            <TermTooltip term="wip">WIP danach</TermTooltip>
           </label>
           <input
             id="ep-after"
@@ -1148,7 +1181,8 @@ function ProcessEditPanel({
 
       <label className="mt-3 flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
         <input type="checkbox" checked={isPacemaker} onChange={(e) => setIsPacemaker(e.target.checked)} />
-        Schrittmacher-Prozess (bekommt den Auftrag direkt von der Produktionssteuerung)
+        <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> (bekommt den Auftrag direkt von der
+        Produktionssteuerung)
       </label>
 
       {error && (
@@ -1237,7 +1271,9 @@ function BufferEditPanel({
       onSubmit={handleSave}
       className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-blue-600 bg-white p-4 dark:bg-zinc-950"
     >
-      <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Lagerbestand (WIP)</h2>
+      <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+        <TermTooltip term="wip">Lagerbestand (WIP)</TermTooltip>
+      </h2>
       <div>
         <label htmlFor="buf-wip" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
           Stück
@@ -1246,7 +1282,7 @@ function BufferEditPanel({
       </div>
       <div>
         <label htmlFor="buf-type" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-          Lager-Typ
+          <TermTooltip term="bufferType">Lager-Typ</TermTooltip>
         </label>
         <select
           id="buf-type"
@@ -1269,7 +1305,7 @@ function BufferEditPanel({
       </div>
       <div>
         <label htmlFor="buf-flow" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-          Pfeil-Typ
+          <TermTooltip term="flowStyle">Pfeil-Typ</TermTooltip>
         </label>
         <select
           id="buf-flow"
@@ -1286,7 +1322,7 @@ function BufferEditPanel({
       {bufferType === 'supermarket' && (
         <div>
           <label htmlFor="buf-kanban" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Kanban-Typ
+            <TermTooltip term="kanbanType">Kanban-Typ</TermTooltip>
           </label>
           <select
             id="buf-kanban"
@@ -1795,30 +1831,33 @@ function LadderSummary({
   leadTimeDays: number
   valueAddMinutes: number
 }) {
-  const width = 60
+  // Was 60px wide with 9/11px text — legible at 100% zoom but not once the
+  // MIN_READABLE_SCALE floor (60%) or a further manual zoom-out kicks in.
+  // Bigger box + bigger type fixes that independent of canvas scale.
+  const width = 84
   const height = yBottom - yTop
   return (
     <Group x={x} y={yTop}>
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
-      <Text text="LT" x={0} y={4} width={width} align="center" fontSize={9} fill="#71717a" />
+      <Text text="LT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
       <Text
-        text={`${leadTimeDays.toFixed(1)}T`}
+        text={`${leadTimeDays.toFixed(1)} T`}
         x={0}
-        y={16}
+        y={17}
         width={width}
         align="center"
-        fontSize={11}
+        fontSize={13}
         fontStyle="bold"
         fill={INK}
       />
-      <Text text="VA" x={0} y={height - 26} width={width} align="center" fontSize={9} fill="#71717a" />
+      <Text text="VA" x={0} y={height - 30} width={width} align="center" fontSize={10} fill="#52525b" />
       <Text
-        text={`${valueAddMinutes.toFixed(1)}m`}
+        text={`${valueAddMinutes.toFixed(1)} m`}
         x={0}
-        y={height - 14}
+        y={height - 18}
         width={width}
         align="center"
-        fontSize={11}
+        fontSize={13}
         fontStyle="bold"
         fill={INK}
       />
