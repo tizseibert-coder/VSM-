@@ -798,6 +798,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
                   x={ladderEndX + 12}
                   yTop={ladderHighY}
                   yBottom={ladderLowY}
+                  counterScale={1 / stageScale}
                   leadTimeDays={kpis.totalLeadTimeDays}
                   valueAddMinutes={kpis.totalCycleTimeMinutes}
                 />
@@ -1822,22 +1823,29 @@ function LadderSummary({
   x,
   yTop,
   yBottom,
+  counterScale,
   leadTimeDays,
   valueAddMinutes,
 }: {
   x: number
   yTop: number
   yBottom: number
+  /** 1 / stageScale — cancels the canvas zoom so this box stays a constant
+   * on-screen size no matter how far the diagram is zoomed out. A bigger
+   * base font alone (the previous fix) still shrank proportionally with
+   * the rest of the canvas and wasn't enough on its own. */
+  counterScale: number
   leadTimeDays: number
   valueAddMinutes: number
 }) {
-  // Was 60px wide with 9/11px text — legible at 100% zoom but not once the
-  // MIN_READABLE_SCALE floor (60%) or a further manual zoom-out kicks in.
-  // Bigger box + bigger type fixes that independent of canvas scale.
   const width = 84
-  const height = yBottom - yTop
+  // Fixed screen-pixel height now that this box no longer scales with the
+  // canvas — no longer tied to the ladder step height (yBottom - yTop),
+  // which was only meaningful back when the box scaled proportionally.
+  const height = 76
+  const anchorY = (yTop + yBottom) / 2
   return (
-    <Group x={x} y={yTop}>
+    <Group x={x} y={anchorY} scaleX={counterScale} scaleY={counterScale} offsetY={height / 2}>
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
       <Text text="LT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
       <Text
