@@ -323,6 +323,25 @@ export async function setBufferWip(projectId: string, scenarioId: string | null,
   revalidatePath(`/editor/${projectId}`)
 }
 
+// Removes a single connection (Phase 6: Mehrstrang-UI) without touching the
+// processes on either end — the counterpart to setBufferWip's create/update.
+// Needed once a process can have more than one predecessor/successor: the
+// user must be able to undo a wrongly-added branch, or intentionally split
+// a merge apart, without deleting a whole process (deleteProcess already
+// cascades any edges automatically, but that's too blunt for "just remove
+// this one connection").
+export async function deleteBufferConnection(projectId: string, bufferId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('inventory_buffers')
+    .delete()
+    .eq('id', bufferId)
+    .eq('project_id', projectId) // belt-and-suspenders scoping, RLS already enforces org ownership
+
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+}
+
 export interface UpdateProjectLabelsInput {
   supplierName?: string
   customerName?: string

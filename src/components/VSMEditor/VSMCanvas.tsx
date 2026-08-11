@@ -12,7 +12,7 @@ import { computeAutoFitScale, clampScale } from '@/lib/vsm/viewport'
 import { checkCapacity } from '@/lib/vsm/capacity'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
-import { deriveChainOrder, moveInOrder } from '@/lib/vsm/chainOrder'
+import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
 import {
   customerCloudPosition,
   supplierCloudPosition,
@@ -38,6 +38,7 @@ import {
   reorderProcesses,
   updateProcessLane,
   setBufferWip,
+  deleteBufferConnection,
   updateProjectLabels,
 } from '@/app/editor/[projectId]/actions'
 
@@ -820,6 +821,8 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           projectId={project.id}
           scenarioId={scenarioId}
           process={selectedProcess}
+          allProcesses={processes}
+          buffers={buffers}
           beforeWip={selectedBeforeWip}
           afterWip={selectedAfterWip}
           prevProcessId={prevProcessId}
@@ -943,6 +946,8 @@ function ProcessEditPanel({
   projectId,
   scenarioId,
   process,
+  allProcesses,
+  buffers,
   beforeWip,
   afterWip,
   prevProcessId,
@@ -956,6 +961,8 @@ function ProcessEditPanel({
   projectId: string
   scenarioId: string | null
   process: Process
+  allProcesses: Process[]
+  buffers: Buffer[]
   beforeWip: number
   afterWip: number
   prevProcessId: string | null
@@ -978,6 +985,85 @@ function ProcessEditPanel({
   const [afterWipInput, setAfterWipInput] = useState(String(afterWip))
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Phase 6 (Mehrstrang): every actual buffer row touching this process,
+  // not just the primary-sequence predecessor/successor above — a process
+  // can have more than one of each once a merge/split connection exists.
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [addPredecessorId, setAddPredecessorId] = useState('')
+  const [addSuccessorId, setAddSuccessorId] = useState('')
+  const incomingEdges = buffers.filter((b) => b.to_process_id === process.id)
+  const outgoingEdges = buffers.filter((b) => b.from_process_id === process.id)
+  const graphEdges = buffers.map((b) => ({ from: b.from_process_id, to: b.to_process_id }))
+
+  function processLabel(id: string | null): string {
+    if (id === null) return '—'
+    return allProcesses.find((p) => p.id === id)?.name ?? '(unbekannt)'
+  }
+
+  // Candidates for a new predecessor: any other process not already a
+  // direct predecessor, and not one that would close a cycle back to
+  // itself (a real value stream is a DAG here, not a loop).
+  const predecessorCandidates = allProcesses.filter(
+    (p) =>
+      p.id !== process.id &&
+      !incomingEdges.some((e) => e.from_process_id === p.id) &&
+      !wouldCreateCycle(graphEdges, p.id, process.id)
+  )
+  const successorCandidates = allProcesses.filter(
+    (p) =>
+      p.id !== process.id &&
+      !outgoingEdges.some((e) => e.to_process_id === p.id) &&
+      !wouldCreateCycle(graphEdges, process.id, p.id)
+  )
+
+  function handleAddPredecessor() {
+    if (!addPredecessorId) return
+    setConnectionError(null)
+    startTransition(async () => {
+      try {
+        await setBufferWip(projectId, scenarioId, {
+          fromProcessId: addPredecessorId,
+          toProcessId: process.id,
+          wipCount: 0,
+        })
+        setAddPredecessorId('')
+        router.refresh()
+      } catch (err) {
+        setConnectionError(err instanceof Error ? err.message : 'Verbindung konnte nicht angelegt werden.')
+      }
+    })
+  }
+
+  function handleAddSuccessor() {
+    if (!addSuccessorId) return
+    setConnectionError(null)
+    startTransition(async () => {
+      try {
+        await setBufferWip(projectId, scenarioId, {
+          fromProcessId: process.id,
+          toProcessId: addSuccessorId,
+          wipCount: 0,
+        })
+        setAddSuccessorId('')
+        router.refresh()
+      } catch (err) {
+        setConnectionError(err instanceof Error ? err.message : 'Verbindung konnte nicht angelegt werden.')
+      }
+    })
+  }
+
+  function handleDisconnect(bufferId: string) {
+    setConnectionError(null)
+    startTransition(async () => {
+      try {
+        await deleteBufferConnection(projectId, bufferId)
+        router.refresh()
+      } catch (err) {
+        setConnectionError(err instanceof Error ? err.message : 'Verbindung konnte nicht getrennt werden.')
+      }
+    })
+  }
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -1178,6 +1264,109 @@ function ProcessEditPanel({
             className={`mt-1 ${inputClass}`}
           />
         </div>
+      </div>
+
+      {/* Mehrstrang (Phase 6): "WIP davor/danach" oben deckt nur die eine
+          primäre Vorgänger-/Nachfolger-Verbindung in der Sequenz ab. Diese
+          Liste zeigt *alle* tatsächlichen Verbindungen — ein Prozess kann
+          mehr als einen Vorgänger (Zusammenführung) oder Nachfolger
+          (Aufteilung) haben. */}
+      <div className="mt-3 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Verbindungen</span>
+
+        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <div className="text-xs text-zinc-600 dark:text-zinc-400">Vorgänger</div>
+            <ul className="mt-1 space-y-1">
+              {incomingEdges.map((edge) => (
+                <li key={edge.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span>{processLabel(edge.from_process_id)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDisconnect(edge.id)}
+                    className="text-red-700 hover:underline dark:text-red-400"
+                    aria-label={`Verbindung von ${processLabel(edge.from_process_id)} trennen`}
+                  >
+                    ✕ trennen
+                  </button>
+                </li>
+              ))}
+              {incomingEdges.length === 0 && <li className="text-xs text-zinc-400">Keine</li>}
+            </ul>
+            {predecessorCandidates.length > 0 && (
+              <div className="mt-2 flex items-center gap-1">
+                <select
+                  value={addPredecessorId}
+                  onChange={(e) => setAddPredecessorId(e.target.value)}
+                  className={`${inputClass} text-xs`}
+                >
+                  <option value="">+ Vorgänger wählen…</option>
+                  {predecessorCandidates.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAddPredecessor}
+                  disabled={!addPredecessorId}
+                  className={secondaryButtonClass}
+                >
+                  +
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="text-xs text-zinc-600 dark:text-zinc-400">Nachfolger</div>
+            <ul className="mt-1 space-y-1">
+              {outgoingEdges.map((edge) => (
+                <li key={edge.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span>{processLabel(edge.to_process_id)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDisconnect(edge.id)}
+                    className="text-red-700 hover:underline dark:text-red-400"
+                    aria-label={`Verbindung zu ${processLabel(edge.to_process_id)} trennen`}
+                  >
+                    ✕ trennen
+                  </button>
+                </li>
+              ))}
+              {outgoingEdges.length === 0 && <li className="text-xs text-zinc-400">Keine</li>}
+            </ul>
+            {successorCandidates.length > 0 && (
+              <div className="mt-2 flex items-center gap-1">
+                <select
+                  value={addSuccessorId}
+                  onChange={(e) => setAddSuccessorId(e.target.value)}
+                  className={`${inputClass} text-xs`}
+                >
+                  <option value="">+ Nachfolger wählen…</option>
+                  {successorCandidates.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAddSuccessor}
+                  disabled={!addSuccessorId}
+                  className={secondaryButtonClass}
+                >
+                  +
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {connectionError && (
+          <p className="mt-2 text-xs text-red-700 dark:text-red-400">{connectionError}</p>
+        )}
       </div>
 
       <label className="mt-3 flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
