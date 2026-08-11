@@ -13,6 +13,9 @@ import { checkCapacity } from '@/lib/vsm/capacity'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
+import { CLASSIFICATION, classificationMarker, type ClassificationValue } from '@/lib/vsm/classification'
+import { buildKpiSummaryLines, buildPdfTitle } from '@/lib/vsm/pdfSummary'
+import jsPDF from 'jspdf'
 import {
   customerCloudPosition,
   supplierCloudPosition,
@@ -91,6 +94,8 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   const [camera, setCamera] = useState<{ scale: number; pos: Point } | null>(null)
   const [viewportSize, setViewportSize] = useState({ width: 900, height: 560 })
   const stageContainerRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<Konva.Stage>(null)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
 
   const processes = initialProcesses
   const buffers = initialBuffers
@@ -188,6 +193,55 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
   function handleFitToView() {
     setCamera(null) // back to automatic — also resumes auto-shrinking as the diagram grows
+  }
+
+  // PDF-Export v1 (Phase 8): single page, canvas snapshot + KPI block —
+  // deliberately not the full multi-page report from the original master
+  // prompt (that's its own future pass). Client-side only: Konva's own
+  // toDataURL() rasterizes exactly what's on screen, no server round-trip
+  // or separate re-render needed.
+  function handleExportPdf() {
+    const stage = stageRef.current
+    if (!stage) return
+    setIsExportingPdf(true)
+    try {
+      const dataUrl = stage.toDataURL({ pixelRatio: 2, mimeType: 'image/png' })
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 24
+      const titleSpace = 30
+      const kpiBlockSpace = 90
+
+      pdf.setFontSize(14)
+      pdf.text(buildPdfTitle(project.name), margin, margin + 10)
+
+      // Fit the snapshot within the page width, preserving aspect ratio,
+      // leaving room for the title above and the KPI lines below.
+      const imgProps = pdf.getImageProperties(dataUrl)
+      const availableWidth = pageWidth - margin * 2
+      const maxImgHeight = pageHeight - margin * 2 - titleSpace - kpiBlockSpace
+      let imgWidth = availableWidth
+      let imgHeight = (imgProps.height / imgProps.width) * imgWidth
+      if (imgHeight > maxImgHeight) {
+        imgHeight = maxImgHeight
+        imgWidth = (imgProps.width / imgProps.height) * imgHeight
+      }
+      const imgX = margin + (availableWidth - imgWidth) / 2
+      const imgY = margin + titleSpace
+      pdf.addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight)
+
+      pdf.setFontSize(10)
+      let lineY = imgY + imgHeight + 24
+      for (const line of buildKpiSummaryLines(kpis)) {
+        pdf.text(line, margin, lineY)
+        lineY += 16
+      }
+
+      pdf.save(`${project.name || 'vsm'}.pdf`)
+    } finally {
+      setIsExportingPdf(false)
+    }
   }
 
   // Measure the viewport (container width, fixed height) on mount and on
@@ -520,34 +574,44 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           below never zooms the canvas by accident. */}
       <div className="mt-6 flex items-center justify-between gap-3">
         <p className="text-xs text-zinc-400 dark:text-zinc-600">Strg/Cmd + Mausrad zum Zoomen</p>
-        <div className="flex items-center gap-0.5 rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-            className="rounded-full px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
-            aria-label="Verkleinern"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf || processes.length === 0}
+            className={secondaryButtonClass}
           >
-            −
+            {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
           </button>
-          <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-500">
-            {Math.round(stageScale * 100)}%
-          </span>
-          <button
-            type="button"
-            onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-            className="rounded-full px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
-            aria-label="Vergrößern"
-          >
-            +
-          </button>
-          <div className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
-          <button
-            type="button"
-            onClick={handleFitToView}
-            className="rounded-full px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
-          >
-            Einpassen
-          </button>
+          <div className="flex items-center gap-0.5 rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950">
+            <button
+              type="button"
+              onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
+              className="rounded-full px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              aria-label="Verkleinern"
+            >
+              −
+            </button>
+            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-500">
+              {Math.round(stageScale * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
+              className="rounded-full px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              aria-label="Vergrößern"
+            >
+              +
+            </button>
+            <div className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+            <button
+              type="button"
+              onClick={handleFitToView}
+              className="rounded-full px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              Einpassen
+            </button>
+          </div>
         </div>
       </div>
 
@@ -559,6 +623,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
       >
         <Stage
+          ref={stageRef}
           width={viewportSize.width}
           height={viewportSize.height}
           scaleX={stageScale}
@@ -981,6 +1046,7 @@ function ProcessEditPanel({
   const [operatorCount, setOperatorCount] = useState(String(process.operator_count))
   const [changeoverTime, setChangeoverTime] = useState(String(process.changeover_time))
   const [isPacemaker, setIsPacemaker] = useState(process.is_pacemaker)
+  const [classification, setClassification] = useState(process.classification ?? '')
   const [beforeWipInput, setBeforeWipInput] = useState(String(beforeWip))
   const [afterWipInput, setAfterWipInput] = useState(String(afterWip))
   const [error, setError] = useState<string | null>(null)
@@ -1098,6 +1164,7 @@ function ProcessEditPanel({
           operatorCount: operatorCountNum,
           changeoverTime: changeoverTimeNum,
           isPacemaker,
+          classification: classification || null,
         })
         await setBufferWip(projectId, scenarioId, {
           fromProcessId: prevProcessId,
@@ -1369,6 +1436,25 @@ function ProcessEditPanel({
         )}
       </div>
 
+      <div className="mt-3">
+        <label htmlFor="ep-classification" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          Wertschöpfungs-Klassifizierung
+        </label>
+        <select
+          id="ep-classification"
+          value={classification}
+          onChange={(e) => setClassification(e.target.value)}
+          className={`mt-1 ${inputClass} w-56`}
+        >
+          <option value="">— nicht klassifiziert</option>
+          {(Object.keys(CLASSIFICATION) as ClassificationValue[]).map((key) => (
+            <option key={key} value={key}>
+              {CLASSIFICATION[key].label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <label className="mt-3 flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
         <input type="checkbox" checked={isPacemaker} onChange={(e) => setIsPacemaker(e.target.checked)} />
         <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> (bekommt den Auftrag direkt von der
@@ -1491,6 +1577,7 @@ function BufferEditPanel({
           <option value="supermarket">Supermarkt (Pull)</option>
           <option value="fifo">FIFO-Bahn</option>
           <option value="continuous">Continuous Flow (One-Piece)</option>
+          <option value="safety_stock">Sicherheitsbestand</option>
         </select>
       </div>
       <div>
@@ -1714,6 +1801,27 @@ function ProcessBox({
           fill={BOTTLENECK}
         />
       )}
+      {classificationMarker(process.classification) && (
+        // Wertschöpfungs-Klassifizierung: a short text tag, not a fill-color
+        // tint — keeps the print-standard B&W convention intact, same
+        // restrained-accent approach as the bottleneck border/pacemaker pin.
+        // Bottom-left corner is free (bottleneck "!" uses top-left, operator
+        // count uses top-right, pacemaker pin sits above the box).
+        <Text
+          text={classificationMarker(process.classification) ?? ''}
+          x={4}
+          y={PROCESS_HEIGHT - 13}
+          fontSize={8.5}
+          fontStyle="bold"
+          fill={
+            process.classification === 'nva'
+              ? BOTTLENECK
+              : process.classification === 'necessary_nva'
+                ? '#b45309' // amber-700 — matches the amber warning banners used elsewhere
+                : '#71717a' // zinc-500 — neutral marker for VA, not a warning
+          }
+        />
+      )}
     </Group>
   )
 }
@@ -1757,6 +1865,8 @@ function BufferMarker({
       ) : bufferType === 'fifo' ? (
         <FifoIcon stroke={stroke} strokeWidth={strokeWidth} />
       ) : (
+        // 'standard' and 'safety_stock' share the same triangle — safety
+        // stock is a labeled variant of it, not a separate shape.
         <RegularPolygon
           sides={3}
           radius={radius}
@@ -1766,6 +1876,9 @@ function BufferMarker({
           stroke={stroke}
           strokeWidth={strokeWidth}
         />
+      )}
+      {bufferType === 'safety_stock' && (
+        <Text text="SS" width={BUFFER_SIZE} align="center" y={4} fontSize={8} fontStyle="bold" fill={stroke} />
       )}
       <Text
         text={String(wipCount)}

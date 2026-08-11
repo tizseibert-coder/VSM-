@@ -214,6 +214,8 @@ export interface UpdateProcessInput {
   operatorCount: number
   changeoverTime: number
   isPacemaker: boolean
+  /** 'va' | 'nva' | 'necessary_nva' | null — see lib/vsm/classification.ts for the allowed set. */
+  classification?: string | null
 }
 
 // The pacemaker (Schrittmacher) is the one process scheduled directly by
@@ -253,6 +255,7 @@ export async function updateProcess(projectId: string, processId: string, input:
       operator_count: input.operatorCount,
       changeover_time: input.changeoverTime,
       is_pacemaker: input.isPacemaker,
+      ...(input.classification !== undefined ? { classification: input.classification } : {}),
     })
     .eq('id', processId)
 
@@ -264,7 +267,7 @@ export interface SetBufferWipInput {
   fromProcessId: string | null
   toProcessId: string | null
   wipCount: number
-  /** 'standard' (uncontrolled triangle, default) | 'supermarket' | 'fifo' | 'continuous' (one-piece flow, no triangle) */
+  /** 'standard' (uncontrolled triangle, default) | 'supermarket' | 'fifo' | 'continuous' (one-piece flow, no triangle) | 'safety_stock' (triangle + "SS" label) */
   bufferType?: string | null
   /** 'push' | 'pull' | 'shipment' | null (auto-derive from position/buffer_type) */
   flowStyle?: string | null
