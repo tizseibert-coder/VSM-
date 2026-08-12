@@ -18,8 +18,12 @@ import {
 // business logic lives here; each wrapper just unpacks the relevant field(s)
 // and calls the existing, already-tested action from actions.ts.
 
+// `saved=1` drives the "Gespeichert" confirmation banner on the question
+// page — the wizard had no save feedback at all before, silently redirecting
+// back to the same question after a submit made it unclear whether anything
+// actually happened.
 function backToQuestion(projectId: string, scenarioId: string, questionId: number): never {
-  redirect(`/editor/${projectId}/future-state/${questionId}?scenario=${scenarioId}`)
+  redirect(`/editor/${projectId}/future-state/${questionId}?scenario=${scenarioId}&saved=1`)
 }
 
 function parsePositiveNumber(value: FormDataEntryValue | null): number | null {
@@ -48,7 +52,12 @@ export async function submitBuffer(
   formData: FormData
 ) {
   const bufferType = (formData.get('bufferType') as string | null) ?? 'standard'
-  const wipCount = Number(formData.get('wipCount')) || 0
+  // Continuous flow has no buffer by definition (see seed data / existing
+  // convention) — force WIP to 0 whenever it's set, regardless of what the
+  // form submitted, so a stale WIP number can never keep inflating PLT on a
+  // connection the wizard just marked as one-piece flow (Q3's checkbox
+  // form doesn't ask for a WIP value at all).
+  const wipCount = bufferType === 'continuous' ? 0 : Number(formData.get('wipCount')) || 0
   await setBufferWip(projectId, scenarioId, { fromProcessId, toProcessId, wipCount, bufferType })
   backToQuestion(projectId, scenarioId, questionId)
 }

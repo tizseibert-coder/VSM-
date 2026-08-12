@@ -30,10 +30,10 @@ export default async function FutureStateQuestionPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string; questionId: string }>
-  searchParams: Promise<{ scenario?: string }>
+  searchParams: Promise<{ scenario?: string; saved?: string }>
 }) {
   const { projectId, questionId } = await params
-  const { scenario: scenarioParam } = await searchParams
+  const { scenario: scenarioParam, saved } = await searchParams
   const qid = Number(questionId)
   if (!Number.isInteger(qid) || qid < 1 || qid > 8) notFound()
 
@@ -111,6 +111,12 @@ export default async function FutureStateQuestionPage({
         </div>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{current.summary}</p>
 
+        {saved === '1' && (
+          <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            ✓ Gespeichert.
+          </p>
+        )}
+
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
           {qid === 1 && (
             <form action={submitTaktTime.bind(null, projectId, scenario.id)} className="flex flex-col gap-3">
@@ -176,7 +182,7 @@ export default async function FutureStateQuestionPage({
               )
             })()}
 
-          {(qid === 3 || qid === 4) &&
+          {qid === 3 &&
             (() => {
               const internal = allBuffers.filter((b) => b.from_process_id !== null && b.to_process_id !== null)
               if (internal.length === 0) {
@@ -188,10 +194,71 @@ export default async function FutureStateQuestionPage({
               }
               return (
                 <div className="flex flex-col gap-3">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Nur die Ja/Nein-Entscheidung „läuft diese Verbindung ohne Zwischenpuffer direkt weiter?&rdquo; —
+                    für Supermarkt/FIFO/Push bei den verbleibenden Verbindungen siehe Frage 4.
+                  </p>
                   {internal.map((b) => (
                     <form
                       key={b.id}
-                      action={submitBuffer.bind(null, projectId, scenario.id, qid, b.from_process_id, b.to_process_id)}
+                      action={submitBuffer.bind(null, projectId, scenario.id, 3, b.from_process_id, b.to_process_id)}
+                      className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-100 p-3 dark:border-zinc-900"
+                    >
+                      <input type="hidden" name="wipCount" value={b.wip_count} />
+                      <p className="mr-auto text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        {boundaryLabel(b.from_process_id, 'Lieferant')} → {boundaryLabel(b.to_process_id, 'Kunde')}
+                      </p>
+                      <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        <input
+                          type="checkbox"
+                          name="bufferType"
+                          value="continuous"
+                          defaultChecked={b.buffer_type === 'continuous'}
+                        />
+                        <TermTooltip term="onePieceFlow">Continuous Flow</TermTooltip>
+                      </label>
+                      <button type="submit" className={SUBMIT_CLASS}>
+                        Speichern
+                      </button>
+                    </form>
+                  ))}
+                </div>
+              )
+            })()}
+
+          {qid === 4 &&
+            (() => {
+              // Verbindungen, die bereits als Continuous Flow laufen (Frage 3),
+              // haben keinen Puffer zu steuern — hier nicht mehr anfassen.
+              const relevant = allBuffers.filter(
+                (b) => b.from_process_id !== null && b.to_process_id !== null && b.buffer_type !== 'continuous'
+              )
+              const continuousCount = allBuffers.filter(
+                (b) => b.from_process_id !== null && b.to_process_id !== null && b.buffer_type === 'continuous'
+              ).length
+              if (relevant.length === 0 && continuousCount === 0) {
+                return (
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Noch keine internen Verbindungen zwischen Prozessen vorhanden.
+                  </p>
+                )
+              }
+              if (relevant.length === 0) {
+                return (
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Alle internen Verbindungen laufen bereits als Continuous Flow (Frage 3) — nichts mehr zu steuern.
+                  </p>
+                )
+              }
+              return (
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Push oder Pull für die Verbindungen, die nicht bereits Continuous Flow sind (Frage 3).
+                  </p>
+                  {relevant.map((b) => (
+                    <form
+                      key={b.id}
+                      action={submitBuffer.bind(null, projectId, scenario.id, 4, b.from_process_id, b.to_process_id)}
                       className="flex flex-wrap items-end gap-2 rounded-xl border border-zinc-100 p-3 dark:border-zinc-900"
                     >
                       <p className="mr-auto w-full text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -203,11 +270,10 @@ export default async function FutureStateQuestionPage({
                           <option value="standard">Standard (Push)</option>
                           <option value="supermarket">Supermarkt (Pull)</option>
                           <option value="fifo">FIFO-Bahn (Pull)</option>
-                          <option value="continuous">Continuous Flow</option>
                         </select>
                       </label>
                       <label className="text-xs text-zinc-500 dark:text-zinc-400">
-                        WIP
+                        <TermTooltip term="wip">WIP</TermTooltip>
                         <input name="wipCount" type="number" min={0} defaultValue={b.wip_count} className={FIELD_CLASS} />
                       </label>
                       <button type="submit" className={SUBMIT_CLASS}>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Stage, Layer, Rect, Text, Group, Arrow, Line, RegularPolygon, Circle } from 'react-konva'
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
-import { calculateKpis } from '@/lib/vsm/calculations'
+import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
 import { bufferGapIndices, findBuffer } from '@/lib/vsm/buffers'
 import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geometry'
 import { computeAutoFitScale, clampScale } from '@/lib/vsm/viewport'
@@ -193,6 +193,21 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       }),
     [processes, buffers, liveAnnualThroughput, liveAvailableMinutes]
   )
+
+  // Live transparency for the "how is this actually calculated" question —
+  // shown as a small formula caption under Durchlaufzeit/Taktzeit so a
+  // surprising number (e.g. a very low Jahresbedarf making PLT look huge)
+  // is visibly explained by its own inputs instead of looking like a bug.
+  const totalWipCount = useMemo(() => buffers.reduce((sum, b) => sum + b.wip_count, 0), [buffers])
+  const effectiveAvailableMinutes = liveAvailableMinutes ?? SHIFT_MINUTES
+  const leadTimeFormula =
+    kpis.dailyDemand !== null
+      ? `${totalWipCount} Stk WIP ÷ ${kpis.dailyDemand.toFixed(1)} Stk/Tag Exitrate`
+      : undefined
+  const taktTimeFormula =
+    kpis.dailyDemand !== null
+      ? `${effectiveAvailableMinutes} min/Tag ÷ ${kpis.dailyDemand.toFixed(1)} Stk/Tag Exitrate`
+      : undefined
 
   const supplierPos = supplierCloudPosition()
   const supplierRight: Point = {
@@ -564,6 +579,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
               ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage`
               : '–'
           }
+          formula={leadTimeFormula}
         />
         <KpiTile
           label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
@@ -576,6 +592,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         <KpiTile
           label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
           value={kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} min` : '–'}
+          formula={taktTimeFormula}
         />
         <KpiTile
           label={<TermTooltip term="exitRate">Exitrate</TermTooltip>}
@@ -1098,11 +1115,12 @@ function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string
   )
 }
 
-function KpiTile({ label, value }: { label: ReactNode; value: string }) {
+function KpiTile({ label, value, formula }: { label: ReactNode; value: string; formula?: string }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
       <div className="mt-1 text-lg font-semibold tabular-nums text-zinc-950 dark:text-zinc-50">{value}</div>
+      {formula && <div className="mt-0.5 text-[10px] tabular-nums text-zinc-400 dark:text-zinc-500">{formula}</div>}
     </div>
   )
 }
@@ -1154,6 +1172,18 @@ function ProcessEditPanel({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [beforeWipInput, setBeforeWipInput] = useState(String(beforeWip))
   const [afterWipInput, setAfterWipInput] = useState(String(afterWip))
+
+  // Live preview so "warum ändert sich C/T nicht" gets answered right where
+  // the user is typing, before they even save: Zykluszeit itself (one
+  // operator's own time per unit) never changes with operator count — the
+  // *effective* (output) cycle time does, and that's what feeds Bearbeitungszeit/
+  // Kapazitäts-Check.
+  const liveOperatorCountNum = Number(operatorCount)
+  const liveCycleTimeNum = Number(cycleTime)
+  const liveEffectiveCycleTime =
+    !Number.isNaN(liveCycleTimeNum) && !Number.isNaN(liveOperatorCountNum) && liveOperatorCountNum > 1
+      ? effectiveCycleTime({ cycleTime: liveCycleTimeNum, operatorCount: liveOperatorCountNum })
+      : null
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -1413,6 +1443,12 @@ function ProcessEditPanel({
             onChange={(e) => setOperatorCount(e.target.value)}
             className={`mt-1 ${inputClass}`}
           />
+          {liveEffectiveCycleTime !== null && (
+            <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+              eff. Zykluszeit: {liveEffectiveCycleTime.toFixed(1)} min (fliesst in Bearbeitungszeit/Kapazitäts-Check
+              ein — die Zykluszeit selbst bleibt unverändert)
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor="ep-before" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -1892,7 +1928,11 @@ function ProcessBox({
       />
       <Rect x={10} y={34} width={PROCESS_WIDTH - 20} height={1} fill="#d4d4d8" />
       <Text
-        text={`C/T: ${process.cycle_time} min\nC/O: ${process.changeover_time} min\nOEE: ${process.oee}%`}
+        text={`C/T: ${process.cycle_time} min${
+          process.operator_count > 1
+            ? ` (eff. ${effectiveCycleTime({ cycleTime: process.cycle_time, operatorCount: process.operator_count }).toFixed(1)})`
+            : ''
+        }\nC/O: ${process.changeover_time} min\nOEE: ${process.oee}%`}
         width={PROCESS_WIDTH}
         align="center"
         y={39}
@@ -2259,7 +2299,7 @@ function LadderSummary({
   return (
     <Group x={x} y={anchorY} scaleX={counterScale} scaleY={counterScale} offsetY={height / 2}>
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
-      <Text text="LT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
+      <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
       <Text
         text={`${leadTimeDays.toFixed(1)} T`}
         x={0}
