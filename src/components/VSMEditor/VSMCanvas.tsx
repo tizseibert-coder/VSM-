@@ -37,6 +37,7 @@ import {
   deleteProcess,
   importProcessesCsv,
   updateAnnualThroughput,
+  updateAvailableMinutes,
   updateProcess,
   reorderProcesses,
   updateProcessLane,
@@ -55,6 +56,13 @@ const BOTTLENECK = '#dc2626' // capacity-warning red — semantic, kept distinct
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
+// Canvas display height is derived from the diagram's own content height
+// (see canvasHeight below), clamped to this range — small so a 1-2-process
+// VSM isn't a mostly-empty box, large so a many-lane diagram still gets
+// capped and shrunk-to-fit (via computeAutoFitScale) instead of growing
+// the page without bound.
+const MIN_CANVAS_DISPLAY_HEIGHT = 320
+const MAX_CANVAS_DISPLAY_HEIGHT = 560
 
 type Selection =
   | { kind: 'process'; id: string }
@@ -83,6 +91,9 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   const [throughputInput, setThroughputInput] = useState(
     project.annual_throughput?.toString() ?? ''
   )
+  const [availableMinutesInput, setAvailableMinutesInput] = useState(
+    String(project.available_minutes_per_day)
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Zoom/pan camera state: the world (canvasWidth x canvasHeight, computed
@@ -92,7 +103,13 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // every render from the current content size, so a growing diagram keeps
   // shrinking to fit automatically without needing an effect to chase it.
   const [camera, setCamera] = useState<{ scale: number; pos: Point } | null>(null)
-  const [viewportSize, setViewportSize] = useState({ width: 900, height: 560 })
+  // Only the width is measured (depends on the container's rendered CSS
+  // width, not computable from data). The height is derived below from the
+  // diagram's own content height — a fixed height here was the cause of a
+  // reported bug: a small VSM left a lot of empty white canvas between the
+  // diagram and the toolbar underneath it, because a short diagram already
+  // "fits" a tall fixed viewport at 100% scale and just sits at the top.
+  const [viewportWidth, setViewportWidth] = useState(900)
   const stageContainerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
@@ -155,14 +172,20 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     return Number.isNaN(n) ? null : n
   }, [throughputInput])
 
+  const liveAvailableMinutes = useMemo(() => {
+    const n = Number(availableMinutesInput.trim())
+    return Number.isNaN(n) || n <= 0 ? undefined : n
+  }, [availableMinutesInput])
+
   const kpis = useMemo(
     () =>
       calculateKpis({
         processes: processes.map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count })),
         buffers: buffers.map((b) => ({ wipCount: b.wip_count })),
         annualThroughput: liveAnnualThroughput,
+        availableMinutesPerDay: liveAvailableMinutes,
       }),
-    [processes, buffers, liveAnnualThroughput]
+    [processes, buffers, liveAnnualThroughput, liveAvailableMinutes]
   )
 
   const supplierPos = supplierCloudPosition()
@@ -181,13 +204,21 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
   const canvasWidth = Math.max(900, customerPos.x + CLOUD_SIZE + 60 + SUMMARY_WIDTH)
   const canvasHeight = ladderLowY + 60
+  const viewportHeight = Math.min(
+    MAX_CANVAS_DISPLAY_HEIGHT,
+    Math.max(MIN_CANVAS_DISPLAY_HEIGHT, canvasHeight + 32)
+  )
 
   // Fit-scale/position for the current content size — recomputed every
   // render (cheap arithmetic), not stored in state. This is what "Einpassen"
   // resets to, and what's shown automatically before the user ever touches
   // zoom/pan, including right after adding the diagram's first processes.
-  const autoFitScale = computeAutoFitScale({ width: canvasWidth, height: canvasHeight }, viewportSize, 24)
-  const autoFitPos: Point = { x: (viewportSize.width - canvasWidth * autoFitScale) / 2, y: 16 }
+  const autoFitScale = computeAutoFitScale(
+    { width: canvasWidth, height: canvasHeight },
+    { width: viewportWidth, height: viewportHeight },
+    24
+  )
+  const autoFitPos: Point = { x: (viewportWidth - canvasWidth * autoFitScale) / 2, y: 16 }
   const stageScale = camera?.scale ?? autoFitScale
   const stagePos = camera?.pos ?? autoFitPos
 
@@ -249,7 +280,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   useEffect(() => {
     function measure() {
       const el = stageContainerRef.current
-      if (el) setViewportSize({ width: el.clientWidth, height: 560 })
+      if (el) setViewportWidth(el.clientWidth)
     }
     measure()
     window.addEventListener('resize', measure)
@@ -449,6 +480,19 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     })
   }
 
+  function handleAvailableMinutesBlur() {
+    if (liveAvailableMinutes === undefined) return // invalid/blank input — leave the stored value untouched
+    setError(null)
+    startTransition(async () => {
+      try {
+        await updateAvailableMinutes(project.id, liveAvailableMinutes)
+        router.refresh()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+      }
+    })
+  }
+
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -502,7 +546,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
       {/* Live KPI bar */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <KpiTile
           label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
           value={`${kpis.totalCycleTimeMinutes.toFixed(1)} min`}
@@ -527,23 +571,48 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
           value={kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} min` : '–'}
         />
+        <KpiTile
+          label={<TermTooltip term="exitRate">Exitrate</TermTooltip>}
+          value={kpis.dailyDemand !== null ? `${kpis.dailyDemand.toFixed(1)} Stk./Tag` : '–'}
+        />
       </div>
 
-      {/* Customer demand input — drives lead time / takt live */}
-      <div className="mt-4 flex items-center gap-2">
-        <label htmlFor="throughput" className="text-sm text-zinc-600 dark:text-zinc-400">
-          Jahresbedarf Kunde (Stück/Jahr)
-        </label>
-        <input
-          id="throughput"
-          type="number"
-          min={0}
-          value={throughputInput}
-          onChange={(e) => setThroughputInput(e.target.value)}
-          onBlur={handleThroughputBlur}
-          placeholder="z. B. 50000"
-          className="w-32 rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-        />
+      {/* Customer demand + available production time — the two inputs that
+          drive lead time / takt live. PLT = WIP / Exitrate (Little's Law):
+          Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
+          deliberately changes PLT — that's the formula working correctly,
+          not a bug. */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor="throughput" className="text-sm text-zinc-600 dark:text-zinc-400">
+            Jahresbedarf Kunde (Stück/Jahr)
+          </label>
+          <input
+            id="throughput"
+            type="number"
+            min={0}
+            value={throughputInput}
+            onChange={(e) => setThroughputInput(e.target.value)}
+            onBlur={handleThroughputBlur}
+            placeholder="z. B. 50000"
+            className="w-32 rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="available-minutes" className="text-sm text-zinc-600 dark:text-zinc-400">
+            <TermTooltip term="availableMinutesPerDay">Verfügbare Produktionszeit (Min/Tag)</TermTooltip>
+          </label>
+          <input
+            id="available-minutes"
+            type="number"
+            min={1}
+            value={availableMinutesInput}
+            onChange={(e) => setAvailableMinutesInput(e.target.value)}
+            onBlur={handleAvailableMinutesBlur}
+            placeholder="z. B. 480"
+            className="w-24 rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          />
+        </div>
       </div>
 
       {error && (
@@ -624,8 +693,8 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       >
         <Stage
           ref={stageRef}
-          width={viewportSize.width}
-          height={viewportSize.height}
+          width={viewportWidth}
+          height={viewportHeight}
           scaleX={stageScale}
           scaleY={stageScale}
           x={stagePos.x}

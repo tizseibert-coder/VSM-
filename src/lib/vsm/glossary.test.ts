@@ -35,4 +35,10 @@ describe('glossary', () => {
       expect.arrayContaining(['wip', 'bufferType', 'flowStyle', 'kanbanType']),
     )
   })
+
+  it('covers the exit-rate / available-production-time terms', () => {
+    expect(Object.keys(GLOSSARY)).toEqual(
+      expect.arrayContaining(['availableMinutesPerDay', 'exitRate']),
+    )
+  })
 })

@@ -150,6 +150,19 @@ export async function updateAnnualThroughput(projectId: string, annualThroughput
   revalidatePath(`/editor/${projectId}`)
 }
 
+// Takt time's other input, previously hardcoded to SHIFT_MINUTES with no way
+// to configure it — see lib/vsm/calculations.ts (availableMinutesPerDay).
+export async function updateAvailableMinutes(projectId: string, availableMinutesPerDay: number) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('projects')
+    .update({ available_minutes_per_day: availableMinutesPerDay })
+    .eq('id', projectId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+}
+
 // No scenarioId here (unlike addProcess/importProcessesCsv/setBufferWip):
 // processId already uniquely identifies the row regardless of which state
 // it belongs to, so there is nothing extra to scope.

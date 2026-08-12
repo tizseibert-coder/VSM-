@@ -108,7 +108,7 @@ describe('calculateKpis', () => {
     expect(result.valueAddedRatioPercent).toBeNull()
   })
 
-  it('computes takt time as shift minutes over daily demand', () => {
+  it('computes takt time as shift minutes over daily demand when availableMinutesPerDay is not set', () => {
     const result = calculateKpis({
       processes: [],
       buffers: [],
@@ -116,5 +116,28 @@ describe('calculateKpis', () => {
     })
 
     expect(result.taktTimeMinutes).toBeCloseTo(SHIFT_MINUTES / 200, 5)
+  })
+
+  it('uses availableMinutesPerDay for takt time when explicitly set (e.g. two shifts)', () => {
+    const result = calculateKpis({
+      processes: [],
+      buffers: [],
+      annualThroughput: 50_000, // daily demand 200
+      availableMinutesPerDay: 960, // two 8h shifts instead of the SHIFT_MINUTES default of one
+    })
+
+    expect(result.taktTimeMinutes).toBeCloseTo(960 / 200, 5)
+  })
+
+  it("changing annual throughput changes dailyDemand (exit rate) and lead time in the direction Little's Law predicts (PLT = WIP / exit rate)", () => {
+    // Same WIP, higher annual throughput -> higher exit rate -> shorter lead time.
+    const lowThroughput = calculateKpis({ processes: [], buffers: [{ wipCount: 400 }], annualThroughput: 25_000 })
+    const highThroughput = calculateKpis({ processes: [], buffers: [{ wipCount: 400 }], annualThroughput: 100_000 })
+
+    expect(lowThroughput.dailyDemand).toBe(100) // 25'000 / 250
+    expect(highThroughput.dailyDemand).toBe(400) // 100'000 / 250
+    expect(lowThroughput.totalLeadTimeDays).toBe(4) // 400 / 100
+    expect(highThroughput.totalLeadTimeDays).toBe(1) // 400 / 400
+    expect(highThroughput.totalLeadTimeDays).toBeLessThan(lowThroughput.totalLeadTimeDays)
   })
 })

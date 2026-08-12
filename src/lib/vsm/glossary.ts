@@ -32,6 +32,16 @@ export const GLOSSARY = {
     definition:
       'Verfügbare Produktionszeit geteilt durch den Kundenbedarf. Das Tempo, in dem ein Stück fertig werden muss, damit die Nachfrage gedeckt wird — kein Bearbeitungswert, sondern eine Vorgabe.',
   },
+  availableMinutesPerDay: {
+    term: 'Verfügbare Produktionszeit',
+    definition:
+      'Wie viele Minuten pro Tag tatsächlich produziert wird (z. B. eine 8h-Schicht = 480 min, zwei Schichten = 960 min, abzüglich Pausen). Der andere Faktor in der Taktzeit-Formel neben dem Kundenbedarf.',
+  },
+  exitRate: {
+    term: 'Exitrate',
+    definition:
+      'Wie viele Stück pro Tag den letzten Prozess verlassen — der Tagesbedarf, aus dem Jahresbedarf abgeleitet (Jahresbedarf ÷ Arbeitstage). Bestimmt zusammen mit dem WIP die Durchlaufzeit: PLT = WIP ÷ Exitrate.',
+  },
   processCycleTime: {
     term: 'Zykluszeit (C/T)',
     definition: 'Die Zeit, die ein einzelner Prozessschritt braucht, um ein Werkstück zu bearbeiten.',

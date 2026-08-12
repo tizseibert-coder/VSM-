@@ -27,6 +27,14 @@ export interface KpiInput {
   processes: KpiProcessInput[]
   buffers: KpiBufferInput[]
   annualThroughput: number | null
+  /**
+   * Available production minutes per day, for takt time (taktTime =
+   * availableMinutesPerDay / dailyDemand). Was hardcoded to SHIFT_MINUTES
+   * with no way to configure it — defaults to SHIFT_MINUTES here too, so
+   * existing projects (and existing tests) that never set it keep behaving
+   * exactly as before.
+   */
+  availableMinutesPerDay?: number
 }
 
 export interface KpiResult {
@@ -61,7 +69,8 @@ export function calculateKpis(input: KpiInput): KpiResult {
   const valueAddedRatioPercent =
     totalLeadTimeMinutes > 0 ? (totalCycleTimeMinutes / totalLeadTimeMinutes) * 100 : null
 
-  const taktTimeMinutes = dailyDemand ? SHIFT_MINUTES / dailyDemand : null
+  const availableMinutesPerDay = input.availableMinutesPerDay ?? SHIFT_MINUTES
+  const taktTimeMinutes = dailyDemand ? availableMinutesPerDay / dailyDemand : null
 
   return {
     totalCycleTimeMinutes,

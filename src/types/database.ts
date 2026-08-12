@@ -414,6 +414,7 @@ export type Database = {
       projects: {
         Row: {
           annual_throughput: number | null
+          available_minutes_per_day: number
           company: string | null
           created_at: string
           customer_name: string
@@ -428,6 +429,7 @@ export type Database = {
         }
         Insert: {
           annual_throughput?: number | null
+          available_minutes_per_day?: number
           company?: string | null
           created_at?: string
           customer_name?: string
@@ -442,6 +444,7 @@ export type Database = {
         }
         Update: {
           annual_throughput?: number | null
+          available_minutes_per_day?: number
           company?: string | null
           created_at?: string
           customer_name?: string
