@@ -1,5 +1,6 @@
 import type { Tables } from '@/types/database'
-import { deleteScenario, updateScenarioMeta } from '@/app/editor/[projectId]/scenario-actions'
+import { updateScenarioMeta } from '@/app/editor/[projectId]/scenario-actions'
+import DeleteScenarioButton from './DeleteScenarioButton'
 
 type Scenario = Tables<'scenarios'>
 
@@ -79,14 +80,7 @@ export default function ScenarioMetaPanel({
         </button>
       </form>
 
-      <form action={deleteScenario.bind(null, projectId, scenario.id)}>
-        <button
-          type="submit"
-          className="rounded-full border border-red-300 px-4 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-        >
-          Szenario löschen
-        </button>
-      </form>
+      <DeleteScenarioButton projectId={projectId} scenarioId={scenario.id} />
     </div>
   )
 }

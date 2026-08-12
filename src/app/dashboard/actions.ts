@@ -44,7 +44,12 @@ export async function createProject(formData: FormData) {
     .single()
 
   if (error || !project) {
-    redirect('/dashboard?error=' + encodeURIComponent(error?.message ?? 'Projekt konnte nicht erstellt werden.'))
+    // UX-Audit Phase 7a finding #4: this used to interpolate the raw
+    // Supabase/Postgres error message straight into the user-facing
+    // banner — meaningless to a non-technical user mid-workshop. Logged
+    // server-side for debugging, generic German text shown to the user.
+    if (error) console.error('createProject failed:', error.message)
+    redirect('/dashboard?error=' + encodeURIComponent('Projekt konnte nicht erstellt werden.'))
   }
 
   redirect(`/editor/${project.id}`)
@@ -72,7 +77,8 @@ export async function createExampleProject() {
     .single()
 
   if (projectError || !project) {
-    redirect('/dashboard?error=' + encodeURIComponent(projectError?.message ?? 'Beispiel konnte nicht erstellt werden.'))
+    if (projectError) console.error('createExampleProject (project) failed:', projectError.message)
+    redirect('/dashboard?error=' + encodeURIComponent('Beispiel konnte nicht erstellt werden.'))
   }
 
   const exampleProcesses = [
@@ -92,10 +98,8 @@ export async function createExampleProject() {
     .select('id')
 
   if (processesError) {
-    redirect(
-      '/dashboard?error=' +
-        encodeURIComponent(`Beispiel-Prozesse konnten nicht angelegt werden: ${processesError.message}`)
-    )
+    console.error('createExampleProject (processes) failed:', processesError.message)
+    redirect('/dashboard?error=' + encodeURIComponent('Beispiel-Prozesse konnten nicht angelegt werden.'))
   }
 
   if (insertedProcesses && insertedProcesses.length > 0) {
@@ -120,10 +124,8 @@ export async function createExampleProject() {
     ]
     const { error: bufferError } = await supabase.from('inventory_buffers').insert(bufferRows)
     if (bufferError) {
-      redirect(
-        '/dashboard?error=' +
-          encodeURIComponent(`Beispiel-Puffer konnten nicht angelegt werden: ${bufferError.message}`)
-      )
+      console.error('createExampleProject (buffers) failed:', bufferError.message)
+      redirect('/dashboard?error=' + encodeURIComponent('Beispiel-Puffer konnten nicht angelegt werden.'))
     }
   }
 

@@ -57,7 +57,7 @@ export default function NewScenarioDisclosure({ projectId }: { projectId: string
             className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </label>
-        <p className="text-xs text-zinc-500 dark:text-zinc-500">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Kopiert den aktuellen Ist-Zustand als Startpunkt — danach unabhängig editierbar.
         </p>
         <div className="mt-1 flex items-center gap-2">

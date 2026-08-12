@@ -17,13 +17,19 @@ export function TermTooltip({ term, children }: { term: GlossaryKey; children: R
   return (
     <span className="relative inline-flex items-center gap-1">
       {children}
+      {/* Visible badge stays a compact 14px circle (fits inline in running
+          text/labels); the actual tap/click target is widened to ~44px via
+          an absolutely-positioned ::before that extends past the visible
+          box without pushing layout — same problem/fix shape as LeanPulse
+          Industrial's info-tag.tsx touch-target fix (UX-Audit Phase 7a,
+          finding #1: this button measured 14x14px). */}
       <button
         type="button"
         aria-describedby={open ? tooltipId : undefined}
         aria-label={`Erklärung: ${entry.term}`}
         onClick={() => setOpen((prev) => !prev)}
         onBlur={() => setOpen(false)}
-        className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-zinc-400 text-[9px] leading-none text-zinc-500 hover:border-blue-600 hover:text-blue-600 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-blue-500 dark:hover:text-blue-500"
+        className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-zinc-400 text-[9px] leading-none text-zinc-500 before:absolute before:inset-[-15px] before:content-[''] hover:border-blue-600 hover:text-blue-600 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-blue-500 dark:hover:text-blue-500"
       >
         ?
       </button>

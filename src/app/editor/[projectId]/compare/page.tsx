@@ -84,7 +84,7 @@ export default async function ComparePage({
           <table className="w-full min-w-[480px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="p-3 text-left font-medium text-zinc-500 dark:text-zinc-500">Kennzahl</th>
+                <th className="p-3 text-left font-medium text-zinc-500 dark:text-zinc-400">Kennzahl</th>
                 {rows.map((r) => (
                   <th key={r.id ?? 'ist'} className="p-3 text-left font-medium text-zinc-950 dark:text-zinc-50">
                     <Link
@@ -100,7 +100,7 @@ export default async function ComparePage({
             <tbody>
               {metricRows.map((metricRow) => (
                 <tr key={metricRow.label} className="border-b border-zinc-100 last:border-0 dark:border-zinc-900">
-                  <td className="p-3 text-zinc-500 dark:text-zinc-500">{metricRow.label}</td>
+                  <td className="p-3 text-zinc-500 dark:text-zinc-400">{metricRow.label}</td>
                   {rows.map((r) => (
                     <td key={r.id ?? 'ist'} className="p-3 text-zinc-950 dark:text-zinc-50">
                       {metricRow.format(r)}
@@ -117,7 +117,7 @@ export default async function ComparePage({
             <table className="w-full min-w-[480px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="p-3 text-left font-medium text-zinc-500 dark:text-zinc-500">Business Case</th>
+                  <th className="p-3 text-left font-medium text-zinc-500 dark:text-zinc-400">Business Case</th>
                   {(scenarios ?? []).map((s) => (
                     <th key={s.id} className="p-3 text-left font-medium text-zinc-950 dark:text-zinc-50">
                       {s.type} · {s.name}
@@ -127,7 +127,7 @@ export default async function ComparePage({
               </thead>
               <tbody>
                 <tr className="border-b border-zinc-100 dark:border-zinc-900">
-                  <td className="p-3 text-zinc-500 dark:text-zinc-500">Investition</td>
+                  <td className="p-3 text-zinc-500 dark:text-zinc-400">Investition</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950 dark:text-zinc-50">
                       {s.investment_chf != null ? `CHF ${s.investment_chf.toLocaleString('de-CH')}` : '–'}
@@ -135,7 +135,7 @@ export default async function ComparePage({
                   ))}
                 </tr>
                 <tr className="border-b border-zinc-100 dark:border-zinc-900">
-                  <td className="p-3 text-zinc-500 dark:text-zinc-500">Payback</td>
+                  <td className="p-3 text-zinc-500 dark:text-zinc-400">Payback</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950 dark:text-zinc-50">
                       {s.payback_months != null ? `${s.payback_months} Monate` : '–'}
@@ -143,7 +143,7 @@ export default async function ComparePage({
                   ))}
                 </tr>
                 <tr>
-                  <td className="p-3 text-zinc-500 dark:text-zinc-500">Risiko</td>
+                  <td className="p-3 text-zinc-500 dark:text-zinc-400">Risiko</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950 dark:text-zinc-50">
                       {s.risk_level ? (RISK_LABEL[s.risk_level] ?? s.risk_level) : '–'}

@@ -112,7 +112,7 @@ export default async function DashboardPage({
                         {project.name}
                       </div>
                       {project.description && (
-                        <div className="text-xs text-zinc-500 dark:text-zinc-500">
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
                           {project.description}
                         </div>
                       )}

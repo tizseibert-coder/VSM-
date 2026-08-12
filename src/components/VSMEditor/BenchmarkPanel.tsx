@@ -133,13 +133,13 @@ function BenchmarkRow({
   return (
     <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-zinc-500 dark:text-zinc-500">{label}</span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TIER_CLASS[tier]}`}>{TIER_LABEL[tier]}</span>
       </div>
       <div className="mt-1 text-lg font-semibold text-zinc-950 dark:text-zinc-50">
         {value.toFixed(1)} {unit}
       </div>
-      <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+      <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
         P25 {reference.p25} · Median {reference.median} · P75 {reference.p75} {unit}
       </div>
     </div>

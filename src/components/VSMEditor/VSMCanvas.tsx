@@ -642,7 +642,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           Strg/Cmd (see handleWheel) so a normal scroll down to the toolbar
           below never zooms the canvas by accident. */}
       <div className="mt-6 flex items-center justify-between gap-3">
-        <p className="text-xs text-zinc-400 dark:text-zinc-600">Strg/Cmd + Mausrad zum Zoomen</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Strg/Cmd + Mausrad zum Zoomen</p>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -652,22 +652,26 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           >
             {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
           </button>
+          {/* UX-Audit Phase 7a finding #1 (touch targets): these three
+              buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
+              (~44px) — the row facilitators reach for most often when
+              driving a workshop from a laptop trackpad. */}
           <div className="flex items-center gap-0.5 rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950">
             <button
               type="button"
               onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-              className="rounded-full px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="rounded-full px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
               aria-label="Verkleinern"
             >
               −
             </button>
-            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-500">
+            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
               {Math.round(stageScale * 100)}%
             </span>
             <button
               type="button"
               onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-              className="rounded-full px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="rounded-full px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
               aria-label="Vergrößern"
             >
               +
@@ -676,7 +680,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             <button
               type="button"
               onClick={handleFitToView}
-              className="rounded-full px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="rounded-full px-3 py-3 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
             >
               Einpassen
             </button>
@@ -944,7 +948,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       </div>
 
       {processes.length === 0 && (
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Noch keine Prozesse. Leg unten den ersten an.
         </p>
       )}
@@ -1037,7 +1041,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             <button type="button" onClick={() => fileInputRef.current?.click()} className={secondaryButtonClass}>
               CSV importieren
             </button>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               Spalten: name, cycle_time, oee, wip
             </p>
           </div>
@@ -1070,7 +1074,7 @@ function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string
 function KpiTile({ label, value }: { label: ReactNode; value: string }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="text-xs text-zinc-500 dark:text-zinc-500">{label}</div>
+      <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
       <div className="mt-1 text-lg font-semibold tabular-nums text-zinc-950 dark:text-zinc-50">{value}</div>
     </div>
   )
@@ -1116,6 +1120,11 @@ function ProcessEditPanel({
   const [changeoverTime, setChangeoverTime] = useState(String(process.changeover_time))
   const [isPacemaker, setIsPacemaker] = useState(process.is_pacemaker)
   const [classification, setClassification] = useState(process.classification ?? '')
+  // UX-Audit Phase 7a finding #6: deletion used to fire on the first click,
+  // no confirm/undo — risky in a workshop where the facilitator is
+  // presenting and a stray click lands on this button. Second click within
+  // the same focus session is required; losing focus resets the arm state.
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [beforeWipInput, setBeforeWipInput] = useState(String(beforeWip))
   const [afterWipInput, setAfterWipInput] = useState(String(afterWip))
   const [error, setError] = useState<string | null>(null)
@@ -1288,7 +1297,7 @@ function ProcessEditPanel({
           neu; Spur (↑/↓) versetzt die Box auf eine parallele Reihe. Ersetzt
           das frühere freie Ziehen — dadurch keine Überschneidungen mehr. */}
       <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Position</span>
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Position</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -1333,7 +1342,7 @@ function ProcessEditPanel({
           </button>
         </div>
         {process.lane > 0 && (
-          <span className="text-xs text-zinc-500 dark:text-zinc-500">Spur {process.lane + 1}</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">Spur {process.lane + 1}</span>
         )}
       </div>
 
@@ -1408,7 +1417,7 @@ function ProcessEditPanel({
           mehr als einen Vorgänger (Zusammenführung) oder Nachfolger
           (Aufteilung) haben. */}
       <div className="mt-3 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Verbindungen</span>
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Verbindungen</span>
 
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -1420,7 +1429,7 @@ function ProcessEditPanel({
                   <button
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
-                    className="text-red-700 hover:underline dark:text-red-400"
+                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline dark:text-red-400"
                     aria-label={`Verbindung von ${processLabel(edge.from_process_id)} trennen`}
                   >
                     ✕ trennen
@@ -1464,7 +1473,7 @@ function ProcessEditPanel({
                   <button
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
-                    className="text-red-700 hover:underline dark:text-red-400"
+                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline dark:text-red-400"
                     aria-label={`Verbindung zu ${processLabel(edge.to_process_id)} trennen`}
                   >
                     ✕ trennen
@@ -1542,11 +1551,16 @@ function ProcessEditPanel({
         </button>
         <button
           type="button"
-          onClick={handleDelete}
+          onClick={() => (confirmDelete ? handleDelete() : setConfirmDelete(true))}
+          onBlur={() => setConfirmDelete(false)}
           disabled={isSaving}
-          className="rounded-full border border-red-300 px-4 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+          className={
+            confirmDelete
+              ? 'rounded-full border border-red-600 bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50'
+              : 'rounded-full border border-red-300 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950'
+          }
         >
-          Prozess löschen
+          {confirmDelete ? 'Wirklich löschen?' : 'Prozess löschen'}
         </button>
       </div>
     </form>

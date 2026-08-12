@@ -6,7 +6,7 @@ export function OAuthButtons() {
     <>
       <div className="mt-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-        <span className="text-xs text-zinc-500 dark:text-zinc-500">oder</span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">oder</span>
         <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
       </div>
 

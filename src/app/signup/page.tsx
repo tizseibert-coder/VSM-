@@ -63,7 +63,7 @@ export default async function SignupPage({
               autoComplete="new-password"
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             />
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">Mindestens 8 Zeichen.</p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Mindestens 8 Zeichen.</p>
           </div>
           <button
             formAction={signup}
