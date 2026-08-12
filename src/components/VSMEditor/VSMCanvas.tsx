@@ -83,6 +83,12 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
+  // Phase 7b: Präsentationsmodus. Bewusst weiterhin voll editierbar (echte
+  // VSM-Workshops entstehen live mit dem Team im Raum) — blendet nur
+  // Nebensächliches aus, das während einer Moderation nie gebraucht wird
+  // (CSV-Bulk-Import, Lieferant/Kunde/ERP-Label-Umbenennung). Prozess- und
+  // Puffer-Boxen bleiben anklickbar und editierbar wie im Normalmodus.
+  const [presentationMode, setPresentationMode] = useState(false)
 
   const [quickAddName, setQuickAddName] = useState('')
   const [quickAddCt, setQuickAddCt] = useState('')
@@ -652,6 +658,22 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           >
             {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
           </button>
+          {/* Phase 7b: Präsentationsmodus — blendet CSV-Import und
+              Lieferant/Kunde/ERP-Label-Bearbeitung aus (Nebensächliches für
+              eine laufende Moderation), Prozess-/Puffer-Boxen bleiben
+              editierbar. */}
+          <button
+            type="button"
+            onClick={() => setPresentationMode((prev) => !prev)}
+            aria-pressed={presentationMode}
+            className={
+              presentationMode
+                ? 'rounded-full bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700'
+                : secondaryButtonClass
+            }
+          >
+            {presentationMode ? '✓ Präsentationsmodus' : 'Präsentationsmodus'}
+          </button>
           {/* UX-Audit Phase 7a finding #1 (touch targets): these three
               buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
               (~44px) — the row facilitators reach for most often when
@@ -988,7 +1010,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         />
       )}
 
-      {selection?.kind === 'anchor' && (
+      {selection?.kind === 'anchor' && !presentationMode && (
         <AnchorEditPanel
           key={selection.anchor}
           projectId={project.id}
@@ -1030,21 +1052,26 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             + Hinzufügen
           </button>
 
-          <div className="ml-auto">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              onChange={handleCsvFile}
-              className="hidden"
-            />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className={secondaryButtonClass}>
-              CSV importieren
-            </button>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Spalten: name, cycle_time, oee, wip
-            </p>
-          </div>
+          {/* CSV-Bulk-Import ist eine Setup-/Admin-Aktion, kein Schritt in
+              einer laufenden Moderation — im Präsentationsmodus ausgeblendet
+              (Phase 7b). */}
+          {!presentationMode && (
+            <div className="ml-auto">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleCsvFile}
+                className="hidden"
+              />
+              <button type="button" onClick={() => fileInputRef.current?.click()} className={secondaryButtonClass}>
+                CSV importieren
+              </button>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Spalten: name, cycle_time, oee, wip
+              </p>
+            </div>
+          )}
         </form>
       </div>
     </div>
