@@ -41,4 +41,10 @@ describe('glossary', () => {
       expect.arrayContaining(['availableMinutesPerDay', 'exitRate']),
     )
   })
+
+  it('covers the future-state-wizard terms (questions 6-8)', () => {
+    expect(Object.keys(GLOSSARY)).toEqual(
+      expect.arrayContaining(['heijunka', 'pitch', 'kaizenBlitz']),
+    )
+  })
 })

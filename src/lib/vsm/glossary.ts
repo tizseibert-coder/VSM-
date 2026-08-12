@@ -105,6 +105,21 @@ export const GLOSSARY = {
     definition:
       'Ein Prozess, dessen effektive Zykluszeit (Zykluszeit ÷ OEE) die Taktzeit überschreitet — er kann die Kundennachfrage im aktuellen Zustand nicht bedienen.',
   },
+  heijunka: {
+    term: 'Heijunka (Produktionsnivellierung)',
+    definition:
+      'Der Produktionsmix und das Produktionsvolumen werden gleichmäßig über die Zeit verteilt statt in großen Losen — hängt am Schrittmacher, weil dort die Produktion tatsächlich eingeplant wird.',
+  },
+  pitch: {
+    term: 'Pitch (Steuerungs-Zeitraster)',
+    definition:
+      'Ein fester Zeitabschnitt (Vielfaches der Taktzeit), in dem der Schrittmacher jeweils eine gleichbleibende Menge produziert und weitergibt — macht die Produktionssteuerung in handhabbaren Portionen statt stückweise.',
+  },
+  kaizenBlitz: {
+    term: 'Kaizen-Blitz',
+    definition:
+      'Ein am Prozess markierter, konkreter Verbesserungspunkt, der nötig ist, um vom Ist- zum Soll-Zustand zu kommen — kein allgemeiner Verbesserungswunsch, sondern eine gezielte Notiz an genau dieser Stelle.',
+  },
 } as const satisfies Record<string, GlossaryEntry>
 
 export type GlossaryKey = keyof typeof GLOSSARY

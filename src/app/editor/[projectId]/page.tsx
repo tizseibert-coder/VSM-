@@ -57,12 +57,22 @@ export default async function EditorPage({
           </Link>
           <h1 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">{project.name}</h1>
         </div>
-        <Link
-          href={`/editor/${projectId}/compare`}
-          className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
-        >
-          Szenarien vergleichen
-        </Link>
+        <div className="flex items-center gap-2">
+          {activeScenario && (
+            <Link
+              href={`/editor/${projectId}/future-state?scenario=${activeScenario.id}`}
+              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              Future-State-Wizard
+            </Link>
+          )}
+          <Link
+            href={`/editor/${projectId}/compare`}
+            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+          >
+            Szenarien vergleichen
+          </Link>
+        </div>
       </header>
 
       <div className="mx-auto max-w-6xl px-6 pt-6">

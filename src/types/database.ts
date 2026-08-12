@@ -327,9 +327,11 @@ export type Database = {
           color: string
           created_at: string
           cycle_time: number
+          has_heijunka: boolean
           height: number
           id: string
           is_pacemaker: boolean
+          kaizen_note: string | null
           lane: number
           name: string
           oee: number
@@ -349,9 +351,11 @@ export type Database = {
           color?: string
           created_at?: string
           cycle_time: number
+          has_heijunka?: boolean
           height?: number
           id?: string
           is_pacemaker?: boolean
+          kaizen_note?: string | null
           lane?: number
           name: string
           oee?: number
@@ -371,9 +375,11 @@ export type Database = {
           color?: string
           created_at?: string
           cycle_time?: number
+          has_heijunka?: boolean
           height?: number
           id?: string
           is_pacemaker?: boolean
+          kaizen_note?: string | null
           lane?: number
           name?: string
           oee?: number
@@ -423,6 +429,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          pitch_minutes: number | null
           product_name: string | null
           supplier_name: string
           updated_at: string
@@ -438,6 +445,7 @@ export type Database = {
           id?: string
           name: string
           organization_id: string
+          pitch_minutes?: number | null
           product_name?: string | null
           supplier_name?: string
           updated_at?: string
@@ -453,6 +461,7 @@ export type Database = {
           id?: string
           name?: string
           organization_id?: string
+          pitch_minutes?: number | null
           product_name?: string | null
           supplier_name?: string
           updated_at?: string
@@ -509,6 +518,7 @@ export type Database = {
           id: string
           investment_chf: number | null
           name: string | null
+          parent_scenario_id: string | null
           payback_months: number | null
           project_id: string
           risk_level: string | null
@@ -521,6 +531,7 @@ export type Database = {
           id?: string
           investment_chf?: number | null
           name?: string | null
+          parent_scenario_id?: string | null
           payback_months?: number | null
           project_id: string
           risk_level?: string | null
@@ -533,6 +544,7 @@ export type Database = {
           id?: string
           investment_chf?: number | null
           name?: string | null
+          parent_scenario_id?: string | null
           payback_months?: number | null
           project_id?: string
           risk_level?: string | null
@@ -540,6 +552,13 @@ export type Database = {
           wip_reduction_percent?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "scenarios_parent_scenario_id_fkey"
+            columns: ["parent_scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scenarios_project_id_fkey"
             columns: ["project_id"]

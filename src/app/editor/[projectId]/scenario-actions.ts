@@ -4,13 +4,19 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
-// Creates a new Future-State scenario by deep-copying the current
-// (scenario_id IS NULL) processes + inventory_buffers into fresh rows tied
-// to the new scenario — "volle Zustands-Duplikation": a scenario is a full,
-// independently editable VSM state, not a delta against the current one.
+// Creates a new Future-State scenario by deep-copying a source state's
+// processes + inventory_buffers into fresh rows tied to the new scenario —
+// "volle Zustands-Duplikation": a scenario is a full, independently editable
+// VSM state, not a delta against the current one. sourceScenarioId is
+// optional (falls back to the Ist-Zustand, i.e. scenario_id IS NULL, exactly
+// as before) — passing an existing scenario's id here is what makes "neue
+// Iteration aus diesem Szenario" possible (see docs/plan-future-state-wizard.md
+// #4): the iteration builds on the previous Soll-Zustand instead of always
+// restarting from the Ist-Zustand.
 export async function createScenario(projectId: string, formData: FormData) {
   const type = formData.get('type') as string | null
   const name = (formData.get('name') as string | null)?.trim()
+  const sourceScenarioId = (formData.get('sourceScenarioId') as string | null) || null
 
   if (!type || !['A', 'B', 'C'].includes(type) || !name) {
     redirect(`/editor/${projectId}?error=` + encodeURIComponent('Typ und Name sind erforderlich.'))
@@ -20,7 +26,7 @@ export async function createScenario(projectId: string, formData: FormData) {
 
   const { data: scenario, error: scenarioError } = await supabase
     .from('scenarios')
-    .insert({ project_id: projectId, type, name })
+    .insert({ project_id: projectId, type, name, parent_scenario_id: sourceScenarioId })
     .select('id')
     .single()
   if (scenarioError || !scenario) {
@@ -30,12 +36,13 @@ export async function createScenario(projectId: string, formData: FormData) {
     )
   }
 
-  const { data: sourceProcesses, error: processesError } = await supabase
-    .from('processes')
-    .select('*')
-    .eq('project_id', projectId)
-    .is('scenario_id', null)
-    .order('created_at', { ascending: true })
+  let sourceProcessesQuery = supabase.from('processes').select('*').eq('project_id', projectId)
+  sourceProcessesQuery = sourceScenarioId
+    ? sourceProcessesQuery.eq('scenario_id', sourceScenarioId)
+    : sourceProcessesQuery.is('scenario_id', null)
+  const { data: sourceProcesses, error: processesError } = await sourceProcessesQuery.order('created_at', {
+    ascending: true,
+  })
   if (processesError) {
     redirect(`/editor/${projectId}?error=` + encodeURIComponent(processesError.message))
   }
@@ -75,11 +82,11 @@ export async function createScenario(projectId: string, formData: FormData) {
     }
   }
 
-  const { data: sourceBuffers, error: buffersError } = await supabase
-    .from('inventory_buffers')
-    .select('*')
-    .eq('project_id', projectId)
-    .is('scenario_id', null)
+  let sourceBuffersQuery = supabase.from('inventory_buffers').select('*').eq('project_id', projectId)
+  sourceBuffersQuery = sourceScenarioId
+    ? sourceBuffersQuery.eq('scenario_id', sourceScenarioId)
+    : sourceBuffersQuery.is('scenario_id', null)
+  const { data: sourceBuffers, error: buffersError } = await sourceBuffersQuery
   if (buffersError) {
     redirect(`/editor/${projectId}?error=` + encodeURIComponent(buffersError.message))
   }

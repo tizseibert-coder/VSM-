@@ -148,6 +148,7 @@ export async function updateAnnualThroughput(projectId: string, annualThroughput
 
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
 }
 
 // Takt time's other input, previously hardcoded to SHIFT_MINUTES with no way
@@ -161,6 +162,7 @@ export async function updateAvailableMinutes(projectId: string, availableMinutes
 
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
 }
 
 // No scenarioId here (unlike addProcess/importProcessesCsv/setBufferWip):
@@ -274,6 +276,7 @@ export async function updateProcess(projectId: string, processId: string, input:
 
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
 }
 
 export interface SetBufferWipInput {
@@ -337,6 +340,7 @@ export async function setBufferWip(projectId: string, scenarioId: string | null,
   }
 
   revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
 }
 
 // Removes a single connection (Phase 6: Mehrstrang-UI) without touching the
@@ -377,4 +381,38 @@ export async function updateProjectLabels(projectId: string, input: UpdateProjec
     .eq('id', projectId)
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
+}
+
+// --- Future-State-Wizard fields (Q6-8, docs/plan-future-state-wizard.md) ---
+// Small, single-purpose actions rather than folding these into updateProcess/
+// updateProjectLabels: the wizard writes exactly one field per step, and
+// those two existing actions require their full input shape (name, cycleTime,
+// oee, ... / supplierName, customerName, ...) which the wizard has no reason
+// to touch or even fetch just to flip one value.
+
+export async function updateHasHeijunka(projectId: string, processId: string, hasHeijunka: boolean) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('processes').update({ has_heijunka: hasHeijunka }).eq('id', processId)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
+}
+
+export async function updatePitchMinutes(projectId: string, pitchMinutes: number | null) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('projects').update({ pitch_minutes: pitchMinutes }).eq('id', projectId)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
+}
+
+export async function updateKaizenNote(projectId: string, processId: string, kaizenNote: string | null) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('processes')
+    .update({ kaizen_note: kaizenNote && kaizenNote.trim().length > 0 ? kaizenNote.trim() : null })
+    .eq('id', processId)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
 }

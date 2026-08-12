@@ -1,6 +1,7 @@
 import type { Tables } from '@/types/database'
 import { updateScenarioMeta } from '@/app/editor/[projectId]/scenario-actions'
 import DeleteScenarioButton from './DeleteScenarioButton'
+import NewScenarioDisclosure from './NewScenarioDisclosure'
 
 type Scenario = Tables<'scenarios'>
 
@@ -80,6 +81,7 @@ export default function ScenarioMetaPanel({
         </button>
       </form>
 
+      <NewScenarioDisclosure projectId={projectId} sourceScenarioId={scenario.id} label="+ Neue Iteration" />
       <DeleteScenarioButton projectId={projectId} scenarioId={scenario.id} />
     </div>
   )
