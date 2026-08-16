@@ -732,8 +732,33 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           material flow (solid/block arrows) at the row, Zeitleiter below. */}
       <div
         ref={stageContainerRef}
-        className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
+        className="relative mt-2 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
+        // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
+        // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
+        // Finger auf dem Diagramm hatte und nach unten wischte, verschob das
+        // Diagramm statt die Seite zu scrollen — und kam an die Bedienelemente
+        // darunter nicht mehr heran.
+        //
+        // `pan-y` gibt das vertikale Wischen an den Browser zurück (Konva sieht
+        // die Geste dann gar nicht mehr), waagrechtes Ziehen verschiebt weiter
+        // die Ansicht. `pinch-zoom` bleibt erlaubt, sonst liesse sich auf dem
+        // Telefon gar nicht mehr heranzoomen — die +/−-Knöpfe sind dafür zu
+        // klein zum Zielen.
+        style={{ touchAction: 'pan-y pinch-zoom' }}
       >
+        {/* Zweiter Weg zurück zur Gesamtansicht, direkt auf der Zeichenfläche.
+            Der gleichnamige Knopf in der Leiste oben bleibt, ist aber genau
+            dann schwer zu finden, wenn man ihn braucht: nach einem
+            versehentlichen Verschieben sucht man ihn zwischen "PDF
+            exportieren" und "Präsentationsmodus", auf schmalen Bildschirmen
+            zusätzlich nach einem Zeilenumbruch. */}
+        <button
+          type="button"
+          onClick={handleFitToView}
+          className="absolute right-3 top-3 z-10 rounded-full border border-zinc-200 bg-white/90 px-3 py-2 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-200 dark:hover:bg-zinc-900"
+        >
+          Einpassen
+        </button>
         <Stage
           ref={stageRef}
           width={viewportWidth}
