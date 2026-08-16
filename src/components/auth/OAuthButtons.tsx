@@ -1,6 +1,21 @@
 import type { ReactNode } from 'react'
 import { signInWithGoogle, signInWithApple } from '@/app/auth/oauth-actions'
 
+/**
+ * "Mit Apple anmelden" ist ausgeblendet, nicht gelöscht.
+ *
+ * Der Provider steht in Supabase auf disabled, und ihn zu aktivieren setzt
+ * eine Mitgliedschaft im Apple Developer Program voraus (99 €/Jahr) samt
+ * Services ID, Schlüssel und einem signierten Client-Secret, das alle sechs
+ * Monate neu erzeugt werden muss. Bis das existiert, lief jeder Klick in einen
+ * Fehler — für Beta-Tester schlechter als gar kein Button.
+ *
+ * Zum Aktivieren: hier auf `true` setzen, nachdem der Provider in Supabase
+ * eingerichtet ist. Server Action und Button bleiben dafür vollständig
+ * erhalten.
+ */
+const APPLE_SIGN_IN_ENABLED = false
+
 export function OAuthButtons() {
   return (
     <>
@@ -14,9 +29,11 @@ export function OAuthButtons() {
         <form action={signInWithGoogle}>
           <OAuthButton icon={<GoogleIcon />} label="Mit Google anmelden" />
         </form>
-        <form action={signInWithApple}>
-          <OAuthButton icon={<AppleIcon />} label="Mit Apple anmelden" />
-        </form>
+        {APPLE_SIGN_IN_ENABLED && (
+          <form action={signInWithApple}>
+            <OAuthButton icon={<AppleIcon />} label="Mit Apple anmelden" />
+          </form>
+        )}
       </div>
     </>
   )
