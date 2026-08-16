@@ -664,7 +664,13 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           diagram grows; this is just for manual override. Wheel-zoom needs
           Strg/Cmd (see handleWheel) so a normal scroll down to the toolbar
           below never zooms the canvas by accident. */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      {/* [UX-Audit 2026-08-16, P1] Die Leiste bleibt beim Scrollen stehen.
+          Vorher scrollten Zoom und Einpassen mit der Seite weg — also genau
+          dann ausser Sicht, wenn man sie braucht, weil man sich verschoben
+          hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
+          drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
+          festen Bezugspunkt. */}
+      <div className="sticky top-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/95 py-3 backdrop-blur dark:border-zinc-800 dark:bg-black/95">
         {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
             nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
         <p className="hidden text-xs text-zinc-500 dark:text-zinc-400 sm:block">
@@ -719,14 +725,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             >
               +
             </button>
-            <div className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
-            <button
-              type="button"
-              onClick={handleFitToView}
-              className="rounded-full px-3 py-3 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
-            >
-              Einpassen
-            </button>
+            {/* [UX-Audit 2026-08-16, P5] "Einpassen" stand hier ein zweites
+                Mal, seit es zusätzlich auf der Zeichenfläche schwebt. Der
+                schwebende bleibt: er sitzt dort, wo gearbeitet wird, und
+                zeigt zusätzlich an, ob die Ansicht überhaupt verschoben ist. */}
           </div>
         </div>
       </div>
@@ -756,10 +758,20 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             versehentlichen Verschieben sucht man ihn zwischen "PDF
             exportieren" und "Präsentationsmodus", auf schmalen Bildschirmen
             zusätzlich nach einem Zeilenumbruch. */}
+        {/* [UX-Audit 2026-08-16, P4] Der Knopf beantwortet die Frage "bin ich
+            verschoben?", bevor sie gestellt wird: `camera` ist null, solange
+            die Ansicht automatisch eingepasst ist, und gesetzt, sobald von
+            Hand gezoomt oder geschoben wurde. Nur im zweiten Fall tritt er
+            hervor — sonst wäre es ein Dauerreiz ohne Aussage. */}
         <button
           type="button"
           onClick={handleFitToView}
-          className="absolute right-3 top-3 z-10 rounded-full border border-zinc-200 bg-white/90 px-3 py-2 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          aria-label={camera ? 'Ansicht ist verschoben — zurück zur Gesamtansicht' : 'Gesamtansicht einpassen'}
+          className={
+            camera
+              ? 'absolute right-3 top-3 z-10 rounded-full bg-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-blue-700'
+              : 'absolute right-3 top-3 z-10 rounded-full border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
+          }
         >
           Einpassen
         </button>
