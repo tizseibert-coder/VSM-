@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { signup } from './actions'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
+import { PasswordField } from '@/components/auth/PasswordField'
 
 export default async function SignupPage({
   searchParams,
@@ -47,22 +48,15 @@ export default async function SignupPage({
               type="email"
               required
               autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             />
           </div>
           <div>
-            <label htmlFor="password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Passwort
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
+            <PasswordField autoComplete="new-password" minLength={8} />
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Mindestens 8 Zeichen.</p>
           </div>
           <button

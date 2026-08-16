@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { login } from './actions'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
+import { PasswordField } from '@/components/auth/PasswordField'
 
 export default async function LoginPage({
   searchParams,
@@ -34,22 +35,18 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="email"
+              // inputMode blendet auf dem Telefon die Tastatur mit @ und Punkt
+              // ein; autoCapitalize/autoCorrect verhindern, dass iOS die
+              // Adresse gross schreibt oder zu einem Wort "korrigiert" — beides
+              // führte sonst zu einer stillen Fehleingabe beim Anmelden.
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             />
           </div>
-          <div>
-            <label htmlFor="password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Passwort
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
+          <PasswordField autoComplete="current-password" />
           <button
             formAction={login}
             className="mt-2 rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
