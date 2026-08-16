@@ -664,9 +664,13 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           diagram grows; this is just for manual override. Wheel-zoom needs
           Strg/Cmd (see handleWheel) so a normal scroll down to the toolbar
           below never zooms the canvas by accident. */}
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">Strg/Cmd + Mausrad zum Zoomen</p>
-        <div className="flex items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
+            nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
+        <p className="hidden text-xs text-zinc-500 dark:text-zinc-400 sm:block">
+          Strg/Cmd + Mausrad zum Zoomen
+        </p>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={handleExportPdf}

@@ -50,14 +50,18 @@ export default async function EditorPage({
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
-      <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+      {/* [Live-Test 2026-08-16, Smartphone] Ohne flex-wrap standen Titel und
+          die beiden Aktions-Links zwingend in einer Zeile — auf 375 px lief
+          "Szenarien vergleichen" aus dem Bild. Umbruch statt Verkleinern:
+          die Beschriftungen sind Fachbegriffe, abgekürzt versteht sie niemand. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 dark:border-zinc-800 sm:px-6">
         <div>
           <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline dark:text-zinc-500">
             ← Dashboard
           </Link>
           <h1 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">{project.name}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {activeScenario && (
             <Link
               href={`/editor/${projectId}/future-state?scenario=${activeScenario.id}`}
@@ -75,7 +79,7 @@ export default async function EditorPage({
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 pt-6">
+      <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
         <ScenarioSwitcher projectId={projectId} scenarios={scenarios ?? []} activeScenarioId={scenarioId} />
         {error && (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
