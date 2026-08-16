@@ -109,6 +109,17 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // every render from the current content size, so a growing diagram keeps
   // shrinking to fit automatically without needing an effect to chase it.
   const [camera, setCamera] = useState<{ scale: number; pos: Point } | null>(null)
+
+  // [UX-Audit 2026-08-16, P3] Vollbild. Im Seitenfluss konkurrieren zwei
+  // Bewegungsräume um dieselbe Geste: die Seite scrollt vertikal, das
+  // Diagramm lässt sich verschieben. Am Telefon nimmt die Zeichenfläche dabei
+  // nur die Hälfte des Sichtfelds ein — man bewegt ständig das Falsche. Im
+  // Vollbild gibt es nur noch einen Bewegungsraum, das Problem verschwindet
+  // statt gemildert zu werden.
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Nur im Vollbild gebraucht: dort bestimmt der Bildschirm die Höhe, sonst
+  // leitet sie sich aus der Diagrammhöhe ab (viewportHeight weiter unten).
+  const [measuredHeight, setMeasuredHeight] = useState(0)
   // Only the width is measured (depends on the container's rendered CSS
   // width, not computable from data). The height is derived below from the
   // diagram's own content height — a fixed height here was the cause of a
@@ -301,12 +312,34 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   useEffect(() => {
     function measure() {
       const el = stageContainerRef.current
-      if (el) setViewportWidth(el.clientWidth)
+      if (!el) return
+      setViewportWidth(el.clientWidth)
+      setMeasuredHeight(el.clientHeight)
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [])
+    // isFullscreen als Abhängigkeit: der Wechsel ändert die Containergröße,
+    // löst aber kein resize-Ereignis aus — ohne erneutes Messen bliebe die
+    // Bühne in der alten Größe stehen.
+  }, [isFullscreen])
+
+  // Seiten-Scroll sperren, solange Vollbild aktiv ist. Ohne das scrollt die
+  // Seite hinter der Überlagerung weiter und man landet beim Verlassen an
+  // einer anderen Stelle als vorher.
+  useEffect(() => {
+    if (!isFullscreen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsFullscreen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previous
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [isFullscreen])
 
   function handleWheel(e: Konva.KonvaEventObject<WheelEvent>) {
     // Plain scrolling must never zoom the canvas — the form sits right below
@@ -689,6 +722,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
               Lieferant/Kunde/ERP-Label-Bearbeitung aus (Nebensächliches für
               eine laufende Moderation), Prozess-/Puffer-Boxen bleiben
               editierbar. */}
+          {/* [UX-Audit 2026-08-16, P3] Einstieg in den Vollbildmodus. */}
+          <button type="button" onClick={() => setIsFullscreen(true)} className={secondaryButtonClass}>
+            Vollbild
+          </button>
           <button
             type="button"
             onClick={() => setPresentationMode((prev) => !prev)}
@@ -738,7 +775,11 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           material flow (solid/block arrows) at the row, Zeitleiter below. */}
       <div
         ref={stageContainerRef}
-        className="relative mt-2 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
+        className={
+          isFullscreen
+            ? 'fixed inset-0 z-50 overflow-hidden bg-white dark:bg-zinc-950'
+            : 'relative mt-2 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800'
+        }
         // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
         // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
         // Finger auf dem Diagramm hatte und nach unten wischte, verschob das
@@ -763,6 +804,40 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             die Ansicht automatisch eingepasst ist, und gesetzt, sobald von
             Hand gezoomt oder geschoben wurde. Nur im zweiten Fall tritt er
             hervor — sonst wäre es ein Dauerreiz ohne Aussage. */}
+        {/* Im Vollbild liegt die fixierte Leiste hinter der Überlagerung.
+            Zoom und Ausstieg müssen deshalb hier noch einmal erreichbar sein,
+            sonst wäre der Modus eine Falle. */}
+        {isFullscreen && (
+          <div className="absolute left-3 top-3 z-10 flex items-center gap-0.5 rounded-full border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/90">
+            <button
+              type="button"
+              onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
+              className="rounded-full px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              aria-label="Verkleinern"
+            >
+              −
+            </button>
+            <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+              {Math.round(stageScale * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
+              className="rounded-full px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              aria-label="Vergrößern"
+            >
+              +
+            </button>
+            <div className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(false)}
+              className="rounded-full px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Schließen
+            </button>
+          </div>
+        )}
         <button
           type="button"
           onClick={handleFitToView}
@@ -778,7 +853,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         <Stage
           ref={stageRef}
           width={viewportWidth}
-          height={viewportHeight}
+          // Im Vollbild gibt der Bildschirm die Höhe vor, sonst die Höhe des
+          // Diagramminhalts. measuredHeight ist beim ersten Bild nach dem
+          // Umschalten noch 0 — dann greift der bisherige Wert weiter.
+          height={isFullscreen && measuredHeight > 0 ? measuredHeight : viewportHeight}
           scaleX={stageScale}
           scaleY={stageScale}
           x={stagePos.x}
