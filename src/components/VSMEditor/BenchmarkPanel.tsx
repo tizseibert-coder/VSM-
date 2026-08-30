@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import type { Tables } from '@/types/database'
-import { classifyBenchmark, type BenchmarkTier } from '@/lib/vsm/benchmark'
+import { classifyBenchmark } from '@/lib/vsm/benchmark'
+import { TierChip } from './TierChip'
 
 type Process = Tables<'processes'>
 type BenchmarkReference = Tables<'benchmark_reference'>
@@ -12,19 +13,7 @@ interface Props {
   references: BenchmarkReference[]
 }
 
-const TIER_LABEL: Record<BenchmarkTier, string> = {
-  top: 'Spitzenwert',
-  good: 'Gut',
-  average: 'Durchschnitt',
-  below: 'Verbesserungsbedarf',
-}
 
-const TIER_CLASS: Record<BenchmarkTier, string> = {
-  top: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
-  good: 'bg-lime-50 text-lime-700 dark:bg-lime-950 dark:text-lime-300',
-  average: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  below: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
-}
 
 export default function BenchmarkPanel({ processes, references }: Props) {
   const industries = useMemo(() => [...new Set(references.map((r) => r.industry))], [references])
@@ -54,7 +43,7 @@ export default function BenchmarkPanel({ processes, references }: Props) {
       <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Branchenvergleich</h2>
-          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
             Beispieldaten — keine echten Branchenwerte
           </span>
         </div>
@@ -134,7 +123,7 @@ function BenchmarkRow({
     <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
       <div className="flex items-center justify-between">
         <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TIER_CLASS[tier]}`}>{TIER_LABEL[tier]}</span>
+        <TierChip tier={tier} />
       </div>
       <div className="mt-1 text-lg font-semibold text-zinc-950 dark:text-zinc-50">
         {value.toFixed(1)} {unit}

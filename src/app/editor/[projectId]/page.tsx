@@ -59,6 +59,10 @@ export default async function EditorPage({
           <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline dark:text-zinc-500">
             ← Dashboard
           </Link>
+          <span className="mx-1.5 text-xs text-zinc-300 dark:text-zinc-700">·</span>
+          <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+            VSM Builder
+          </span>
           <h1 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">{project.name}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">

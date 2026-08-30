@@ -7,9 +7,12 @@ import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
 import { BalanceChartPanel } from './BalanceChartPanel'
+import { TierChip } from './TierChip'
+import type { BenchmarkTier } from '@/lib/vsm/benchmark'
+import { ratePce, rateCapacityCoverage } from '@/lib/vsm/kpiRating'
 import { bufferGapIndices, findBuffer } from '@/lib/vsm/buffers'
 import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geometry'
-import { computeAutoFitScale, clampScale } from '@/lib/vsm/viewport'
+import { computeAutoFitScale, clampScale, MIN_READABLE_SCALE } from '@/lib/vsm/viewport'
 import { checkCapacity } from '@/lib/vsm/capacity'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
@@ -54,6 +57,7 @@ type Buffer = Tables<'inventory_buffers'>
 const INK = '#18181b' // zinc-900 — used for all VSM line-art instead of pure black
 const ACCENT = '#2563eb' // selection highlight, the one spot color allowed on the canvas
 const BOTTLENECK = '#dc2626' // capacity-warning red — semantic, kept distinct from the accent
+const EMPTY_BUFFER = '#a1a1aa' // zinc-400 — an empty buffer slot, present but not asserting stock
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -253,9 +257,16 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
   const canvasWidth = Math.max(900, customerPos.x + CLOUD_SIZE + 60 + SUMMARY_WIDTH)
   const canvasHeight = ladderLowY + 60
+  // The viewport reserved the *unscaled* content height while the content is
+  // drawn at the fit scale, so a diagram fitted to 70 % left roughly a third of
+  // the card empty underneath it. Reserve the height the content will actually
+  // occupy instead. A VSM grows sideways, so the width drives the fit — taking
+  // the scale from the width alone also avoids the circular dependency between
+  // viewport height and auto-fit scale.
+  const widthFitScale = Math.max(MIN_READABLE_SCALE, Math.min(1, (viewportWidth - 48) / canvasWidth))
   const viewportHeight = Math.min(
     MAX_CANVAS_DISPLAY_HEIGHT,
-    Math.max(MIN_CANVAS_DISPLAY_HEIGHT, canvasHeight + 32)
+    Math.max(MIN_CANVAS_DISPLAY_HEIGHT, canvasHeight * widthFitScale + 32)
   )
 
   // Fit-scale/position for the current content size — recomputed every
@@ -631,6 +642,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         />
         <KpiTile
           label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
+          tier={ratePce(kpis.valueAddedRatioPercent)}
           value={
             kpis.valueAddedRatioPercent !== null
               ? `${kpis.valueAddedRatioPercent.toFixed(2)} %`
@@ -646,6 +658,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
           value={kpis.exitRatePerDay !== null ? `${kpis.exitRatePerDay.toFixed(1)} Stk./Tag` : '–'}
           formula={exitRateFormula}
+          tier={rateCapacityCoverage(kpis.capacityCoverage)}
         />
       </div>
 
@@ -1051,6 +1064,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
                   y={pos.y}
                   isSelected={selection?.kind === 'process' && selection.id === process.id}
                   isBottleneck={isBottleneck}
+                  counterScale={1 / stageScale}
                   onSelect={() =>
                     setSelection((current) =>
                       current?.kind === 'process' && current.id === process.id
@@ -1280,11 +1294,31 @@ function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string
   )
 }
 
-function KpiTile({ label, value, formula }: { label: ReactNode; value: string; formula?: string }) {
+function KpiTile({
+  label,
+  value,
+  formula,
+  tier,
+}: {
+  label: ReactNode
+  value: string
+  formula?: string
+  /**
+   * Optional verdict. Only the KPIs with a defensible reference get one — see
+   * kpiRating.ts. The chip sits under the value rather than beside the label
+   * because "Verbesserungsbedarf" does not fit next to it in a five-column row.
+   */
+  tier?: BenchmarkTier | null
+}) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
       <div className="mt-1 text-lg font-semibold tabular-nums text-zinc-950 dark:text-zinc-50">{value}</div>
+      {tier && (
+        <div className="mt-1.5">
+          <TierChip tier={tier} />
+        </div>
+      )}
       {formula && <div className="mt-0.5 text-[10px] tabular-nums text-zinc-400 dark:text-zinc-500">{formula}</div>}
     </div>
   )
@@ -2015,6 +2049,7 @@ function ProcessBox({
   y,
   isSelected,
   isBottleneck,
+  counterScale,
   onSelect,
 }: {
   process: Process
@@ -2022,6 +2057,8 @@ function ProcessBox({
   y: number
   isSelected: boolean
   isBottleneck: boolean
+  /** 1 / stageScale — see the bottleneck badge below. */
+  counterScale: number
   onSelect: () => void
 }) {
   const boxStroke = isSelected ? ACCENT : isBottleneck ? BOTTLENECK : INK
@@ -2106,15 +2143,23 @@ function ProcessBox({
         lineHeight={1.5}
       />
       {isBottleneck && (
-        <Text
-          text="⚠ Engpass ggü. Takt"
-          width={PROCESS_WIDTH}
-          align="center"
-          y={86}
-          fontSize={8.5}
-          fontStyle="bold"
-          fill={BOTTLENECK}
-        />
+        // The most important thing this box has to say, and it used to be the
+        // least readable: 8.5px inside a stage drawn at 70 % rendered at ~6px.
+        // Counter-scaling pins it to a constant on-screen size, the same trick
+        // the PLT summary box uses. Shortened to "Engpass" so the label still
+        // fits the box width once it stops shrinking with it — the "ggü. Takt"
+        // part is spelled out in the Austaktungsdiagramm below the canvas.
+        <Group x={PROCESS_WIDTH / 2} y={86} scaleX={counterScale} scaleY={counterScale}>
+          <Text
+            text="⚠ Engpass"
+            width={PROCESS_WIDTH}
+            offsetX={PROCESS_WIDTH / 2}
+            align="center"
+            fontSize={10}
+            fontStyle="bold"
+            fill={BOTTLENECK}
+          />
+        </Group>
       )}
       {classificationMarker(process.classification) && (
         // Wertschöpfungs-Klassifizierung: a short text tag, not a fill-color
@@ -2157,7 +2202,13 @@ function BufferMarker({
   onSelect: () => void
 }) {
   const radius = BUFFER_SIZE / 2
-  const stroke = isSelected ? ACCENT : INK
+  // An empty buffer is drawn faintly rather than hidden. A solid triangle
+  // labelled "0" asserts inventory that is not there; hiding it would remove
+  // the only place to enter some — the boundary slots in particular hold real
+  // raw-material and finished-goods stock in a VSM. Faint reads as "nothing
+  // here yet, click to fill", which is what it is.
+  const isEmpty = wipCount === 0 && !isSelected
+  const stroke = isSelected ? ACCENT : isEmpty ? EMPTY_BUFFER : INK
   const strokeWidth = isSelected ? 2 : 1.5
 
   return (
@@ -2202,7 +2253,7 @@ function BufferMarker({
         y={radius - 4}
         fontSize={11}
         fontStyle="bold"
-        fill={INK}
+        fill={isEmpty ? EMPTY_BUFFER : INK}
       />
     </Group>
   )

@@ -43,7 +43,10 @@ export default async function DashboardPage({
       <div className="mx-auto max-w-3xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-950 dark:text-zinc-50">Dashboard</h1>
+            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+              VSM Builder
+            </p>
+            <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Angemeldet als {claims?.email}
               {orgName && (
@@ -68,12 +71,12 @@ export default async function DashboardPage({
         )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <form action={createProject} className="flex items-center gap-2">
+          <form action={createProject} className="flex min-w-0 items-center gap-2">
             <input
               name="name"
               placeholder="Neues Projekt, z. B. Baugruppe X"
               required
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm sm:w-72 dark:border-zinc-700 dark:bg-zinc-900"
             />
             <button
               type="submit"

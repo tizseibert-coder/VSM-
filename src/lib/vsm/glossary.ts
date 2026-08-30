@@ -25,7 +25,7 @@ export const GLOSSARY = {
   pce: {
     term: 'Wertschöpfungsanteil',
     definition:
-      'Bearbeitungszeit geteilt durch Durchlaufzeit, in Prozent. Zeigt, wie viel von der gesamten Durchlaufzeit tatsächlich wertschöpfend ist statt Warten im Bestand (auch "Process Cycle Efficiency" genannt).',
+      'Bearbeitungszeit geteilt durch Durchlaufzeit, in Prozent. Zeigt, wie viel von der gesamten Durchlaufzeit tatsächlich wertschöpfend ist statt Warten im Bestand (auch "Process Cycle Efficiency" genannt). Die Einstufung folgt Orientierungswerten aus der Lean-Literatur für die Stückfertigung — unter rund 5 % ist der unverbesserte Normalfall, ab etwa 25 % beginnt durchgängiger Fluss. Faustwerte, keine Norm.',
   },
   taktTime: {
     term: 'Taktzeit',
