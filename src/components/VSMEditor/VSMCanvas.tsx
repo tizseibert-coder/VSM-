@@ -6,6 +6,7 @@ import { Stage, Layer, Rect, Text, Group, Arrow, Line, RegularPolygon, Circle } 
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
+import { BalanceChartPanel } from './BalanceChartPanel'
 import { bufferGapIndices, findBuffer } from '@/lib/vsm/buffers'
 import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geometry'
 import { computeAutoFitScale, clampScale } from '@/lib/vsm/viewport'
@@ -1190,6 +1191,20 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           onClose={() => setSelection(null)}
         />
       )}
+
+      {/* Line balancing. Sits directly under the diagram because it reads the
+          same stations, but answers the other question: not "how long does a
+          unit wait" (the timeline does that) but "which station busts takt". */}
+      <BalanceChartPanel
+        processes={orderedProcesses.map((p) => ({
+          id: p.id,
+          name: p.name,
+          cycleTime: p.cycle_time,
+          operatorCount: p.operator_count,
+          oee: p.oee,
+        }))}
+        taktTimeMinutes={kpis.taktTimeMinutes}
+      />
 
       {/* Toolbar: quick-add + CSV import, grouped in one bordered block */}
       <div className="mt-6 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">

@@ -42,6 +42,11 @@ export const GLOSSARY = {
     definition:
       'Wie viele Stück pro Tag den Wertstrom tatsächlich verlassen. Bestimmt vom langsamsten Prozess (Engpass/Time Trap) nach Abzug seiner OEE-Verluste: verfügbare Produktionszeit ÷ Engpass-Zykluszeit. Nicht zu verwechseln mit dem Kundenbedarf, der die Taktzeit vorgibt — die Ausbringung ist gemessen, der Takt ist gefordert. Zusammen mit dem WIP ergibt sie die Durchlaufzeit: PLT = WIP ÷ Ausbringung.',
   },
+  balanceChart: {
+    term: 'Austaktungsdiagramm (Yamazumi)',
+    definition:
+      'Ein Balken je Station, dessen Höhe die Belegung inklusive OEE-Verluste zeigt, dazu die Taktzeit als waagrechte Linie. Anders als die Zeitleiste unter dem Wertstrom ist die Achse hier die Station und nicht die Reihenfolge — damit lässt sich ablesen, welche Station den Takt reisst und wohin Arbeitsinhalt verschoben werden könnte.',
+  },
   capacityCoverage: {
     term: 'Kapazitätsdeckung',
     definition:
