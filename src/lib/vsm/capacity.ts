@@ -5,7 +5,7 @@
 // still be a real bottleneck once availability/performance/quality losses
 // are factored in, and conversely a second operator can resolve one.
 
-import { effectiveCycleTime as applyOperatorCount, type KpiProcessInput } from './calculations'
+import { capacityCycleTime, type KpiProcessInput } from './calculations'
 
 export interface CapacityCheckInput extends KpiProcessInput {
   /** OEE as a percent, e.g. 78 for 78%. */
@@ -20,9 +20,9 @@ export interface CapacityCheckResult {
 }
 
 export function checkCapacity(input: CapacityCheckInput, taktTimeMinutes: number | null): CapacityCheckResult {
-  const oeeFraction = input.oee > 0 ? input.oee / 100 : 0
-  const perOperatorCycleTime = applyOperatorCount(input)
-  const effectiveCycleTime = oeeFraction > 0 ? perOperatorCycleTime / oeeFraction : Infinity
+  // Shared with the KPI bar and the balance chart so the bottleneck marker on
+  // the canvas can never disagree with them about which station is the trap.
+  const effectiveCycleTime = capacityCycleTime(input)
   const isBottleneck = taktTimeMinutes !== null && effectiveCycleTime > taktTimeMinutes
 
   return { effectiveCycleTime, isBottleneck }

@@ -69,6 +69,8 @@ export default async function FutureStateQuestionPage({
       name: p.name,
       cycleTime: p.cycle_time,
       operatorCount: p.operator_count,
+      oee: p.oee,
+      wip: p.wip ?? undefined,
       isPacemaker: p.is_pacemaker,
       hasHeijunka: p.has_heijunka,
       kaizenNote: p.kaizen_note,

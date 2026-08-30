@@ -33,7 +33,7 @@ export default async function ComparePage({
       label: 'Ist-Zustand',
       processes: (allProcesses ?? [])
         .filter((p) => p.scenario_id === null)
-        .map((p) => ({ cycleTime: p.cycle_time })),
+        .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
       buffers: (allBuffers ?? [])
         .filter((b) => b.scenario_id === null)
         .map((b) => ({ wipCount: b.wip_count })),
@@ -43,7 +43,7 @@ export default async function ComparePage({
       label: `${scenario.type ?? '?'} · ${scenario.name ?? 'Szenario'}`,
       processes: (allProcesses ?? [])
         .filter((p) => p.scenario_id === scenario.id)
-        .map((p) => ({ cycleTime: p.cycle_time })),
+        .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
       buffers: (allBuffers ?? [])
         .filter((b) => b.scenario_id === scenario.id)
         .map((b) => ({ wipCount: b.wip_count })),

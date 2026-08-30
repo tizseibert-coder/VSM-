@@ -315,3 +315,56 @@ describe("exit rate vs demand rate (Little's Law with the real departure rate)",
     expect(result.exitRatePerDay).toBeCloseTo(100, 5)
   })
 })
+
+// WIP standing at a station is inventory just as much as WIP in the buffer
+// between two stations. The column existed and the CSV import even parsed it,
+// but nothing ever read it back into the lead time (audit finding S2).
+describe('in-process WIP', () => {
+  it('counts WIP standing at a station, not only the buffers between them', () => {
+    // demand 200/day, capacity 480 / 2.4 = 200/day -> 400 units at 200/day
+    const result = calculateKpis({
+      processes: [{ cycleTime: 2.4, wip: 100 }],
+      buffers: [{ wipCount: 300 }],
+      annualThroughput: 50_000,
+    })
+
+    expect(result.totalLeadTimeDays).toBeCloseTo(2, 5)
+  })
+
+  it('yields a lead time from station WIP alone when there is no buffer', () => {
+    const result = calculateKpis({
+      processes: [{ cycleTime: 2.4, wip: 200 }],
+      buffers: [],
+      annualThroughput: 50_000,
+    })
+
+    expect(result.totalLeadTimeDays).toBeCloseTo(1, 5)
+  })
+
+  it('treats a missing wip value as zero', () => {
+    const result = calculateKpis({
+      processes: [{ cycleTime: 2.4 }],
+      buffers: [{ wipCount: 400 }],
+      annualThroughput: 50_000,
+    })
+
+    expect(result.totalLeadTimeDays).toBeCloseTo(2, 5)
+  })
+})
+
+describe('OEE bounds', () => {
+  it('caps OEE at 100 % so a typo cannot hide a bottleneck', () => {
+    // "850" instead of "85" would otherwise make the station look ten times
+    // faster than its own cycle time and quietly clear it of being the trap.
+    expect(capacityCycleTime({ cycleTime: 4, oee: 850 })).toBe(4)
+    expect(capacityCycleTime({ cycleTime: 4, oee: 100 })).toBe(4)
+  })
+
+  it('still derates inside the valid range', () => {
+    expect(capacityCycleTime({ cycleTime: 4, oee: 50 })).toBe(8)
+  })
+
+  it('treats a negative OEE like zero — no capacity', () => {
+    expect(capacityCycleTime({ cycleTime: 4, oee: -5 })).toBe(Infinity)
+  })
+})

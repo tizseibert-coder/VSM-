@@ -205,6 +205,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           cycleTime: p.cycle_time,
           operatorCount: p.operator_count,
           oee: p.oee,
+          wip: p.wip ?? undefined,
         })),
         buffers: buffers.map((b) => ({ wipCount: b.wip_count })),
         annualThroughput: liveAnnualThroughput,
@@ -1202,6 +1203,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           cycleTime: p.cycle_time,
           operatorCount: p.operator_count,
           oee: p.oee,
+          wip: p.wip ?? undefined,
         }))}
         taktTimeMinutes={kpis.taktTimeMinutes}
       />

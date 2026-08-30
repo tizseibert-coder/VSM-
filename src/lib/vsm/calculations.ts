@@ -36,6 +36,12 @@ export interface KpiProcessInput {
    * lose capacity. An explicit 0 does mean no capacity.
    */
   oee?: number
+  /**
+   * Units standing at this station. Inventory just like the buffers between
+   * stations, so it belongs in the lead time — the column and the CSV import
+   * existed long before anything read it back (audit finding S2).
+   */
+  wip?: number
 }
 
 export interface KpiBufferInput {
@@ -97,8 +103,12 @@ export function effectiveCycleTime(process: KpiProcessInput): number {
 export function capacityCycleTime(process: KpiProcessInput): number {
   const perOperator = effectiveCycleTime(process)
   if (process.oee === undefined) return perOperator
-  if (process.oee <= 0) return Infinity
-  return perOperator / (process.oee / 100)
+  // Capped at 100: an OEE above it is a data-entry slip ("850" for "85"), and
+  // taking it at face value would shorten the station below its own cycle time
+  // and quietly clear it of being the bottleneck.
+  const oee = Math.min(process.oee, 100)
+  if (oee <= 0) return Infinity
+  return perOperator / (oee / 100)
 }
 
 export function calculateKpis(input: KpiInput): KpiResult {
@@ -136,7 +146,10 @@ export function calculateKpis(input: KpiInput): KpiResult {
   const knownRates = [exitRatePerDay, demandRatePerDay].filter((rate): rate is number => rate !== null)
   const departureRatePerDay = knownRates.length > 0 ? Math.min(...knownRates) : null
 
-  const totalWipCount = input.buffers.reduce((sum, b) => sum + b.wipCount, 0)
+  // Everything standing in the stream: between the stations and at them.
+  const totalWipCount =
+    input.buffers.reduce((sum, b) => sum + b.wipCount, 0) +
+    input.processes.reduce((sum, p) => sum + (p.wip ?? 0), 0)
   const totalLeadTimeDays =
     departureRatePerDay !== null && departureRatePerDay > 0 ? totalWipCount / departureRatePerDay : null
 

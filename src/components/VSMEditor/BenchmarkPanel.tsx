@@ -141,6 +141,9 @@ function BenchmarkRow({
       </div>
       <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
         P25 {reference.p25} · Median {reference.median} · P75 {reference.p75} {unit}
+        <span className="ml-1 text-zinc-400 dark:text-zinc-500">
+          ({higherIsBetter ? "höher ist besser" : "kleiner ist besser"})
+        </span>
       </div>
     </div>
   )
