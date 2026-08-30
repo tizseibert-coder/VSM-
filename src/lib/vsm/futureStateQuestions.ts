@@ -88,14 +88,14 @@ function deriveQuestion1(input: FutureStateInput): FutureStateQuestion {
     availableMinutesPerDay: input.availableMinutesPerDay,
   })
 
-  if (kpis.taktTimeMinutes === null || kpis.dailyDemand === null) {
+  if (kpis.taktTimeMinutes === null || kpis.demandRatePerDay === null) {
     return question(1, 'open', 'Jahresbedarf noch nicht hinterlegt — Taktzeit kann nicht berechnet werden.')
   }
 
   return question(
     1,
     'answered',
-    `Taktzeit ${kpis.taktTimeMinutes.toFixed(1)} min bei einem Kundenbedarf von ${kpis.dailyDemand.toFixed(1)} Stück/Tag.`
+    `Taktzeit ${kpis.taktTimeMinutes.toFixed(1)} min bei einem Kundenbedarf von ${kpis.demandRatePerDay.toFixed(1)} Stück/Tag.`
   )
 }
 

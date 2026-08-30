@@ -38,9 +38,14 @@ export const GLOSSARY = {
       'Wie viele Minuten pro Tag tatsächlich produziert wird (z. B. eine 8h-Schicht = 480 min, zwei Schichten = 960 min, abzüglich Pausen). Der andere Faktor in der Taktzeit-Formel neben dem Kundenbedarf.',
   },
   exitRate: {
-    term: 'Exitrate',
+    term: 'Ist-Ausbringung (Exitrate)',
     definition:
-      'Wie viele Stück pro Tag den letzten Prozess verlassen — der Tagesbedarf, aus dem Jahresbedarf abgeleitet (Jahresbedarf ÷ Arbeitstage). Bestimmt zusammen mit dem WIP die Durchlaufzeit: PLT = WIP ÷ Exitrate.',
+      'Wie viele Stück pro Tag den Wertstrom tatsächlich verlassen. Bestimmt vom langsamsten Prozess (Engpass/Time Trap) nach Abzug seiner OEE-Verluste: verfügbare Produktionszeit ÷ Engpass-Zykluszeit. Nicht zu verwechseln mit dem Kundenbedarf, der die Taktzeit vorgibt — die Ausbringung ist gemessen, der Takt ist gefordert. Zusammen mit dem WIP ergibt sie die Durchlaufzeit: PLT = WIP ÷ Ausbringung.',
+  },
+  capacityCoverage: {
+    term: 'Kapazitätsdeckung',
+    definition:
+      'Ist-Ausbringung geteilt durch Kundenbedarf. Unter 100 % kann die Linie den Bedarf nicht decken: der Bestand wächst dann laufend an, und die Durchlaufzeit ist keine stabile Grösse mehr, sondern steigt mit jedem Tag.',
   },
   processCycleTime: {
     term: 'Zykluszeit (C/T)',

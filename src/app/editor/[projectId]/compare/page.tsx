@@ -55,7 +55,7 @@ export default async function ComparePage({
   const metricRows: { label: string; format: (r: (typeof rows)[number]) => string }[] = [
     { label: 'Prozesse', format: (r) => String(r.processCount) },
     { label: 'Bearbeitungszeit', format: (r) => `${r.totalCycleTimeMinutes.toFixed(1)} min` },
-    { label: 'Durchlaufzeit', format: (r) => (r.totalLeadTimeDays > 0 ? `${r.totalLeadTimeDays.toFixed(1)} Tage` : '–') },
+    { label: 'Durchlaufzeit', format: (r) => (r.totalLeadTimeDays !== null && r.totalLeadTimeDays > 0 ? `${r.totalLeadTimeDays.toFixed(1)} Tage` : '–') },
     {
       label: 'Wertschöpfungsanteil',
       format: (r) => (r.valueAddedRatioPercent !== null ? `${r.valueAddedRatioPercent.toFixed(2)} %` : '–'),

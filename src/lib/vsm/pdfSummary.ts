@@ -5,7 +5,7 @@
 // unit-testable — this piece, the actual content, is pure and is.
 
 export interface PdfKpiInput {
-  totalLeadTimeDays: number
+  totalLeadTimeDays: number | null
   totalCycleTimeMinutes: number
   valueAddedRatioPercent: number | null
   taktTimeMinutes: number | null
@@ -15,7 +15,7 @@ export interface PdfKpiInput {
 export function buildKpiSummaryLines(kpis: PdfKpiInput): string[] {
   return [
     `Bearbeitungszeit: ${kpis.totalCycleTimeMinutes.toFixed(1)} min`,
-    `Durchlaufzeit: ${kpis.totalLeadTimeDays > 0 ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage` : '–'}`,
+    `Durchlaufzeit: ${kpis.totalLeadTimeDays !== null && kpis.totalLeadTimeDays > 0 ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage` : '–'}`,
     `Wertschöpfungsanteil: ${kpis.valueAddedRatioPercent !== null ? `${kpis.valueAddedRatioPercent.toFixed(2)} %` : '–'}`,
     `Taktzeit: ${kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} min` : '–'}`,
   ]

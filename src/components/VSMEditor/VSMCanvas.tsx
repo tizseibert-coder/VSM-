@@ -197,7 +197,14 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   const kpis = useMemo(
     () =>
       calculateKpis({
-        processes: processes.map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count })),
+        // oee travels with the process now: the exit rate is set by the
+        // slowest station *after* its availability/performance/quality losses,
+        // not by its nominal cycle time.
+        processes: processes.map((p) => ({
+          cycleTime: p.cycle_time,
+          operatorCount: p.operator_count,
+          oee: p.oee,
+        })),
         buffers: buffers.map((b) => ({ wipCount: b.wip_count })),
         annualThroughput: liveAnnualThroughput,
         availableMinutesPerDay: liveAvailableMinutes,
@@ -211,13 +218,21 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // is visibly explained by its own inputs instead of looking like a bug.
   const totalWipCount = useMemo(() => buffers.reduce((sum, b) => sum + b.wip_count, 0), [buffers])
   const effectiveAvailableMinutes = liveAvailableMinutes ?? SHIFT_MINUTES
+  // Each caption names the divisor it actually used. Lead time divides by the
+  // *departure* rate (the smaller of Ausbringung and Kundenbedarf), takt by the
+  // customer demand — naming both prevents the confusion that produced the old
+  // single "Exitrate" label for two different quantities.
   const leadTimeFormula =
-    kpis.dailyDemand !== null
-      ? `${totalWipCount} Stk WIP ÷ ${kpis.dailyDemand.toFixed(1)} Stk/Tag Exitrate`
+    kpis.departureRatePerDay !== null
+      ? `${totalWipCount} Stk WIP ÷ ${kpis.departureRatePerDay.toFixed(1)} Stk/Tag Ausbringung`
       : undefined
   const taktTimeFormula =
-    kpis.dailyDemand !== null
-      ? `${effectiveAvailableMinutes} min/Tag ÷ ${kpis.dailyDemand.toFixed(1)} Stk/Tag Exitrate`
+    kpis.demandRatePerDay !== null
+      ? `${effectiveAvailableMinutes} min/Tag ÷ ${kpis.demandRatePerDay.toFixed(1)} Stk/Tag Kundenbedarf`
+      : undefined
+  const exitRateFormula =
+    kpis.bottleneckCycleTimeMinutes !== null && Number.isFinite(kpis.bottleneckCycleTimeMinutes)
+      ? `${effectiveAvailableMinutes} min/Tag ÷ ${kpis.bottleneckCycleTimeMinutes.toFixed(2)} min Engpass`
       : undefined
 
   const supplierPos = supplierCloudPosition()
@@ -455,7 +470,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       const fromId = g === -1 ? null : orderedProcesses[g].id
       const toId = g === orderedProcesses.length - 1 ? null : orderedProcesses[g + 1].id
       const buffer = findBuffer(buffers, fromId, toId)
-      const days = buffer && kpis.dailyDemand ? buffer.wip_count / kpis.dailyDemand : null
+      const days = buffer && kpis.departureRatePerDay ? buffer.wip_count / kpis.departureRatePerDay : null
       segments.push({
         x1: from.x,
         x2: to.x,
@@ -478,7 +493,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     }
     return segments
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderedProcesses, buffers, positions, kpis.dailyDemand, ladderHighY, ladderLowY])
+  }, [orderedProcesses, buffers, positions, kpis.departureRatePerDay, ladderHighY, ladderLowY])
 
   const ladderPoints = ladderSegments.flatMap((s) => [s.x1, s.y, s.x2, s.y])
   const ladderEndX = ladderSegments.length > 0 ? ladderSegments[ladderSegments.length - 1].x2 : 0
@@ -608,9 +623,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         <KpiTile
           label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
           value={
-            kpis.totalLeadTimeDays > 0 || liveAnnualThroughput
-              ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage`
-              : '–'
+            kpis.totalLeadTimeDays !== null ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage` : '–'
           }
           formula={leadTimeFormula}
         />
@@ -628,8 +641,9 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           formula={taktTimeFormula}
         />
         <KpiTile
-          label={<TermTooltip term="exitRate">Exitrate</TermTooltip>}
-          value={kpis.dailyDemand !== null ? `${kpis.dailyDemand.toFixed(1)} Stk./Tag` : '–'}
+          label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
+          value={kpis.exitRatePerDay !== null ? `${kpis.exitRatePerDay.toFixed(1)} Stk./Tag` : '–'}
+          formula={exitRateFormula}
         />
       </div>
 
@@ -682,6 +696,21 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           Kein <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> festgelegt — die Produktionssteuerung
           sendet den Auftrag aktuell an alle Prozesse. Lege im Prozess-Panel einen Schrittmacher fest, um das korrekt
           darzustellen.
+        </p>
+      )}
+
+      {/* A line below 100% coverage cannot ship what the customer pulls. The
+          consequence is not cosmetic: WIP then grows without bound, so the
+          Durchlaufzeit above is a snapshot of a moving number, not a steady
+          state — Little's Law does not hold. Saying so beats printing a
+          confident figure. */}
+      {kpis.capacityCoverage !== null && kpis.capacityCoverage < 1 && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
+          Die Linie deckt nur{' '}
+          <TermTooltip term="capacityCoverage">{(kpis.capacityCoverage * 100).toFixed(0)} % des Kundenbedarfs</TermTooltip>{' '}
+          — der Engpass lässt {kpis.exitRatePerDay?.toFixed(1)} Stk./Tag durch, gefordert sind{' '}
+          {kpis.demandRatePerDay?.toFixed(1)} Stk./Tag. Der Bestand wächst dadurch laufend an; die Durchlaufzeit ist
+          keine stabile Grösse, solange das so bleibt.
         </p>
       )}
 
@@ -2406,7 +2435,7 @@ function LadderSummary({
    * base font alone (the previous fix) still shrank proportionally with
    * the rest of the canvas and wasn't enough on its own. */
   counterScale: number
-  leadTimeDays: number
+  leadTimeDays: number | null
   valueAddMinutes: number
 }) {
   const width = 84
@@ -2420,7 +2449,7 @@ function LadderSummary({
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
       <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
       <Text
-        text={`${leadTimeDays.toFixed(1)} T`}
+        text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} T` : '–'}
         x={0}
         y={17}
         width={width}
