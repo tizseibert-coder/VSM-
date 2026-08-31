@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { deriveFutureStateQuestions, type FutureStateInput } from '@/lib/vsm/futureStateQuestions'
 import NewScenarioDisclosure from '@/components/VSMEditor/NewScenarioDisclosure'
+import { buttonSecondary } from '@/components/ui/buttons'
 
 const STATUS_LABEL: Record<string, string> = {
   answered: 'Beantwortet',
@@ -147,7 +148,7 @@ export default async function FutureStateOverviewPage({
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href={`/editor/${projectId}/compare`}
-            className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            className={buttonSecondary}
           >
             Zum Szenario-Vergleich →
           </Link>

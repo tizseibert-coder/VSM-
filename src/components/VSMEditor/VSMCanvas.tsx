@@ -27,6 +27,7 @@ import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calc
 import { BalanceChartPanel } from './BalanceChartPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
 import { formatFindingCount, rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
+import { buttonPrimaryLg, buttonSecondaryLg, inputSm } from '@/components/ui/buttons'
 import { TierChip } from './TierChip'
 import type { BenchmarkTier } from '@/lib/vsm/benchmark'
 import { ratePce, rateCapacityCoverage } from '@/lib/vsm/kpiRating'
@@ -1021,7 +1022,7 @@ export default function VSMCanvas({
             onChange={(e) => setThroughputInput(e.target.value)}
             onBlur={handleThroughputBlur}
             placeholder="z. B. 50000"
-            className="w-32 rounded-control border border-zinc-300 px-2 py-1 text-sm"
+            className="w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -1036,7 +1037,7 @@ export default function VSMCanvas({
             onChange={(e) => setAvailableMinutesInput(e.target.value)}
             onBlur={handleAvailableMinutesBlur}
             placeholder="z. B. 480"
-            className="w-24 rounded-control border border-zinc-300 px-2 py-1 text-sm"
+            className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </div>
       </div>
@@ -1622,12 +1623,13 @@ export default function VSMCanvas({
   )
 }
 
-const inputClass =
-  'w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent'
-const primaryButtonClass =
-  'rounded-control bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50'
-const secondaryButtonClass =
-  'rounded-control border border-zinc-300 px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50'
+// Die Werkzeugleiste im Editor ist die Reihe, die ein Moderator im Workshop
+// am Trackpad trifft — deshalb durchgaengig die grosse Groesse (44 px). Die
+// Formen selbst kommen aus components/ui/buttons, damit es keine zweite
+// Quelle fuer dieselbe Knopfhoehe gibt.
+const inputClass = `w-full ${inputSm} focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent`
+const primaryButtonClass = buttonPrimaryLg
+const secondaryButtonClass = buttonSecondaryLg
 
 function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string; children: ReactNode }) {
   return (

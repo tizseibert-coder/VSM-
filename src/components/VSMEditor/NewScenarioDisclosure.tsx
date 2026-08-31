@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createScenario } from '@/app/editor/[projectId]/scenario-actions'
+import { buttonPrimary } from '@/components/ui/buttons'
 
 // Extracted from ScenarioSwitcher (which stays a plain Server Component) so
 // this one small piece can hold real open/close state — a native <details>
@@ -81,7 +82,7 @@ export default function NewScenarioDisclosure({
         <div className="mt-1 flex items-center gap-2">
           <button
             type="submit"
-            className="rounded-control bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+            className={buttonPrimary}
           >
             Anlegen
           </button>

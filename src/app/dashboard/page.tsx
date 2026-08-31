@@ -4,6 +4,7 @@ import { signOut, createProject, createExampleProject, switchOrg } from './actio
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 import VsmSketch from '@/components/marketing/VsmSketch'
+import { buttonPrimary, buttonPrimaryLg, buttonSecondary } from '@/components/ui/buttons'
 
 export default async function DashboardPage({
   searchParams,
@@ -52,12 +53,12 @@ export default async function DashboardPage({
           <div className="flex shrink-0 items-center gap-2">
             <Link
               href="/team"
-              className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              className={buttonSecondary}
             >
               Team
             </Link>
             <form action={signOut}>
-              <button className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
+              <button className={buttonSecondary}>
                 Abmelden
               </button>
             </form>
@@ -106,7 +107,7 @@ export default async function DashboardPage({
             />
             <button
               type="submit"
-              className="rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className={buttonPrimary}
             >
               Erstellen
             </button>
@@ -120,7 +121,7 @@ export default async function DashboardPage({
             <form action={createExampleProject}>
               <button
                 type="submit"
-                className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                className={buttonSecondary}
               >
                 Beispiel-VSM laden
               </button>
@@ -144,7 +145,7 @@ export default async function DashboardPage({
                   <form action={createExampleProject} className="mt-5">
                     <button
                       type="submit"
-                      className="rounded-control bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+                      className={buttonPrimaryLg}
                     >
                       Beispiel-VSM laden
                     </button>

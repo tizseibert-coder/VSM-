@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { buttonPrimary, buttonSecondary } from '@/components/ui/buttons'
 
 /**
  * Zielseite fuer Fehler, die eine Server-Action nicht am Ort melden kann.
@@ -26,13 +27,13 @@ export default function ErrorPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/dashboard"
-            className="rounded-control bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
+            className={buttonPrimary}
           >
             Zurück zum Dashboard
           </Link>
           <Link
             href="/login"
-            className="rounded-control border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            className={buttonSecondary}
           >
             Neu anmelden
           </Link>

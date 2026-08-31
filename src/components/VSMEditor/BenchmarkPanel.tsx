@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import type { Tables } from '@/types/database'
 import { classifyBenchmark } from '@/lib/vsm/benchmark'
 import { TierChip } from './TierChip'
+import { inputSm } from '@/components/ui/buttons'
 
 type Process = Tables<'processes'>
 type BenchmarkReference = Tables<'benchmark_reference'>
@@ -56,7 +57,7 @@ export default function BenchmarkPanel({ processes, references }: Props) {
               const nextSizes = [...new Set(references.filter((r) => r.industry === e.target.value).map((r) => r.company_size))]
               setCompanySize(nextSizes[0] ?? '')
             }}
-            className="rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            className={inputSm}
           >
             {industries.map((i) => (
               <option key={i} value={i}>
@@ -67,7 +68,7 @@ export default function BenchmarkPanel({ processes, references }: Props) {
           <select
             value={companySize}
             onChange={(e) => setCompanySize(e.target.value)}
-            className="rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            className={inputSm}
           >
             {sizes.map((s) => (
               <option key={s} value={s}>

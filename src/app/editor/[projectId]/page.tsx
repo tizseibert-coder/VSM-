@@ -5,6 +5,7 @@ import VSMCanvasLoader from '@/components/VSMEditor/VSMCanvasLoader'
 import BenchmarkPanel from '@/components/VSMEditor/BenchmarkPanel'
 import ScenarioSwitcher from '@/components/VSMEditor/ScenarioSwitcher'
 import ScenarioMetaPanel from '@/components/VSMEditor/ScenarioMetaPanel'
+import { buttonSecondary } from '@/components/ui/buttons'
 
 export default async function EditorPage({
   params,
@@ -69,14 +70,14 @@ export default async function EditorPage({
           {activeScenario && (
             <Link
               href={`/editor/${projectId}/future-state?scenario=${activeScenario.id}`}
-              className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              className={buttonSecondary}
             >
               Future-State-Wizard
             </Link>
           )}
           <Link
             href={`/editor/${projectId}/compare`}
-            className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            className={buttonSecondary}
           >
             Szenarien vergleichen
           </Link>

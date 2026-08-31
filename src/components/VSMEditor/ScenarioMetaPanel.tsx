@@ -2,6 +2,7 @@ import type { Tables } from '@/types/database'
 import { updateScenarioMeta } from '@/app/editor/[projectId]/scenario-actions'
 import DeleteScenarioButton from './DeleteScenarioButton'
 import NewScenarioDisclosure from './NewScenarioDisclosure'
+import { buttonPrimary } from '@/components/ui/buttons'
 
 type Scenario = Tables<'scenarios'>
 
@@ -75,7 +76,7 @@ export default function ScenarioMetaPanel({
         </div>
         <button
           type="submit"
-          className="rounded-control bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+          className={buttonPrimary}
         >
           Speichern
         </button>

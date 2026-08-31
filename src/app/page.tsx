@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import VsmSketch from '@/components/marketing/VsmSketch'
+import { buttonPrimary, buttonPrimaryLg, buttonSecondaryLg } from '@/components/ui/buttons'
 
 /**
  * Die Startseite beantwortet die Fragen, die ein Lean-Praktiker in den ersten
@@ -99,7 +100,7 @@ export default function Home() {
             </Link>
             <Link
               href="/signup"
-              className="rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className={buttonPrimary}
             >
               Kostenlos starten
             </Link>
@@ -122,13 +123,13 @@ export default function Home() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/signup"
-                className="rounded-control bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+                className={buttonPrimaryLg}
               >
                 Kostenlos starten
               </Link>
               <Link
                 href="/login"
-                className="rounded-control border border-zinc-300 px-5 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                className={buttonSecondaryLg}
               >
                 Anmelden
               </Link>
@@ -279,7 +280,7 @@ export default function Home() {
           </div>
           <Link
             href="/signup"
-            className="rounded-control bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+            className={buttonPrimaryLg}
           >
             Kostenlos starten
           </Link>
