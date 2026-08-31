@@ -2,7 +2,9 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { ACTIVE_ORG_COOKIE, getActiveOrg, loadMemberships } from '@/lib/org/activeOrg'
 
 export async function signOut() {
   const supabase = await createClient()
@@ -10,20 +12,40 @@ export async function signOut() {
   redirect('/login')
 }
 
+// Las die Mitgliedschaft frueher mit `.maybeSingle()` — das wirft, sobald
+// jemand in zwei Organisationen ist, der Fehler wurde verschluckt und der
+// Nutzer sah "Keine Organisation gefunden". Die Auswahl liegt jetzt in
+// lib/org/activeOrg.ts; hier bleibt nur die Anmelde-Weiche.
 async function currentUserOrgId(): Promise<{ orgId: string } | { error: string }> {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
-  const userId = data?.claims?.sub
-  if (!userId) redirect('/login')
+  if (!data?.claims?.sub) redirect('/login')
 
-  const { data: membership } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userId)
-    .maybeSingle()
+  const result = await getActiveOrg()
+  if ('error' in result) return result
+  return { orgId: result.active.organizationId }
+}
 
-  if (!membership) return { error: 'Keine Organisation gefunden.' }
-  return { orgId: membership.organization_id }
+// Wechselt die aktive Organisation. Nur Benutzerfuehrung — RLS gaebe fremde
+// Daten ohnehin nicht heraus. Die Mitgliedschaft wird trotzdem geprueft: eine
+// leere Projektliste ohne Erklaerung waere die schlechtere Antwort auf einen
+// manipulierten Cookie als eine klare Fehlermeldung.
+export async function switchOrg(orgId: string) {
+  const memberships = await loadMemberships()
+  if (!memberships.some((m) => m.organizationId === orgId)) {
+    redirect('/dashboard?error=' + encodeURIComponent('Kein Zugriff auf diese Organisation.'))
+  }
+
+  const store = await cookies()
+  store.set(ACTIVE_ORG_COOKIE, orgId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
+
+  revalidatePath('/dashboard')
+  redirect('/dashboard')
 }
 
 export async function createProject(formData: FormData) {

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { signOut, createProject, createExampleProject } from './actions'
+import { signOut, createProject, createExampleProject, switchOrg } from './actions'
+import { getActiveOrg } from '@/lib/org/activeOrg'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 
 export default async function DashboardPage({
@@ -13,31 +14,20 @@ export default async function DashboardPage({
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims
 
-  let orgName: string | null = null
-  let role: string | null = null
+  const orgResult = await getActiveOrg()
+  const activeOrg = 'error' in orgResult ? null : orgResult.active
+  const allOrgs = 'error' in orgResult ? [] : orgResult.all
 
-  if (claims?.sub) {
-    const { data: membership } = await supabase
-      .from('organization_members')
-      .select('role, organization_id')
-      .eq('user_id', claims.sub)
-      .maybeSingle()
-
-    if (membership) {
-      role = membership.role
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', membership.organization_id)
-        .maybeSingle()
-      orgName = org?.name ?? null
-    }
-  }
-
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('id, name, description, created_at')
-    .order('created_at', { ascending: false })
+  // Die Abfrage hatte keinen Organisationsfilter — RLS liefert aber die
+  // Projekte *aller* Organisationen des Nutzers. Mit nur einer Mitgliedschaft
+  // fiel das nie auf; bei zweien waere die gemischte Liste unerklaerlich.
+  const { data: projects } = activeOrg
+    ? await supabase
+        .from('projects')
+        .select('id, name, description, created_at')
+        .eq('organization_id', activeOrg.organizationId)
+        .order('created_at', { ascending: false })
+    : { data: null }
 
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10 dark:bg-black">
@@ -50,10 +40,10 @@ export default async function DashboardPage({
             <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Angemeldet als {claims?.email}
-              {orgName && (
+              {activeOrg && (
                 <>
                   {' '}
-                  · {orgName} ({role})
+                  · {activeOrg.organizationName} ({activeOrg.role})
                 </>
               )}
             </p>
@@ -69,6 +59,32 @@ export default async function DashboardPage({
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
             {error}
           </p>
+        )}
+
+        {/* Nur sichtbar, wenn es etwas zu wechseln gibt. Ein Umschalter mit
+            genau einem Eintrag waere Ballast — und das ist bis auf Weiteres
+            der Normalfall. Ein Formular je Organisation statt eines Selects:
+            kein Client-JavaScript noetig, und bei zwei bis drei Firmen ist es
+            auch schneller zu bedienen. */}
+        {allOrgs.length > 1 && (
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Organisation:</span>
+            {allOrgs.map((org) => (
+              <form key={org.organizationId} action={switchOrg.bind(null, org.organizationId)}>
+                <button
+                  type="submit"
+                  aria-current={org.organizationId === activeOrg?.organizationId ? 'true' : undefined}
+                  className={
+                    org.organizationId === activeOrg?.organizationId
+                      ? 'rounded-full bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-950'
+                      : 'rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900'
+                  }
+                >
+                  {org.organizationName}
+                </button>
+              </form>
+            ))}
+          </div>
         )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
