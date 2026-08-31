@@ -37,7 +37,12 @@ import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
 import { CLASSIFICATION, classificationMarker, type ClassificationValue } from '@/lib/vsm/classification'
-import { buildKpiSummaryLines, buildPdfTitle } from '@/lib/vsm/pdfSummary'
+import {
+  buildKpiSummaryLines,
+  buildPdfFooterLine,
+  buildPdfSubtitle,
+  buildPdfTitle,
+} from '@/lib/vsm/pdfSummary'
 import jsPDF from 'jspdf'
 import {
   customerCloudPosition,
@@ -114,6 +119,11 @@ const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
 // the page without bound.
 const MIN_CANVAS_DISPLAY_HEIGHT = 320
 const MAX_CANVAS_DISPLAY_HEIGHT = 560
+// Höhe der Kennzahlenleiste, die im Vollbild unten andockt. Sie belegt den
+// Platz, den das Diagramm ohnehin nicht füllen kann, und beantwortet damit im
+// Moderationsmodus die Frage, für die man sonst das Vollbild verlassen musste:
+// was macht die Durchlaufzeit, wenn ich diese Box gerade ändere.
+const FULLSCREEN_KPI_BAR_HEIGHT = 92
 
 type Selection =
   | { kind: 'process'; id: string }
@@ -125,11 +135,23 @@ interface Props {
   project: Project
   /** null = current/live state; a scenarios.id = editing that Future-State copy. */
   scenarioId: string | null
+  /**
+   * Name des aktiven Szenarios, nur für die Zustandsangabe im PDF. Die ID
+   * allein genügt dafür nicht, und ein Ausdruck ohne Zustandsangabe ist im
+   * Gremium wertlos — siehe buildPdfSubtitle.
+   */
+  scenarioName?: string | null
   initialProcesses: Process[]
   initialBuffers: Buffer[]
 }
 
-export default function VSMCanvas({ project, scenarioId, initialProcesses, initialBuffers }: Props) {
+export default function VSMCanvas({
+  project,
+  scenarioId,
+  scenarioName = null,
+  initialProcesses,
+  initialBuffers,
+}: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -392,16 +414,71 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     Math.max(MIN_CANVAS_DISPLAY_HEIGHT, canvasHeight * widthFitScale + 32)
   )
 
+  // Dieselben Werte wie in den Kacheln oberhalb der Zeichenfläche, nur
+  // kompakt. Bewusst aus einer Quelle abgeleitet: Zwei Stellen, die dieselbe
+  // Zahl unterschiedlich formatieren, laufen früher oder später auseinander.
+  const fullscreenKpis = useMemo(
+    () => [
+      {
+        label: 'Durchlaufzeit',
+        value: kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY,
+        unit: 'Tage',
+      },
+      {
+        label: 'Wertschöpfungsanteil',
+        value:
+          kpis.valueAddedRatioPercent !== null
+            ? kpis.valueAddedRatioPercent.toFixed(2)
+            : KPI_EMPTY,
+        unit: '%',
+      },
+      {
+        label: 'Taktzeit',
+        value: kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY,
+        unit: 'min',
+      },
+      {
+        label: 'Ist-Ausbringung',
+        value: kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY,
+        unit: 'Stk./Tag',
+      },
+      {
+        label: 'Bearbeitungszeit',
+        value: kpis.totalCycleTimeMinutes.toFixed(1),
+        unit: 'min',
+      },
+    ],
+    [kpis]
+  )
+
+  // Die Höhe, in die eingepasst wird: im Seitenfluss die aus dem Inhalt
+  // abgeleitete Kartenhöhe, im Vollbild der Bildschirm abzüglich der
+  // Kennzahlenleiste, die dort unten andockt.
+  const stageHeight =
+    isFullscreen && measuredHeight > 0
+      ? Math.max(200, measuredHeight - FULLSCREEN_KPI_BAR_HEIGHT)
+      : viewportHeight
+
   // Fit-scale/position for the current content size — recomputed every
   // render (cheap arithmetic), not stored in state. This is what "Einpassen"
   // resets to, and what's shown automatically before the user ever touches
   // zoom/pan, including right after adding the diagram's first processes.
   const autoFitScale = computeAutoFitScale(
     { width: canvasWidth, height: canvasHeight },
-    { width: viewportWidth, height: viewportHeight },
+    { width: viewportWidth, height: stageHeight },
     24
   )
-  const autoFitPos: Point = { x: (viewportWidth - canvasWidth * autoFitScale) / 2, y: 16 }
+  // Waagrecht war schon immer zentriert, senkrecht stand das Diagramm fest bei
+  // y = 16. Im Seitenfluss stimmt das, weil die Kartenhöhe aus dem Inhalt
+  // abgeleitet ist und es gar keinen Überschuss gibt. Im Vollbild nicht: Ein
+  // Wertstrom ist breit und flach, also bestimmt die Breite den Massstab, und
+  // darunter bleibt zwangsläufig Platz — das Diagramm kann die Höhe gar nicht
+  // füllen, ohne seitlich herauszulaufen. Oben angeschlagen sah das aus wie ein
+  // halb geladenes Bild; zentriert sieht es aus wie ein Blatt.
+  const autoFitPos: Point = {
+    x: (viewportWidth - canvasWidth * autoFitScale) / 2,
+    y: Math.max(16, (stageHeight - canvasHeight * autoFitScale) / 2),
+  }
   const stageScale = camera?.scale ?? autoFitScale
   const stagePos = camera?.pos ?? autoFitPos
 
@@ -419,22 +496,80 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     if (!stage) return
     setIsExportingPdf(true)
     try {
-      const dataUrl = stage.toDataURL({ pixelRatio: 2, mimeType: 'image/png' })
+      // [Fehlerbericht 31.08.2026, iPhone 16] Der Export zeigte nur einen
+      // Ausschnitt: ERP, "Montieren", "Verpacken" — Zeitleiter und halbe Kette
+      // fehlten. Ursache: toDataURL() rastert den *sichtbaren* Bereich der
+      // Bühne. Am Schreibtisch fällt das nie auf, weil das eingepasste
+      // Diagramm dort hineinpasst (Bühne 1102 px, skalierter Inhalt 1059 px).
+      // Auf 375 px ist die Bühne rund 327 px breit, der Maßstab aber bei
+      // MIN_READABLE_SCALE (0.6) gedeckelt — von 1059 px Inhalt blieb knapp
+      // ein Drittel übrig. Dasselbe passiert auf jedem Gerät, sobald jemand
+      // verschoben oder hineingezoomt hat.
+      //
+      // Ein Ausdruck darf nicht davon abhängen, wohin gerade gescrollt wurde.
+      // Also: Bühne kurz auf Originalmaßstab und Inhaltsgrösse stellen,
+      // aufnehmen, zurückstellen. Der Nutzer sieht davon nichts, weil zwischen
+      // den beiden Zuständen kein Bild ausgegeben wird.
+      const restore = {
+        scale: stage.scaleX(),
+        position: stage.position(),
+        width: stage.width(),
+        height: stage.height(),
+      }
+      let dataUrl: string
+      try {
+        stage.scale({ x: 1, y: 1 })
+        stage.position({ x: 0, y: 0 })
+        stage.size({ width: canvasWidth, height: canvasHeight })
+        stage.draw()
+        // Ein sehr breiter Wertstrom ergäbe bei festem Faktor 2 ein Bild von
+        // mehreren tausend Pixeln Kantenlänge; das Blatt gewinnt dadurch
+        // nichts, und manche Browser brechen beim Rastern ab.
+        dataUrl = stage.toDataURL({
+          pixelRatio: Math.min(2, 4000 / canvasWidth),
+          mimeType: 'image/png',
+        })
+      } finally {
+        stage.scale({ x: restore.scale, y: restore.scale })
+        stage.position(restore.position)
+        stage.size({ width: restore.width, height: restore.height })
+        stage.draw()
+      }
+
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 24
-      const titleSpace = 30
-      const kpiBlockSpace = 90
+      const margin = 32
+      // Kopf- und Fusszeile brauchen festen Platz, dazwischen bleibt der Rest
+      // fürs Diagramm.
+      const headerSpace = 52
+      const kpiBlockSpace = 58
+      const footerSpace = 28
 
-      pdf.setFontSize(14)
-      pdf.text(buildPdfTitle(project.name), margin, margin + 10)
+      // --- Kopfzeile ------------------------------------------------------
+      // Das Blatt verlässt die Anwendung und landet bei Leuten, die sie nie
+      // öffnen werden. Es muss deshalb aus sich heraus sagen, was es ist, von
+      // welchem Zustand es spricht und woher es stammt.
+      pdf.setFontSize(7.5)
+      pdf.setTextColor(15, 90, 82) // brand-600
+      pdf.text('VSM BUILDER', margin, margin)
 
-      // Fit the snapshot within the page width, preserving aspect ratio,
-      // leaving room for the title above and the KPI lines below.
+      pdf.setFontSize(15)
+      pdf.setTextColor(24, 24, 27) // INK
+      pdf.text(buildPdfTitle(project.name), margin, margin + 18)
+
+      pdf.setFontSize(9.5)
+      pdf.setTextColor(82, 82, 91) // zinc-600
+      pdf.text(buildPdfSubtitle(scenarioName), margin, margin + 32)
+
+      pdf.setDrawColor(212, 212, 216) // zinc-300
+      pdf.setLineWidth(0.5)
+      pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
+
+      // --- Diagramm -------------------------------------------------------
       const imgProps = pdf.getImageProperties(dataUrl)
       const availableWidth = pageWidth - margin * 2
-      const maxImgHeight = pageHeight - margin * 2 - titleSpace - kpiBlockSpace
+      const maxImgHeight = pageHeight - margin * 2 - headerSpace - kpiBlockSpace - footerSpace
       let imgWidth = availableWidth
       let imgHeight = (imgProps.height / imgProps.width) * imgWidth
       if (imgHeight > maxImgHeight) {
@@ -442,15 +577,47 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         imgWidth = (imgProps.width / imgProps.height) * imgHeight
       }
       const imgX = margin + (availableWidth - imgWidth) / 2
-      const imgY = margin + titleSpace
-      pdf.addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight)
+      const imgY = margin + headerSpace
+      // Ohne dieses Argument bettet jsPDF das Bild unkomprimiert ein: Der
+      // erste echte Export war 9,1 MB, und 3530 x 860 x 3 Byte ergeben genau
+      // diese 9,1 MB — das Bild war die Datei. Ein Blatt in dieser Groesse
+      // scheitert an den Anhangsgrenzen vieler Firmen-Mailgateways, also
+      // ausgerechnet dort, wo es hinsoll. Strichzeichnung komprimiert sehr
+      // gut, 'FAST' genuegt und haelt den Export auch auf dem Telefon zuegig.
+      pdf.addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight, undefined, 'FAST')
 
-      pdf.setFontSize(10)
-      let lineY = imgY + imgHeight + 24
-      for (const line of buildKpiSummaryLines(kpis)) {
-        pdf.text(line, margin, lineY)
-        lineY += 16
-      }
+      // --- Kennzahlen -----------------------------------------------------
+      // Als Spalten statt als Liste, damit sie sich wie auf dem Bildschirm
+      // vergleichen lassen. Der Inhalt kommt weiterhin aus der geprüften
+      // buildKpiSummaryLines; hier wird nur am ersten ": " in Beschriftung und
+      // Wert getrennt. Beide Seiten sind fest formatiert (Begriff bzw. Zahl
+      // mit Einheit), ein zweites ": " kann darin nicht vorkommen.
+      const kpiLines = buildKpiSummaryLines(kpis)
+      const columnWidth = availableWidth / kpiLines.length
+      const kpiY = imgY + imgHeight + 30
+      kpiLines.forEach((line, i) => {
+        const separator = line.indexOf(': ')
+        const label = line.slice(0, separator)
+        const value = line.slice(separator + 2)
+        const x = margin + columnWidth * i
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(label, x, kpiY)
+
+        pdf.setFontSize(14)
+        pdf.setTextColor(24, 24, 27)
+        pdf.text(value, x, kpiY + 17)
+      })
+
+      // --- Fusszeile ------------------------------------------------------
+      const footerY = pageHeight - margin
+      pdf.setDrawColor(212, 212, 216)
+      pdf.line(margin, footerY - 14, pageWidth - margin, footerY - 14)
+      pdf.setFontSize(8)
+      pdf.setTextColor(82, 82, 91)
+      pdf.text(buildPdfFooterLine(), margin, footerY)
+      pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
 
       pdf.save(`${project.name || 'vsm'}.pdf`)
     } finally {
@@ -861,7 +1028,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             type="button"
             onClick={handleExportPdf}
             disabled={isExportingPdf || processes.length === 0}
-            className={secondaryButtonClass}
+            className={primaryButtonClass}
           >
             {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
           </button>
@@ -1000,10 +1167,11 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         <Stage
           ref={stageRef}
           width={viewportWidth}
-          // Im Vollbild gibt der Bildschirm die Höhe vor, sonst die Höhe des
-          // Diagramminhalts. measuredHeight ist beim ersten Bild nach dem
-          // Umschalten noch 0 — dann greift der bisherige Wert weiter.
-          height={isFullscreen && measuredHeight > 0 ? measuredHeight : viewportHeight}
+          // Im Vollbild gibt der Bildschirm die Höhe vor (abzüglich der
+          // Kennzahlenleiste), sonst die Höhe des Diagramminhalts.
+          // measuredHeight ist beim ersten Bild nach dem Umschalten noch 0 —
+          // dann greift der bisherige Wert weiter, siehe stageHeight.
+          height={stageHeight}
           scaleX={stageScale}
           scaleY={stageScale}
           x={stagePos.x}
@@ -1251,6 +1419,35 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             )}
           </Layer>
         </Stage>
+
+        {/* Im Vollbild waren die Kennzahlen bisher gar nicht erreichbar: Sie
+            stehen im Seitenfluss oberhalb der Zeichenfläche, und der Modus
+            überdeckt die ganze Seite. Wer also im Workshop eine Zykluszeit
+            änderte, musste das Vollbild verlassen, um die Wirkung zu sehen.
+            Genau die Bewegung, die das Werkzeug überflüssig machen soll. */}
+        {isFullscreen && (
+          <div
+            className="absolute inset-x-0 bottom-0 flex items-stretch gap-px overflow-x-auto border-t border-zinc-200 bg-zinc-100"
+            style={{ height: FULLSCREEN_KPI_BAR_HEIGHT }}
+          >
+            {fullscreenKpis.map((kpi) => (
+              <div
+                key={kpi.label}
+                className="flex min-w-[9.5rem] flex-1 flex-col justify-center bg-white px-5"
+              >
+                <span className="text-xs font-medium text-zinc-600">{kpi.label}</span>
+                <span className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">
+                    {kpi.value}
+                  </span>
+                  {kpi.value !== KPI_EMPTY && (
+                    <span className="text-xs font-medium text-zinc-500">{kpi.unit}</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {processes.length === 0 && (

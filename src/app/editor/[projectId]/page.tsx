@@ -96,6 +96,7 @@ export default async function EditorPage({
       <VSMCanvasLoader
         project={project}
         scenarioId={scenarioId}
+        scenarioName={activeScenario?.name ?? null}
         initialProcesses={processes ?? []}
         initialBuffers={buffers ?? []}
       />
