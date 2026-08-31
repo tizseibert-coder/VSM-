@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { safeNextPath } from '@/lib/nav/safeNextPath'
 
 export async function signup(formData: FormData) {
   const email = formData.get('email') as string
@@ -34,5 +35,6 @@ export async function signup(formData: FormData) {
     redirect('/signup/check-email')
   }
 
-  redirect('/dashboard')
+  // Zurueck zur Einladung, falls der Nutzer ueber einen Einladungslink kam.
+  redirect(safeNextPath(formData.get('next') as string | null) ?? '/dashboard')
 }

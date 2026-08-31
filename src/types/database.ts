@@ -14,10 +14,43 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      _prisma_migrations: {
+        Row: {
+          applied_steps_count: number
+          checksum: string
+          finished_at: string | null
+          id: string
+          logs: string | null
+          migration_name: string
+          rolled_back_at: string | null
+          started_at: string
+        }
+        Insert: {
+          applied_steps_count?: number
+          checksum: string
+          finished_at?: string | null
+          id: string
+          logs?: string | null
+          migration_name: string
+          rolled_back_at?: string | null
+          started_at?: string
+        }
+        Update: {
+          applied_steps_count?: number
+          checksum?: string
+          finished_at?: string | null
+          id?: string
+          logs?: string | null
+          migration_name?: string
+          rolled_back_at?: string | null
+          started_at?: string
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           action: string
@@ -62,6 +95,116 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ArticleRequirementSetting: {
+        Row: {
+          id: string
+          machineId: string | null
+          organizationId: string
+          required: boolean
+          updatedAt: string
+        }
+        Insert: {
+          id: string
+          machineId?: string | null
+          organizationId: string
+          required: boolean
+          updatedAt: string
+        }
+        Update: {
+          id?: string
+          machineId?: string | null
+          organizationId?: string
+          required?: boolean
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ArticleRequirementSetting_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ArticleRequirementSetting_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      AttendanceEvent: {
+        Row: {
+          activityType: Database["public"]["Enums"]["ActivityType"]
+          clockInAt: string
+          clockOutAt: string | null
+          createdAt: string
+          createdBy: string
+          id: string
+          machineId: string
+          organizationId: string
+          personnelId: string
+          shiftId: string | null
+          source: Database["public"]["Enums"]["AttendanceSource"]
+        }
+        Insert: {
+          activityType?: Database["public"]["Enums"]["ActivityType"]
+          clockInAt: string
+          clockOutAt?: string | null
+          createdAt?: string
+          createdBy: string
+          id: string
+          machineId: string
+          organizationId: string
+          personnelId: string
+          shiftId?: string | null
+          source: Database["public"]["Enums"]["AttendanceSource"]
+        }
+        Update: {
+          activityType?: Database["public"]["Enums"]["ActivityType"]
+          clockInAt?: string
+          clockOutAt?: string | null
+          createdAt?: string
+          createdBy?: string
+          id?: string
+          machineId?: string
+          organizationId?: string
+          personnelId?: string
+          shiftId?: string | null
+          source?: Database["public"]["Enums"]["AttendanceSource"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "AttendanceEvent_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "AttendanceEvent_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "AttendanceEvent_personnelId_fkey"
+            columns: ["personnelId"]
+            isOneToOne: false
+            referencedRelation: "Personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "AttendanceEvent_shiftId_fkey"
+            columns: ["shiftId"]
+            isOneToOne: false
+            referencedRelation: "Shift"
             referencedColumns: ["id"]
           },
         ]
@@ -154,6 +297,120 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      consulting_leads: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          name: string
+          phone: string | null
+          source: string
+          status: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          name: string
+          phone?: string | null
+          source?: string
+          status?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          name?: string
+          phone?: string | null
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      Escalation: {
+        Row: {
+          acknowledgedAt: string | null
+          acknowledgedBy: string | null
+          assignedTo: string | null
+          autoEscalatedAt: string | null
+          dueDate: string | null
+          id: string
+          impact: Database["public"]["Enums"]["EscalationImpact"]
+          machineId: string
+          note: string | null
+          organizationId: string
+          pillar: Database["public"]["Enums"]["QdipPillar"]
+          resolutionNote: string | null
+          resolvedAt: string | null
+          resolvedBy: string | null
+          status: Database["public"]["Enums"]["EscalationStatus"]
+          tier: Database["public"]["Enums"]["EscalationTier"]
+          triggeredAt: string
+          triggeredBy: string
+        }
+        Insert: {
+          acknowledgedAt?: string | null
+          acknowledgedBy?: string | null
+          assignedTo?: string | null
+          autoEscalatedAt?: string | null
+          dueDate?: string | null
+          id: string
+          impact?: Database["public"]["Enums"]["EscalationImpact"]
+          machineId: string
+          note?: string | null
+          organizationId: string
+          pillar: Database["public"]["Enums"]["QdipPillar"]
+          resolutionNote?: string | null
+          resolvedAt?: string | null
+          resolvedBy?: string | null
+          status?: Database["public"]["Enums"]["EscalationStatus"]
+          tier: Database["public"]["Enums"]["EscalationTier"]
+          triggeredAt?: string
+          triggeredBy: string
+        }
+        Update: {
+          acknowledgedAt?: string | null
+          acknowledgedBy?: string | null
+          assignedTo?: string | null
+          autoEscalatedAt?: string | null
+          dueDate?: string | null
+          id?: string
+          impact?: Database["public"]["Enums"]["EscalationImpact"]
+          machineId?: string
+          note?: string | null
+          organizationId?: string
+          pillar?: Database["public"]["Enums"]["QdipPillar"]
+          resolutionNote?: string | null
+          resolvedAt?: string | null
+          resolvedBy?: string | null
+          status?: Database["public"]["Enums"]["EscalationStatus"]
+          tier?: Database["public"]["Enums"]["EscalationTier"]
+          triggeredAt?: string
+          triggeredBy?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Escalation_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Escalation_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       historical_metrics: {
         Row: {
@@ -270,6 +527,261 @@ export type Database = {
           },
         ]
       }
+      Invitation: {
+        Row: {
+          acceptedAt: string | null
+          createdAt: string
+          email: string
+          expiresAt: string
+          id: string
+          invitedBy: string
+          organizationId: string
+          revokedAt: string | null
+          role: Database["public"]["Enums"]["Role"]
+          token: string
+        }
+        Insert: {
+          acceptedAt?: string | null
+          createdAt?: string
+          email: string
+          expiresAt: string
+          id: string
+          invitedBy: string
+          organizationId: string
+          revokedAt?: string | null
+          role: Database["public"]["Enums"]["Role"]
+          token: string
+        }
+        Update: {
+          acceptedAt?: string | null
+          createdAt?: string
+          email?: string
+          expiresAt?: string
+          id?: string
+          invitedBy?: string
+          organizationId?: string
+          revokedAt?: string | null
+          role?: Database["public"]["Enums"]["Role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Invitation_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      LossEntry: {
+        Row: {
+          category: Database["public"]["Enums"]["LossEntryCategory"]
+          createdAt: string
+          description: string | null
+          durationMin: number
+          id: string
+          trackingLogId: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["LossEntryCategory"]
+          createdAt?: string
+          description?: string | null
+          durationMin: number
+          id: string
+          trackingLogId: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["LossEntryCategory"]
+          createdAt?: string
+          description?: string | null
+          durationMin?: number
+          id?: string
+          trackingLogId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "LossEntry_trackingLogId_fkey"
+            columns: ["trackingLogId"]
+            isOneToOne: false
+            referencedRelation: "TrackingLog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Machine: {
+        Row: {
+          archivedAt: string | null
+          id: string
+          identifier: string
+          mqttTopic: string | null
+          name: string
+          opcuaNodeId: string | null
+          organizationId: string
+          status: Database["public"]["Enums"]["MachineStatus"]
+          type: Database["public"]["Enums"]["MachineType"]
+        }
+        Insert: {
+          archivedAt?: string | null
+          id: string
+          identifier: string
+          mqttTopic?: string | null
+          name: string
+          opcuaNodeId?: string | null
+          organizationId: string
+          status?: Database["public"]["Enums"]["MachineStatus"]
+          type: Database["public"]["Enums"]["MachineType"]
+        }
+        Update: {
+          archivedAt?: string | null
+          id?: string
+          identifier?: string
+          mqttTopic?: string | null
+          name?: string
+          opcuaNodeId?: string | null
+          organizationId?: string
+          status?: Database["public"]["Enums"]["MachineStatus"]
+          type?: Database["public"]["Enums"]["MachineType"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Machine_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      MachineStatusLog: {
+        Row: {
+          category: Database["public"]["Enums"]["LossCategory"] | null
+          durationMin: number | null
+          endedAt: string | null
+          id: string
+          lossType: Database["public"]["Enums"]["LossType"] | null
+          machineId: string
+          reason: string | null
+          startedAt: string
+          status: Database["public"]["Enums"]["MachineStatus"]
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["LossCategory"] | null
+          durationMin?: number | null
+          endedAt?: string | null
+          id: string
+          lossType?: Database["public"]["Enums"]["LossType"] | null
+          machineId: string
+          reason?: string | null
+          startedAt?: string
+          status: Database["public"]["Enums"]["MachineStatus"]
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["LossCategory"] | null
+          durationMin?: number | null
+          endedAt?: string | null
+          id?: string
+          lossType?: Database["public"]["Enums"]["LossType"] | null
+          machineId?: string
+          reason?: string | null
+          startedAt?: string
+          status?: Database["public"]["Enums"]["MachineStatus"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MachineStatusLog_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_entitlements: {
+        Row: {
+          granted_at: string | null
+          id: string
+          organization_id: string
+          product: Database["public"]["Enums"]["AppProduct"]
+          requested_at: string
+          status: Database["public"]["Enums"]["EntitlementStatus"]
+          tier: Database["public"]["Enums"]["Tier"]
+        }
+        Insert: {
+          granted_at?: string | null
+          id?: string
+          organization_id: string
+          product: Database["public"]["Enums"]["AppProduct"]
+          requested_at?: string
+          status?: Database["public"]["Enums"]["EntitlementStatus"]
+          tier?: Database["public"]["Enums"]["Tier"]
+        }
+        Update: {
+          granted_at?: string | null
+          id?: string
+          organization_id?: string
+          product?: Database["public"]["Enums"]["AppProduct"]
+          requested_at?: string
+          status?: Database["public"]["Enums"]["EntitlementStatus"]
+          tier?: Database["public"]["Enums"]["Tier"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_entitlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          organization_id: string
+          revoked_at: string | null
+          role: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          organization_id: string
+          revoked_at?: string | null
+          role: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          revoked_at?: string | null
+          role?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -307,18 +819,107 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          slug: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          slug: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          slug?: string
         }
         Relationships: []
+      }
+      Personnel: {
+        Row: {
+          costCategory: Database["public"]["Enums"]["PersonnelCostCat"]
+          employeeNumber: string | null
+          hourlyRate: number
+          id: string
+          name: string
+          organizationId: string
+          pinHash: string | null
+          rfidTag: string | null
+        }
+        Insert: {
+          costCategory: Database["public"]["Enums"]["PersonnelCostCat"]
+          employeeNumber?: string | null
+          hourlyRate: number
+          id: string
+          name: string
+          organizationId: string
+          pinHash?: string | null
+          rfidTag?: string | null
+        }
+        Update: {
+          costCategory?: Database["public"]["Enums"]["PersonnelCostCat"]
+          employeeNumber?: string | null
+          hourlyRate?: number
+          id?: string
+          name?: string
+          organizationId?: string
+          pinHash?: string | null
+          rfidTag?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Personnel_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      PillarThreshold: {
+        Row: {
+          id: string
+          machineId: string | null
+          organizationId: string
+          pillar: Database["public"]["Enums"]["QdipPillar"]
+          thresholdGood: number
+          thresholdWarning: number
+          updatedAt: string
+        }
+        Insert: {
+          id: string
+          machineId?: string | null
+          organizationId: string
+          pillar: Database["public"]["Enums"]["QdipPillar"]
+          thresholdGood: number
+          thresholdWarning: number
+          updatedAt: string
+        }
+        Update: {
+          id?: string
+          machineId?: string | null
+          organizationId?: string
+          pillar?: Database["public"]["Enums"]["QdipPillar"]
+          thresholdGood?: number
+          thresholdWarning?: number
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "PillarThreshold_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "PillarThreshold_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       processes: {
         Row: {
@@ -417,6 +1018,41 @@ export type Database = {
           },
         ]
       }
+      Product: {
+        Row: {
+          createdAt: string
+          description: string | null
+          id: string
+          name: string
+          organizationId: string
+          productId: string
+        }
+        Insert: {
+          createdAt?: string
+          description?: string | null
+          id: string
+          name: string
+          organizationId: string
+          productId: string
+        }
+        Update: {
+          createdAt?: string
+          description?: string | null
+          id?: string
+          name?: string
+          organizationId?: string
+          productId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Product_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           annual_throughput: number | null
@@ -470,6 +1106,146 @@ export type Database = {
           {
             foreignKeyName: "projects_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      QualityHourlyEntry: {
+        Row: {
+          badParts: number
+          createdAt: string
+          createdBy: string
+          date: string
+          goodParts: number
+          hour: number
+          id: string
+          lossCategory: Database["public"]["Enums"]["LossCategory"] | null
+          machineId: string
+          notes: string | null
+          organizationId: string
+          productId: string | null
+          standardTimeId: string | null
+          updatedAt: string
+        }
+        Insert: {
+          badParts?: number
+          createdAt?: string
+          createdBy: string
+          date: string
+          goodParts?: number
+          hour: number
+          id: string
+          lossCategory?: Database["public"]["Enums"]["LossCategory"] | null
+          machineId: string
+          notes?: string | null
+          organizationId: string
+          productId?: string | null
+          standardTimeId?: string | null
+          updatedAt: string
+        }
+        Update: {
+          badParts?: number
+          createdAt?: string
+          createdBy?: string
+          date?: string
+          goodParts?: number
+          hour?: number
+          id?: string
+          lossCategory?: Database["public"]["Enums"]["LossCategory"] | null
+          machineId?: string
+          notes?: string | null
+          organizationId?: string
+          productId?: string | null
+          standardTimeId?: string | null
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "QualityHourlyEntry_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "QualityHourlyEntry_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "QualityHourlyEntry_productId_fkey"
+            columns: ["productId"]
+            isOneToOne: false
+            referencedRelation: "Product"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "QualityHourlyEntry_standardTimeId_fkey"
+            columns: ["standardTimeId"]
+            isOneToOne: false
+            referencedRelation: "StandardTime"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Queue: {
+        Row: {
+          completedAt: string | null
+          createdAt: string
+          deadline: string | null
+          description: string | null
+          id: string
+          machineId: string
+          orderNumber: string
+          organizationId: string
+          plannedHours: number
+          priority: number
+          startedAt: string | null
+          status: Database["public"]["Enums"]["QueueStatus"]
+        }
+        Insert: {
+          completedAt?: string | null
+          createdAt?: string
+          deadline?: string | null
+          description?: string | null
+          id: string
+          machineId: string
+          orderNumber: string
+          organizationId: string
+          plannedHours: number
+          priority?: number
+          startedAt?: string | null
+          status?: Database["public"]["Enums"]["QueueStatus"]
+        }
+        Update: {
+          completedAt?: string | null
+          createdAt?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          machineId?: string
+          orderNumber?: string
+          organizationId?: string
+          plannedHours?: number
+          priority?: number
+          startedAt?: string | null
+          status?: Database["public"]["Enums"]["QueueStatus"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Queue_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Queue_organizationId_fkey"
+            columns: ["organizationId"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
@@ -568,6 +1344,86 @@ export type Database = {
           },
         ]
       }
+      Shift: {
+        Row: {
+          date: string
+          endTime: string
+          id: string
+          name: string
+          organizationId: string
+          startTime: string
+        }
+        Insert: {
+          date: string
+          endTime: string
+          id: string
+          name: string
+          organizationId: string
+          startTime: string
+        }
+        Update: {
+          date?: string
+          endTime?: string
+          id?: string
+          name?: string
+          organizationId?: string
+          startTime?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Shift_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ShiftAssignment: {
+        Row: {
+          actualCost: number | null
+          hoursActual: number | null
+          hoursPlanned: number
+          id: string
+          personnelId: string
+          plannedCost: number | null
+          shiftId: string
+        }
+        Insert: {
+          actualCost?: number | null
+          hoursActual?: number | null
+          hoursPlanned: number
+          id: string
+          personnelId: string
+          plannedCost?: number | null
+          shiftId: string
+        }
+        Update: {
+          actualCost?: number | null
+          hoursActual?: number | null
+          hoursPlanned?: number
+          id?: string
+          personnelId?: string
+          plannedCost?: number | null
+          shiftId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ShiftAssignment_personnelId_fkey"
+            columns: ["personnelId"]
+            isOneToOne: false
+            referencedRelation: "Personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ShiftAssignment_shiftId_fkey"
+            columns: ["shiftId"]
+            isOneToOne: false
+            referencedRelation: "Shift"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spaghetti_layouts: {
         Row: {
           background_image_url: string | null
@@ -612,11 +1468,291 @@ export type Database = {
           },
         ]
       }
+      StandardTime: {
+        Row: {
+          createdAt: string
+          createdBy: string
+          dtMinutes: number
+          id: string
+          machineId: string
+          organizationId: string
+          productId: string
+          targetAvailability: number | null
+          targetKE: number | null
+          targetMDR: number | null
+          targetPerformance: number | null
+          targetQuality: number | null
+          utMinutes: number
+          validFrom: string
+          validTo: string | null
+        }
+        Insert: {
+          createdAt?: string
+          createdBy: string
+          dtMinutes: number
+          id: string
+          machineId: string
+          organizationId: string
+          productId: string
+          targetAvailability?: number | null
+          targetKE?: number | null
+          targetMDR?: number | null
+          targetPerformance?: number | null
+          targetQuality?: number | null
+          utMinutes: number
+          validFrom?: string
+          validTo?: string | null
+        }
+        Update: {
+          createdAt?: string
+          createdBy?: string
+          dtMinutes?: number
+          id?: string
+          machineId?: string
+          organizationId?: string
+          productId?: string
+          targetAvailability?: number | null
+          targetKE?: number | null
+          targetMDR?: number | null
+          targetPerformance?: number | null
+          targetQuality?: number | null
+          utMinutes?: number
+          validFrom?: string
+          validTo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "StandardTime_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "StandardTime_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "StandardTime_productId_fkey"
+            columns: ["productId"]
+            isOneToOne: false
+            referencedRelation: "Product"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      TrackingLog: {
+        Row: {
+          actualOutput: number
+          availability: number | null
+          badParts: number
+          blockedTimeMin: number | null
+          createdAt: string
+          createdBy: string
+          date: string
+          dlp: number | null
+          dtMin: number | null
+          dvcExternMin: number | null
+          goodOTMin: number | null
+          goodParts: number
+          id: string
+          ke: number | null
+          lossCategory: Database["public"]["Enums"]["LossCategory"] | null
+          machineId: string | null
+          mdr: number | null
+          nonQualityMin: number | null
+          notes: string | null
+          npvHours: number
+          npvSupportMin: number | null
+          oee: number | null
+          operatorCount: number | null
+          organizationId: string
+          performance: number | null
+          planAchievement: number | null
+          plannedOutput: number
+          productId: string | null
+          pvHours: number
+          quality: number | null
+          runningTimeMin: number | null
+          scheduledProdTimeMin: number | null
+          shiftId: string | null
+          standardTimeId: string | null
+          starvedTimeMin: number | null
+          totalOTMin: number | null
+          uncertaintiesMin: number | null
+          unplannedDownMin: number | null
+          upTimeMin: number | null
+          utMin: number | null
+        }
+        Insert: {
+          actualOutput: number
+          availability?: number | null
+          badParts?: number
+          blockedTimeMin?: number | null
+          createdAt?: string
+          createdBy: string
+          date: string
+          dlp?: number | null
+          dtMin?: number | null
+          dvcExternMin?: number | null
+          goodOTMin?: number | null
+          goodParts?: number
+          id: string
+          ke?: number | null
+          lossCategory?: Database["public"]["Enums"]["LossCategory"] | null
+          machineId?: string | null
+          mdr?: number | null
+          nonQualityMin?: number | null
+          notes?: string | null
+          npvHours: number
+          npvSupportMin?: number | null
+          oee?: number | null
+          operatorCount?: number | null
+          organizationId: string
+          performance?: number | null
+          planAchievement?: number | null
+          plannedOutput: number
+          productId?: string | null
+          pvHours: number
+          quality?: number | null
+          runningTimeMin?: number | null
+          scheduledProdTimeMin?: number | null
+          shiftId?: string | null
+          standardTimeId?: string | null
+          starvedTimeMin?: number | null
+          totalOTMin?: number | null
+          uncertaintiesMin?: number | null
+          unplannedDownMin?: number | null
+          upTimeMin?: number | null
+          utMin?: number | null
+        }
+        Update: {
+          actualOutput?: number
+          availability?: number | null
+          badParts?: number
+          blockedTimeMin?: number | null
+          createdAt?: string
+          createdBy?: string
+          date?: string
+          dlp?: number | null
+          dtMin?: number | null
+          dvcExternMin?: number | null
+          goodOTMin?: number | null
+          goodParts?: number
+          id?: string
+          ke?: number | null
+          lossCategory?: Database["public"]["Enums"]["LossCategory"] | null
+          machineId?: string | null
+          mdr?: number | null
+          nonQualityMin?: number | null
+          notes?: string | null
+          npvHours?: number
+          npvSupportMin?: number | null
+          oee?: number | null
+          operatorCount?: number | null
+          organizationId?: string
+          performance?: number | null
+          planAchievement?: number | null
+          plannedOutput?: number
+          productId?: string | null
+          pvHours?: number
+          quality?: number | null
+          runningTimeMin?: number | null
+          scheduledProdTimeMin?: number | null
+          shiftId?: string | null
+          standardTimeId?: string | null
+          starvedTimeMin?: number | null
+          totalOTMin?: number | null
+          uncertaintiesMin?: number | null
+          unplannedDownMin?: number | null
+          upTimeMin?: number | null
+          utMin?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "TrackingLog_machineId_fkey"
+            columns: ["machineId"]
+            isOneToOne: false
+            referencedRelation: "Machine"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "TrackingLog_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "TrackingLog_productId_fkey"
+            columns: ["productId"]
+            isOneToOne: false
+            referencedRelation: "Product"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "TrackingLog_shiftId_fkey"
+            columns: ["shiftId"]
+            isOneToOne: false
+            referencedRelation: "Shift"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "TrackingLog_standardTimeId_fkey"
+            columns: ["standardTimeId"]
+            isOneToOne: false
+            referencedRelation: "StandardTime"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      User: {
+        Row: {
+          createdAt: string
+          email: string
+          id: string
+          name: string
+          organizationId: string
+          role: Database["public"]["Enums"]["Role"]
+          supabaseUserId: string
+        }
+        Insert: {
+          createdAt?: string
+          email: string
+          id: string
+          name: string
+          organizationId: string
+          role?: Database["public"]["Enums"]["Role"]
+          supabaseUserId: string
+        }
+        Update: {
+          createdAt?: string
+          email?: string
+          id?: string
+          name?: string
+          organizationId?: string
+          role?: Database["public"]["Enums"]["Role"]
+          supabaseUserId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "User_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: { Args: { p_token: string }; Returns: string }
       has_org_role: {
         Args: { min_role?: string; org_id: string }
         Returns: boolean
@@ -624,7 +1760,47 @@ export type Database = {
       project_org_id: { Args: { p_project_id: string }; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      ActivityType: "PV" | "NPV"
+      AppProduct: "VSM_BUILDER" | "MES"
+      AttendanceSource: "PIN" | "RFID" | "BADGE" | "APP" | "MANUAL" | "API"
+      EntitlementStatus: "REQUESTED" | "ACTIVE" | "REVOKED"
+      EscalationImpact: "MINOR" | "MAJOR" | "CRITICAL"
+      EscalationStatus: "OPEN" | "ACKNOWLEDGED" | "RESOLVED"
+      EscalationTier: "LINIE" | "WERK"
+      LossCategory:
+        | "MACHINE"
+        | "MATERIAL"
+        | "PERSONNEL"
+        | "QUALITY"
+        | "CHANGEOVER"
+        | "PLANNED"
+        | "OTHER"
+      LossEntryCategory:
+        | "AVAILABILITY"
+        | "PERFORMANCE"
+        | "QUALITY"
+        | "OPERATOR_ACTIVITY"
+        | "DVC_EXTERN"
+        | "NON_QUALITY"
+        | "UNCERTAINTIES"
+        | "NPV_SUPPORT"
+      LossType:
+        | "AVAILABILITY_BREAKDOWN"
+        | "SETUP_ADJUSTMENT"
+        | "MINOR_STOP"
+        | "REDUCED_SPEED"
+        | "DEFECT"
+        | "STARTUP_LOSS"
+      MachineStatus: "RUNNING" | "SLOW" | "STOPPED" | "MAINTENANCE" | "UNKNOWN"
+      MachineType: "AUTOMATED" | "MANUAL" | "SEMI_AUTO" | "WAREHOUSE"
+      PersonnelCostCat:
+        | "DIRECT_VALUE_COST"
+        | "INDIRECT_VALUE_COST"
+        | "MINIMUM_BASE_COST"
+      QdipPillar: "SAFETY" | "QUALITY" | "DELIVERY" | "EFFICIENCY" | "COST"
+      QueueStatus: "PENDING" | "IN_PROGRESS" | "DONE" | "BLOCKED" | "CANCELLED"
+      Role: "ADMIN" | "TEAM_LEADER" | "VIEWER"
+      Tier: "FREE" | "BETA" | "STARTER" | "PROFESSIONAL" | "ENTERPRISE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -634,7 +1810,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals["public"]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
@@ -751,6 +1927,52 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ActivityType: ["PV", "NPV"],
+      AppProduct: ["VSM_BUILDER", "MES"],
+      AttendanceSource: ["PIN", "RFID", "BADGE", "APP", "MANUAL", "API"],
+      EntitlementStatus: ["REQUESTED", "ACTIVE", "REVOKED"],
+      EscalationImpact: ["MINOR", "MAJOR", "CRITICAL"],
+      EscalationStatus: ["OPEN", "ACKNOWLEDGED", "RESOLVED"],
+      EscalationTier: ["LINIE", "WERK"],
+      LossCategory: [
+        "MACHINE",
+        "MATERIAL",
+        "PERSONNEL",
+        "QUALITY",
+        "CHANGEOVER",
+        "PLANNED",
+        "OTHER",
+      ],
+      LossEntryCategory: [
+        "AVAILABILITY",
+        "PERFORMANCE",
+        "QUALITY",
+        "OPERATOR_ACTIVITY",
+        "DVC_EXTERN",
+        "NON_QUALITY",
+        "UNCERTAINTIES",
+        "NPV_SUPPORT",
+      ],
+      LossType: [
+        "AVAILABILITY_BREAKDOWN",
+        "SETUP_ADJUSTMENT",
+        "MINOR_STOP",
+        "REDUCED_SPEED",
+        "DEFECT",
+        "STARTUP_LOSS",
+      ],
+      MachineStatus: ["RUNNING", "SLOW", "STOPPED", "MAINTENANCE", "UNKNOWN"],
+      MachineType: ["AUTOMATED", "MANUAL", "SEMI_AUTO", "WAREHOUSE"],
+      PersonnelCostCat: [
+        "DIRECT_VALUE_COST",
+        "INDIRECT_VALUE_COST",
+        "MINIMUM_BASE_COST",
+      ],
+      QdipPillar: ["SAFETY", "QUALITY", "DELIVERY", "EFFICIENCY", "COST"],
+      QueueStatus: ["PENDING", "IN_PROGRESS", "DONE", "BLOCKED", "CANCELLED"],
+      Role: ["ADMIN", "TEAM_LEADER", "VIEWER"],
+      Tier: ["FREE", "BETA", "STARTER", "PROFESSIONAL", "ENTERPRISE"],
+    },
   },
 } as const
