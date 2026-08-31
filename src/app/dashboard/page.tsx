@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { signOut, createProject, createExampleProject, switchOrg } from './actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
+import VsmSketch from '@/components/marketing/VsmSketch'
 
 export default async function DashboardPage({
   searchParams,
@@ -111,21 +112,51 @@ export default async function DashboardPage({
             </button>
           </form>
 
-          <form action={createExampleProject}>
-            <button
-              type="submit"
-              className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-            >
-              ✨ Beispiel-VSM laden
-            </button>
-          </form>
+          {/* Solange die Liste leer ist, traegt der Leerzustand darunter diese
+              Handlung als Primaerknopf. Zweimal dasselbe Angebot auf einem
+              ansonsten leeren Bildschirm laesst den Nutzer ueberlegen, ob die
+              beiden Knoepfe Verschiedenes tun. */}
+          {projects && projects.length > 0 && (
+            <form action={createExampleProject}>
+              <button
+                type="submit"
+                className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                Beispiel-VSM laden
+              </button>
+            </form>
+          )}
         </div>
 
         <div className="mt-8">
           {!projects || projects.length === 0 ? (
-            <div className="rounded-surface border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500">
-              Noch keine VSM-Projekte. Leg oben eins an, oder lade das Beispiel-VSM, um die
-              Funktionen auszuprobieren.
+            <div className="rounded-surface border border-zinc-200 bg-white p-6 sm:p-8">
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+                    Mit dem Beispiel-VSM anfangen
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                    Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen.
+                    Ändere eine Zykluszeit und sieh zu, wie Durchlaufzeit und Taktzeit
+                    reagieren.
+                  </p>
+                  <form action={createExampleProject} className="mt-5">
+                    <button
+                      type="submit"
+                      className="rounded-control bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+                    >
+                      Beispiel-VSM laden
+                    </button>
+                  </form>
+                  <p className="mt-3 text-xs text-zinc-600">
+                    Jederzeit löschbar. Oder leg oben ein eigenes Projekt an.
+                  </p>
+                </div>
+                <div className="rounded-control border border-zinc-200 p-4">
+                  <VsmSketch />
+                </div>
+              </div>
             </div>
           ) : (
             <ul className="divide-y divide-zinc-200 rounded-surface border border-zinc-200">
