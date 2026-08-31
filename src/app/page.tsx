@@ -75,6 +75,12 @@ const WORKSHOP: [string, string][] = [
   ],
 ]
 
+const HOSTING: [string, string, string][] = [
+  ['Datenbank', 'Supabase', 'EU, Region Frankreich'],
+  ['Anwendung', 'Vercel', 'EU, Region Frankreich'],
+  ['Weitere Empfänger', 'Keine', 'Kein Analyse- oder Tracking-Dienst eingebunden'],
+]
+
 const COMPARISON: [string, string, string][] = [
   ['Durchlaufzeit', '18,4 Tage', '9,1 Tage'],
   ['Wertschöpfungsanteil', '0,41 %', '0,83 %'],
@@ -265,6 +271,38 @@ export default function Home() {
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* Die Frage, an der eine Beschaffung in der deutschen Industrie
+          regelmaessig scheitert. Hier stehen ausschliesslich bestaetigte
+          Angaben: Region, die beiden Anbieter, keine weiteren Empfaenger.
+          Zum Auftragsverarbeitungsvertrag steht bewusst nichts, solange
+          keiner vorliegt — eine Andeutung waere schlimmer als Schweigen. */}
+      <section className="border-t border-zinc-200 bg-zinc-50">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
+                Wo die Daten liegen
+              </h2>
+              <p className="mt-3 text-zinc-700">
+                Ein Wertstrom beschreibt Ihre Fertigung: Taktzeiten, Bestände, Engpässe. Wer
+                damit arbeitet, will vorher wissen, wo das gespeichert wird.
+              </p>
+            </div>
+            <dl className="grid gap-px overflow-hidden rounded-surface border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
+              {HOSTING.map(([role, provider, note]) => (
+                <div key={role} className="bg-white px-5 py-5">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-600">
+                    {role}
+                  </dt>
+                  <dd className="mt-1.5 font-medium text-zinc-950">{provider}</dd>
+                  <dd className="mt-1 text-sm leading-relaxed text-zinc-600">{note}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
       </section>
 
       <section className="border-t border-zinc-200">
