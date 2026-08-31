@@ -40,10 +40,10 @@ export default function BenchmarkPanel({ processes, references }: Props) {
 
   return (
     <div className="mx-auto mt-6 max-w-6xl px-6">
-      <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="rounded-surface border border-zinc-200 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Branchenvergleich</h2>
-          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+          <h2 className="text-sm font-semibold text-zinc-950">Branchenvergleich</h2>
+          <span className="rounded-control bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">
             Beispieldaten — keine echten Branchenwerte
           </span>
         </div>
@@ -56,7 +56,7 @@ export default function BenchmarkPanel({ processes, references }: Props) {
               const nextSizes = [...new Set(references.filter((r) => r.industry === e.target.value).map((r) => r.company_size))]
               setCompanySize(nextSizes[0] ?? '')
             }}
-            className="rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           >
             {industries.map((i) => (
               <option key={i} value={i}>
@@ -67,7 +67,7 @@ export default function BenchmarkPanel({ processes, references }: Props) {
           <select
             value={companySize}
             onChange={(e) => setCompanySize(e.target.value)}
-            className="rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           >
             {sizes.map((s) => (
               <option key={s} value={s}>
@@ -107,7 +107,7 @@ function BenchmarkRow({
 }) {
   if (value === null || !reference || reference.p25 === null || reference.median === null || reference.p75 === null) {
     return (
-      <div className="rounded-xl border border-dashed border-zinc-300 p-3 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-500">
+      <div className="rounded-surface border border-dashed border-zinc-300 p-3 text-sm text-zinc-500">
         {label}: keine Daten für diese Auswahl.
       </div>
     )
@@ -120,17 +120,17 @@ function BenchmarkRow({
   )
 
   return (
-    <div className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
+    <div className="rounded-surface border border-zinc-200 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
+        <span className="text-xs text-zinc-500">{label}</span>
         <TierChip tier={tier} />
       </div>
-      <div className="mt-1 text-lg font-semibold text-zinc-950 dark:text-zinc-50">
+      <div className="mt-1 text-lg font-semibold text-zinc-950">
         {value.toFixed(1)} {unit}
       </div>
-      <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+      <div className="mt-1 text-xs text-zinc-500">
         P25 {reference.p25} · Median {reference.median} · P75 {reference.p75} {unit}
-        <span className="ml-1 text-zinc-400 dark:text-zinc-500">
+        <span className="ml-1 text-zinc-600">
           ({higherIsBetter ? "höher ist besser" : "kleiner ist besser"})
         </span>
       </div>

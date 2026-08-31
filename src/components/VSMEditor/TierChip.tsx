@@ -13,15 +13,15 @@ const TIER_LABEL: Record<BenchmarkTier, string> = {
 }
 
 const TIER_CLASS: Record<BenchmarkTier, string> = {
-  top: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
-  good: 'bg-lime-50 text-lime-700 dark:bg-lime-950 dark:text-lime-300',
-  average: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  below: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
+  top: 'bg-green-50 text-green-700',
+  good: 'bg-lime-50 text-lime-700',
+  average: 'bg-amber-50 text-amber-700',
+  below: 'bg-red-50 text-red-700',
 }
 
 export function TierChip({ tier }: { tier: BenchmarkTier }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TIER_CLASS[tier]}`}>
+    <span className={`rounded-control px-2 py-0.5 text-xs font-medium ${TIER_CLASS[tier]}`}>
       {TIER_LABEL[tier]}
     </span>
   )

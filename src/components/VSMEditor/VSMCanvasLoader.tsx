@@ -10,7 +10,7 @@ import type VSMCanvasType from './VSMCanvas'
 const VSMCanvas = dynamic(() => import('./VSMCanvas'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[500px] items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
+    <div className="flex h-[500px] items-center justify-center text-sm text-zinc-500">
       Canvas wird geladen…
     </div>
   ),

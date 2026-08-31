@@ -12,14 +12,14 @@ export default async function LoginPage({
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-black/10 bg-white p-8">
+      <div className="w-full max-w-sm rounded-surface border border-black/10 bg-white p-8">
         <h1 className="text-2xl font-semibold text-zinc-950">Anmelden</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Willkommen zurück bei VSM Builder.
         </p>
 
         {error && (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
@@ -48,13 +48,13 @@ export default async function LoginPage({
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-control border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
           <PasswordField autoComplete="current-password" />
           <button
             formAction={login}
-            className="mt-2 rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+            className="mt-2 rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
           >
             Anmelden
           </button>

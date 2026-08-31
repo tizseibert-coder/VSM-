@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Zeitleiter: die Rechteckwelle aus Bearbeitungs- und Wartezeit ist das
+       Element, an dem jeder Lean-Praktiker ein Wertstromdiagramm auf einen
+       Blick erkennt. Tinte #18181b wie die Strichzeichnung auf dem Canvas. -->
+  <rect width="32" height="32" rx="7" fill="#18181b"/>
+  <path d="M5 21h5v-10h6v10h6v-10h5" fill="none" stroke="#ffffff"
+        stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

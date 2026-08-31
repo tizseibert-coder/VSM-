@@ -49,34 +49,34 @@ export default async function EditorPage({
   const { data: benchmarkReferences } = await supabase.from('benchmark_reference').select('*')
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50">
       {/* [Live-Test 2026-08-16, Smartphone] Ohne flex-wrap standen Titel und
           die beiden Aktions-Links zwingend in einer Zeile — auf 375 px lief
           "Szenarien vergleichen" aus dem Bild. Umbruch statt Verkleinern:
           die Beschriftungen sind Fachbegriffe, abgekürzt versteht sie niemand. */}
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 dark:border-zinc-800 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-6">
         <div>
-          <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline dark:text-zinc-500">
+          <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
             ← Dashboard
           </Link>
-          <span className="mx-1.5 text-xs text-zinc-300 dark:text-zinc-700">·</span>
-          <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          <span className="mx-1.5 text-xs text-zinc-600">·</span>
+          <span className="text-xs font-semibold uppercase tracking-widest text-brand-600">
             VSM Builder
           </span>
-          <h1 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">{project.name}</h1>
+          <h1 className="text-lg font-semibold text-zinc-950">{project.name}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {activeScenario && (
             <Link
               href={`/editor/${projectId}/future-state?scenario=${activeScenario.id}`}
-              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
             >
               Future-State-Wizard
             </Link>
           )}
           <Link
             href={`/editor/${projectId}/compare`}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
           >
             Szenarien vergleichen
           </Link>
@@ -86,7 +86,7 @@ export default async function EditorPage({
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
         <ScenarioSwitcher projectId={projectId} scenarios={scenarios ?? []} activeScenarioId={scenarioId} />
         {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}

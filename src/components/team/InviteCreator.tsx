@@ -19,11 +19,11 @@ export default function InviteCreator() {
     <div>
       <form action={formAction} className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Rolle</span>
+          <span className="text-xs font-medium text-zinc-700">Rolle</span>
           <select
             name="role"
             defaultValue="editor"
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="rounded-control border border-zinc-300 px-3 py-2 text-sm"
           >
             <option value="editor">Bearbeiten (editor)</option>
             <option value="viewer">Nur ansehen (viewer)</option>
@@ -32,21 +32,21 @@ export default function InviteCreator() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+          className="rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {pending ? 'Erstelle…' : 'Einladungslink erstellen'}
         </button>
       </form>
 
       {result?.ok === false && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
           {result.error}
         </p>
       )}
 
       {result?.ok === true && (
-        <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+        <div className="mt-4 rounded-control border border-zinc-200 bg-zinc-50 p-3">
+          <p className="text-xs text-zinc-600">
             Link erstellt. Er ist <strong>7 Tage</strong> gültig und lässt sich{' '}
             <strong>einmal</strong> einlösen. Kopiere ihn jetzt — er wird nicht noch einmal
             angezeigt.
@@ -58,7 +58,7 @@ export default function InviteCreator() {
               readOnly
               value={result.url}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-950"
+              className="min-w-0 flex-1 rounded-control border border-zinc-300 bg-white px-3 py-2 font-mono text-xs"
             />
             <button
               type="button"
@@ -73,7 +73,7 @@ export default function InviteCreator() {
                   setCopied(false)
                 }
               }}
-              className="shrink-0 rounded-full border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="shrink-0 rounded-control border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
             >
               {copied ? 'Kopiert' : 'Kopieren'}
             </button>

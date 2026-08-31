@@ -12,15 +12,15 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const STATUS_CLASS: Record<string, string> = {
-  answered: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  open: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  not_applicable: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-500',
+  answered: 'bg-emerald-50 text-emerald-700',
+  open: 'bg-amber-50 text-amber-700',
+  not_applicable: 'bg-zinc-100 text-zinc-500',
 }
 
 const FIELD_CLASS =
-  'mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900'
+  'mt-1 w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm'
 const SUBMIT_CLASS =
-  'rounded-full bg-zinc-950 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200'
+  'rounded-control bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700'
 
 // Einzelne Frage des Future-State-Wizards. Zeigt beim Öffnen immer den
 // aktuell gesetzten Wert als Ausgangszustand (nie ein leeres Formular) —
@@ -93,36 +93,36 @@ export default async function FutureStateQuestionPage({
   const pacemaker = allProcesses.find((p) => p.is_pacemaker)
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-6 py-10 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-2xl">
         <Link
           href={`/editor/${projectId}/future-state${scenarioQuery}`}
-          className="text-xs text-zinc-500 hover:underline dark:text-zinc-500"
+          className="text-xs text-zinc-500 hover:underline"
         >
           ← Alle 8 Fragen
         </Link>
 
         <div className="mt-2 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Frage {qid} von 8</p>
-            <h1 className="mt-0.5 text-xl font-semibold text-zinc-950 dark:text-zinc-50">{current.question}</h1>
+            <p className="text-xs font-medium text-zinc-500">Frage {qid} von 8</p>
+            <h1 className="mt-0.5 text-xl font-semibold text-zinc-950">{current.question}</h1>
           </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[current.status]}`}>
+          <span className={`shrink-0 rounded-control px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[current.status]}`}>
             {STATUS_LABEL[current.status]}
           </span>
         </div>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{current.summary}</p>
+        <p className="mt-2 text-sm text-zinc-600">{current.summary}</p>
 
         {saved === '1' && (
-          <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+          <p className="mt-4 rounded-control bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             ✓ Gespeichert.
           </p>
         )}
 
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mt-6 rounded-surface border border-zinc-200 bg-white p-4">
           {qid === 1 && (
             <form action={submitTaktTime.bind(null, projectId, scenario.id)} className="flex flex-col gap-3">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="text-xs font-medium text-zinc-600">
                 <TermTooltip term="exitRate">Jahresbedarf (Stück/Jahr)</TermTooltip>
                 <input
                   name="annualThroughput"
@@ -132,7 +132,7 @@ export default async function FutureStateQuestionPage({
                   className={FIELD_CLASS}
                 />
               </label>
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="text-xs font-medium text-zinc-600">
                 <TermTooltip term="availableMinutesPerDay">Verfügbare Produktionszeit (min/Tag)</TermTooltip>
                 <input
                   name="availableMinutesPerDay"
@@ -156,10 +156,10 @@ export default async function FutureStateQuestionPage({
                   action={submitBuffer.bind(null, projectId, scenario.id, 2, terminal?.from_process_id ?? null, null)}
                   className="flex flex-col gap-3"
                 >
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="text-xs text-zinc-500">
                     Übergabe an den Kunden{terminal?.from_process_id ? ` (nach ${boundaryLabel(terminal.from_process_id, '?')})` : ''}.
                   </p>
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  <label className="text-xs font-medium text-zinc-600">
                     Art des Fertigwarenbestands
                     <select name="bufferType" defaultValue={terminal?.buffer_type ?? 'standard'} className={FIELD_CLASS}>
                       <option value="standard">Direktversand (kein Bestand)</option>
@@ -167,7 +167,7 @@ export default async function FutureStateQuestionPage({
                       <option value="safety_stock">Sicherheitsbestand</option>
                     </select>
                   </label>
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  <label className="text-xs font-medium text-zinc-600">
                     <TermTooltip term="wip">Bestand (Stück)</TermTooltip>
                     <input
                       name="wipCount"
@@ -189,14 +189,14 @@ export default async function FutureStateQuestionPage({
               const internal = allBuffers.filter((b) => b.from_process_id !== null && b.to_process_id !== null)
               if (internal.length === 0) {
                 return (
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <p className="text-sm text-zinc-500">
                     Noch keine internen Verbindungen zwischen Prozessen vorhanden.
                   </p>
                 )
               }
               return (
                 <div className="flex flex-col gap-3">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="text-xs text-zinc-500">
                     Nur die Ja/Nein-Entscheidung „läuft diese Verbindung ohne Zwischenpuffer direkt weiter?&rdquo; —
                     für Supermarkt/FIFO/Push bei den verbleibenden Verbindungen siehe Frage 4.
                   </p>
@@ -204,13 +204,13 @@ export default async function FutureStateQuestionPage({
                     <form
                       key={b.id}
                       action={submitBuffer.bind(null, projectId, scenario.id, 3, b.from_process_id, b.to_process_id)}
-                      className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-100 p-3 dark:border-zinc-900"
+                      className="flex flex-wrap items-center gap-3 rounded-surface border border-zinc-100 p-3"
                     >
                       <input type="hidden" name="wipCount" value={b.wip_count} />
-                      <p className="mr-auto text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      <p className="mr-auto text-xs font-medium text-zinc-600">
                         {boundaryLabel(b.from_process_id, 'Lieferant')} → {boundaryLabel(b.to_process_id, 'Kunde')}
                       </p>
-                      <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                      <label className="flex items-center gap-2 text-sm text-zinc-700">
                         <input
                           type="checkbox"
                           name="bufferType"
@@ -240,33 +240,33 @@ export default async function FutureStateQuestionPage({
               ).length
               if (relevant.length === 0 && continuousCount === 0) {
                 return (
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <p className="text-sm text-zinc-500">
                     Noch keine internen Verbindungen zwischen Prozessen vorhanden.
                   </p>
                 )
               }
               if (relevant.length === 0) {
                 return (
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <p className="text-sm text-zinc-500">
                     Alle internen Verbindungen laufen bereits als Continuous Flow (Frage 3) — nichts mehr zu steuern.
                   </p>
                 )
               }
               return (
                 <div className="flex flex-col gap-3">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="text-xs text-zinc-500">
                     Push oder Pull für die Verbindungen, die nicht bereits Continuous Flow sind (Frage 3).
                   </p>
                   {relevant.map((b) => (
                     <form
                       key={b.id}
                       action={submitBuffer.bind(null, projectId, scenario.id, 4, b.from_process_id, b.to_process_id)}
-                      className="flex flex-wrap items-end gap-2 rounded-xl border border-zinc-100 p-3 dark:border-zinc-900"
+                      className="flex flex-wrap items-end gap-2 rounded-surface border border-zinc-100 p-3"
                     >
-                      <p className="mr-auto w-full text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      <p className="mr-auto w-full text-xs font-medium text-zinc-600">
                         {boundaryLabel(b.from_process_id, 'Lieferant')} → {boundaryLabel(b.to_process_id, 'Kunde')}
                       </p>
-                      <label className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <label className="text-xs text-zinc-500">
                         <TermTooltip term="bufferType">Typ</TermTooltip>
                         <select name="bufferType" defaultValue={b.buffer_type ?? 'standard'} className={FIELD_CLASS}>
                           <option value="standard">Standard (Push)</option>
@@ -274,7 +274,7 @@ export default async function FutureStateQuestionPage({
                           <option value="fifo">FIFO-Bahn (Pull)</option>
                         </select>
                       </label>
-                      <label className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <label className="text-xs text-zinc-500">
                         <TermTooltip term="wip">WIP</TermTooltip>
                         <input name="wipCount" type="number" min={0} defaultValue={b.wip_count} className={FIELD_CLASS} />
                       </label>
@@ -289,10 +289,10 @@ export default async function FutureStateQuestionPage({
 
           {qid === 5 &&
             (allProcesses.length === 0 ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Noch keine Prozesse angelegt.</p>
+              <p className="text-sm text-zinc-500">Noch keine Prozesse angelegt.</p>
             ) : (
               <form action={submitPacemaker.bind(null, projectId, scenario.id)} className="flex flex-col gap-3">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                <label className="text-xs font-medium text-zinc-600">
                   <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip>
                   <select name="processId" defaultValue={pacemaker?.id ?? ''} className={FIELD_CLASS}>
                     <option value="" disabled>
@@ -313,7 +313,7 @@ export default async function FutureStateQuestionPage({
 
           {qid === 6 &&
             (!pacemaker ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-sm text-zinc-500">
                 Erst Frage 5 (Schrittmacher) beantworten — Heijunka hängt methodisch am Schrittmacher.
               </p>
             ) : (
@@ -321,8 +321,8 @@ export default async function FutureStateQuestionPage({
                 action={submitHeijunka.bind(null, projectId, scenario.id, pacemaker.id)}
                 className="flex flex-col gap-3"
               >
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Schrittmacher: {pacemaker.name}</p>
-                <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                <p className="text-xs text-zinc-500">Schrittmacher: {pacemaker.name}</p>
+                <label className="flex items-center gap-2 text-sm text-zinc-700">
                   <input type="checkbox" name="hasHeijunka" defaultChecked={pacemaker.has_heijunka} />
                   <TermTooltip term="heijunka">Heijunka-Box aktiv</TermTooltip>
                 </label>
@@ -334,7 +334,7 @@ export default async function FutureStateQuestionPage({
 
           {qid === 7 && (
             <form action={submitPitch.bind(null, projectId, scenario.id)} className="flex flex-col gap-3">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="text-xs font-medium text-zinc-600">
                 <TermTooltip term="pitch">Pitch (min)</TermTooltip>
                 <input
                   name="pitchMinutes"
@@ -353,16 +353,16 @@ export default async function FutureStateQuestionPage({
 
           {qid === 8 &&
             (allProcesses.length === 0 ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Noch keine Prozesse angelegt.</p>
+              <p className="text-sm text-zinc-500">Noch keine Prozesse angelegt.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {allProcesses.map((p) => (
                   <form
                     key={p.id}
                     action={submitKaizenNote.bind(null, projectId, scenario.id, p.id)}
-                    className="flex flex-col gap-2 rounded-xl border border-zinc-100 p-3 dark:border-zinc-900"
+                    className="flex flex-col gap-2 rounded-surface border border-zinc-100 p-3"
                   >
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    <label className="text-xs font-medium text-zinc-600">
                       <TermTooltip term="kaizenBlitz">{p.name}</TermTooltip>
                       <textarea
                         name="kaizenNote"
@@ -385,7 +385,7 @@ export default async function FutureStateQuestionPage({
           {qid > 1 ? (
             <Link
               href={`/editor/${projectId}/future-state/${qid - 1}${scenarioQuery}`}
-              className="text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+              className="text-sm text-zinc-600 hover:underline"
             >
               ← Frage {qid - 1}
             </Link>
@@ -395,14 +395,14 @@ export default async function FutureStateQuestionPage({
           {qid < 8 ? (
             <Link
               href={`/editor/${projectId}/future-state/${qid + 1}${scenarioQuery}`}
-              className="text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+              className="text-sm text-zinc-600 hover:underline"
             >
               Frage {qid + 1} →
             </Link>
           ) : (
             <Link
               href={`/editor/${projectId}/future-state${scenarioQuery}`}
-              className="text-sm font-medium text-zinc-950 hover:underline dark:text-zinc-50"
+              className="text-sm font-medium text-zinc-950 hover:underline"
             >
               Zur Übersicht →
             </Link>

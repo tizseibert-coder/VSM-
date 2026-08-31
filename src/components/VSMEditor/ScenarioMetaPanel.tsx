@@ -17,21 +17,21 @@ export default function ScenarioMetaPanel({
   scenario: Scenario
 }) {
   return (
-    <div className="mt-3 flex flex-wrap items-end gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+    <div className="mt-3 flex flex-wrap items-end gap-3 rounded-surface border border-zinc-200 p-4">
       <form action={updateScenarioMeta.bind(null, projectId, scenario.id)} className="flex flex-wrap items-end gap-3">
         <div>
-          <label htmlFor="sm-name" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="sm-name" className="block text-xs font-medium text-zinc-600">
             Name
           </label>
           <input
             id="sm-name"
             name="name"
             defaultValue={scenario.name ?? ''}
-            className="mt-1 w-48 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-48 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="sm-investment" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="sm-investment" className="block text-xs font-medium text-zinc-600">
             Investition (CHF)
           </label>
           <input
@@ -40,11 +40,11 @@ export default function ScenarioMetaPanel({
             type="number"
             min={0}
             defaultValue={scenario.investment_chf ?? ''}
-            className="mt-1 w-32 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="sm-payback" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="sm-payback" className="block text-xs font-medium text-zinc-600">
             Payback (Monate)
           </label>
           <input
@@ -54,18 +54,18 @@ export default function ScenarioMetaPanel({
             min={0}
             step="0.1"
             defaultValue={scenario.payback_months ?? ''}
-            className="mt-1 w-28 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-28 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </div>
         <div>
-          <label htmlFor="sm-risk" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="sm-risk" className="block text-xs font-medium text-zinc-600">
             Risiko
           </label>
           <select
             id="sm-risk"
             name="riskLevel"
             defaultValue={scenario.risk_level ?? ''}
-            className="mt-1 w-32 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           >
             <option value="">–</option>
             <option value="low">Niedrig</option>
@@ -75,7 +75,7 @@ export default function ScenarioMetaPanel({
         </div>
         <button
           type="submit"
-          className="rounded-full bg-zinc-950 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+          className="rounded-control bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
         >
           Speichern
         </button>

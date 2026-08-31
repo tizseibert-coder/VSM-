@@ -19,10 +19,10 @@ export default function ScenarioSwitcher({
   activeScenarioId: string | null
 }) {
   const tabClass = (isActive: boolean) =>
-    `rounded-full px-4 py-1.5 text-sm font-medium ${
+    `rounded-control px-4 py-1.5 text-sm font-medium ${
       isActive
-        ? 'bg-zinc-950 text-white dark:bg-zinc-50 dark:text-zinc-950'
-        : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900'
+        ? 'bg-brand-600 text-white'
+        : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100'
     }`
 
   return (

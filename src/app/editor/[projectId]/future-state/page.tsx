@@ -12,9 +12,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_CLASS: Record<string, string> = {
   answered:
-    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  open: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  not_applicable: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-500',
+    'bg-emerald-50 text-emerald-700',
+  open: 'bg-amber-50 text-amber-700',
+  not_applicable: 'bg-zinc-100 text-zinc-500',
 }
 
 // Übersichtsseite des Future-State-Wizards (docs/plan-future-state-wizard.md).
@@ -48,13 +48,13 @@ export default async function FutureStateOverviewPage({
   // Szenario gibt es nichts, worauf der Wizard schreiben könnte.
   if (!activeScenario) {
     return (
-      <div className="min-h-screen bg-zinc-50 px-6 py-10 dark:bg-black">
+      <div className="min-h-screen bg-zinc-50 px-6 py-10">
         <div className="mx-auto max-w-2xl">
-          <Link href={`/editor/${projectId}`} className="text-xs text-zinc-500 hover:underline dark:text-zinc-500">
+          <Link href={`/editor/${projectId}`} className="text-xs text-zinc-500 hover:underline">
             ← Zurück zum Editor
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">Future-State-Wizard</h1>
-          <p className="mt-4 rounded-lg bg-zinc-100 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+          <h1 className="mt-1 text-2xl font-semibold text-zinc-950">Future-State-Wizard</h1>
+          <p className="mt-4 rounded-control bg-zinc-100 px-3 py-3 text-sm text-zinc-600">
             Der Future-State-Wizard führt durch die 8 Fragen für ein konkretes Szenario. Wähle im Editor ein
             bestehendes Szenario, oder lege zuerst eins an.
           </p>
@@ -107,18 +107,18 @@ export default async function FutureStateOverviewPage({
   const answeredCount = questions.filter((q) => q.status === 'answered').length
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-6 py-10 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-2xl">
         <Link
           href={`/editor/${projectId}?scenario=${activeScenario.id}`}
-          className="text-xs text-zinc-500 hover:underline dark:text-zinc-500"
+          className="text-xs text-zinc-500 hover:underline"
         >
           ← Zurück zum Editor
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">
+        <h1 className="mt-1 text-2xl font-semibold text-zinc-950">
           Future-State-Wizard — {activeScenario.type} · {activeScenario.name}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 text-sm text-zinc-500">
           {answeredCount} von 8 Fragen beantwortet. Kein fester Ablauf — springe direkt zu jeder Frage, auch mehrfach.
         </p>
 
@@ -127,15 +127,15 @@ export default async function FutureStateOverviewPage({
             <li key={q.id}>
               <Link
                 href={`/editor/${projectId}/future-state/${q.id}?scenario=${activeScenario.id}`}
-                className="flex items-start justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
+                className="flex items-start justify-between gap-4 rounded-surface border border-zinc-200 bg-white p-4 hover:border-zinc-400"
               >
                 <div>
-                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Frage {q.id}</p>
-                  <p className="mt-0.5 font-medium text-zinc-950 dark:text-zinc-50">{q.question}</p>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{q.summary}</p>
+                  <p className="text-xs font-medium text-zinc-500">Frage {q.id}</p>
+                  <p className="mt-0.5 font-medium text-zinc-950">{q.question}</p>
+                  <p className="mt-1 text-sm text-zinc-600">{q.summary}</p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[q.status]}`}
+                  className={`shrink-0 rounded-control px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[q.status]}`}
                 >
                   {STATUS_LABEL[q.status]}
                 </span>
@@ -147,7 +147,7 @@ export default async function FutureStateOverviewPage({
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href={`/editor/${projectId}/compare`}
-            className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
           >
             Zum Szenario-Vergleich →
           </Link>

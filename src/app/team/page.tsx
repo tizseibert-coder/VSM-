@@ -15,11 +15,11 @@ function inviteStatus(inv: {
   accepted_at: string | null
   expires_at: string
 }): { label: string; tone: string } {
-  if (inv.accepted_at) return { label: 'Eingelöst', tone: 'text-zinc-500 dark:text-zinc-400' }
-  if (inv.revoked_at) return { label: 'Zurückgezogen', tone: 'text-zinc-500 dark:text-zinc-400' }
+  if (inv.accepted_at) return { label: 'Eingelöst', tone: 'text-zinc-500' }
+  if (inv.revoked_at) return { label: 'Zurückgezogen', tone: 'text-zinc-500' }
   if (new Date(inv.expires_at) <= new Date())
-    return { label: 'Abgelaufen', tone: 'text-amber-700 dark:text-amber-400' }
-  return { label: 'Offen', tone: 'text-green-700 dark:text-green-400' }
+    return { label: 'Abgelaufen', tone: 'text-amber-700' }
+  return { label: 'Offen', tone: 'text-green-700' }
 }
 
 export default async function TeamPage({
@@ -35,12 +35,12 @@ export default async function TeamPage({
   const orgResult = await getActiveOrg()
   if ('error' in orgResult) {
     return (
-      <div className="min-h-screen bg-zinc-50 px-6 py-10 dark:bg-black">
+      <div className="min-h-screen bg-zinc-50 px-6 py-10">
         <div className="mx-auto max-w-3xl">
           <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
             ← Dashboard
           </Link>
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {orgResult.error}
           </p>
         </div>
@@ -68,37 +68,37 @@ export default async function TeamPage({
     : { data: null }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-6 py-10 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
-        <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline dark:text-zinc-500">
+        <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
           ← Dashboard
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">Team</h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <h1 className="mt-1 text-2xl font-semibold text-zinc-950">Team</h1>
+        <p className="mt-1 text-sm text-zinc-600">
           {active.organizationName} · deine Rolle: {ROLE_LABEL[active.role] ?? active.role}
         </p>
 
         {error && (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
 
         <section className="mt-8">
-          <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
+          <h2 className="text-base font-semibold text-zinc-950">
             Mitglieder ({members?.length ?? 0})
           </h2>
           {/* E-Mail-Adressen fehlen bewusst: auth.users ist ueber PostgREST
               nicht lesbar. Sie zu zeigen braucht eine gespiegelte
               profiles-Tabelle — bis dahin lieber nur die Rolle als ein
               erfundener Platzhaltername. */}
-          <ul className="mt-3 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+          <ul className="mt-3 divide-y divide-zinc-200 rounded-surface border border-zinc-200">
             {(members ?? []).map((m) => (
               <li key={m.id} className="flex items-center justify-between px-5 py-3">
-                <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                <span className="text-sm text-zinc-800">
                   {m.user_id === myUserId ? 'Du' : `Mitglied ${m.user_id.slice(0, 8)}`}
                 </span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="text-xs text-zinc-500">
                   {ROLE_LABEL[m.role] ?? m.role}
                 </span>
               </li>
@@ -109,10 +109,10 @@ export default async function TeamPage({
         {isOwner ? (
           <>
             <section className="mt-10">
-              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
+              <h2 className="text-base font-semibold text-zinc-950">
                 Kollegen einladen
               </h2>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-600">
                 Erzeuge einen Link und schick ihn selbst weiter — per Mail, Teams oder wie es dir
                 passt. Wer ihn öffnet und sich anmeldet, wird Mitglied von{' '}
                 {active.organizationName} und sieht alle VSMs dieser Firma.
@@ -123,26 +123,26 @@ export default async function TeamPage({
             </section>
 
             <section className="mt-10">
-              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
+              <h2 className="text-base font-semibold text-zinc-950">
                 Einladungen ({invitations?.length ?? 0})
               </h2>
               {!invitations || invitations.length === 0 ? (
-                <p className="mt-3 rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+                <p className="mt-3 rounded-surface border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500">
                   Noch keine Einladung erstellt.
                 </p>
               ) : (
-                <ul className="mt-3 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+                <ul className="mt-3 divide-y divide-zinc-200 rounded-surface border border-zinc-200">
                   {invitations.map((inv) => {
                     const status = inviteStatus(inv)
                     const canRevoke = !inv.accepted_at && !inv.revoked_at
                     return (
                       <li key={inv.id} className="flex items-center justify-between gap-3 px-5 py-3">
                         <div className="min-w-0">
-                          <div className="text-sm text-zinc-800 dark:text-zinc-200">
+                          <div className="text-sm text-zinc-800">
                             {ROLE_LABEL[inv.role] ?? inv.role} ·{' '}
                             <span className={status.tone}>{status.label}</span>
                           </div>
-                          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                          <div className="text-xs text-zinc-500">
                             Erstellt {new Date(inv.created_at).toLocaleDateString('de-CH')} · gültig
                             bis {new Date(inv.expires_at).toLocaleDateString('de-CH')}
                           </div>
@@ -151,7 +151,7 @@ export default async function TeamPage({
                           <form action={revokeInvite.bind(null, inv.id)} className="shrink-0">
                             <button
                               type="submit"
-                              className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-red-900 dark:hover:bg-red-950 dark:hover:text-red-400"
+                              className="rounded-control border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                             >
                               Zurückziehen
                             </button>
@@ -165,7 +165,7 @@ export default async function TeamPage({
             </section>
           </>
         ) : (
-          <p className="mt-10 rounded-2xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-500 dark:border-zinc-700">
+          <p className="mt-10 rounded-surface border border-dashed border-zinc-300 p-6 text-sm text-zinc-500">
             Nur Inhaber können Mitglieder einladen oder entfernen.
           </p>
         )}

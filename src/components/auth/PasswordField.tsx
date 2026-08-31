@@ -27,7 +27,7 @@ export function PasswordField({
 
   return (
     <div>
-      <label htmlFor="password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+      <label htmlFor="password" className="text-sm font-medium text-zinc-700">
         {label}
       </label>
       <div className="relative mt-1">
@@ -43,7 +43,7 @@ export function PasswordField({
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          className="w-full rounded-lg border border-zinc-300 py-2 pl-3 pr-11 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="w-full rounded-control border border-zinc-300 py-2 pl-3 pr-11 text-sm"
         />
         <button
           // type="button" ist zwingend — ein Button ohne type gilt in einem
@@ -52,7 +52,7 @@ export function PasswordField({
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? 'Passwort verbergen' : 'Passwort anzeigen'}
           aria-pressed={visible}
-          className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 hover:text-zinc-900"
         >
           {visible ? <EyeOffIcon /> : <EyeIcon />}
         </button>

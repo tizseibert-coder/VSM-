@@ -1,12 +1,31 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ComponentProps,
+  type ReactNode,
+} from 'react'
 import { useRouter } from 'next/navigation'
-import { Stage, Layer, Rect, Text, Group, Arrow, Line, RegularPolygon, Circle } from 'react-konva'
+import {
+  Stage,
+  Layer,
+  Rect,
+  Text as KonvaText,
+  Group,
+  Arrow,
+  Line,
+  RegularPolygon,
+  Circle,
+} from 'react-konva'
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
 import { BalanceChartPanel } from './BalanceChartPanel'
+import { MethodCheckPanel, type MethodFinding } from './MethodCheckPanel'
 import { TierChip } from './TierChip'
 import type { BenchmarkTier } from '@/lib/vsm/benchmark'
 import { ratePce, rateCapacityCoverage } from '@/lib/vsm/kpiRating'
@@ -55,9 +74,36 @@ type Process = Tables<'processes'>
 type Buffer = Tables<'inventory_buffers'>
 
 const INK = '#18181b' // zinc-900 — used for all VSM line-art instead of pure black
-const ACCENT = '#2563eb' // selection highlight, the one spot color allowed on the canvas
+const ACCENT = '#17786c' // brand-500 — Auswahl, die einzige Schmuckfarbe auf dem Canvas
 const BOTTLENECK = '#dc2626' // capacity-warning red — semantic, kept distinct from the accent
 const EMPTY_BUFFER = '#a1a1aa' // zinc-400 — an empty buffer slot, present but not asserting stock
+
+// Konva zeichnet auf ein <canvas> und setzt dafür `ctx.font` als fertige
+// Zeichenkette — CSS-Variablen kennt es nicht, und ohne fontFamily nimmt es
+// stillschweigend seinen eigenen Standard: Arial. Das betraf nicht nur den
+// Bildschirm, sondern auch den PDF-Export, der aus derselben Stage entsteht.
+const CANVAS_FONT_FALLBACK = 'system-ui, "Segoe UI", Roboto, sans-serif'
+
+/**
+ * Liest den von next/font erzeugten Schriftstapel aus dem Dokument. Der Name
+ * der Familie wird beim Bauen generiert (`__Geist_a1b2c3`) und steht nur im
+ * CSS — deshalb hier abgefragt statt fest verdrahtet. Serverseitig gibt es
+ * kein Dokument; dort greift der Rückfallstapel.
+ */
+function resolveCanvasFont(): string {
+  if (typeof document === 'undefined') return CANVAS_FONT_FALLBACK
+  return getComputedStyle(document.body).fontFamily || CANVAS_FONT_FALLBACK
+}
+
+/**
+ * Alle Beschriftungen auf der Zeichenfläche laufen über diesen Wrapper, damit
+ * die Schrift an einer einzigen Stelle gesetzt wird und keine Textmarke sie
+ * versehentlich auslässt. `props` steht bewusst hinter der Vorgabe: ein
+ * Aufrufer darf die Familie weiterhin überschreiben.
+ */
+function Text(props: ComponentProps<typeof KonvaText>) {
+  return <KonvaText fontFamily={resolveCanvasFont()} {...props} />
+}
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -88,6 +134,23 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
+
+  // Der Schriftstapel steht schon beim ersten Bild fest (die CSS-Variable wird
+  // beim Bauen gesetzt), die Schriftdatei selbst kann aber später eintreffen.
+  // Konva zeichnet dann einmal mit der Rückfallschrift und käme von selbst
+  // nie darauf zurück — anders als DOM-Text wird ein Canvas bei
+  // `font-display: swap` nicht neu gezeichnet. Ein Durchlauf nach
+  // `fonts.ready` erzwingt genau ein Nachzeichnen.
+  const [, setFontLoaded] = useState(false)
+  useEffect(() => {
+    let active = true
+    document.fonts?.ready.then(() => {
+      if (active) setFontLoaded(true)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
   // Phase 7b: Präsentationsmodus. Bewusst weiterhin voll editierbar (echte
   // VSM-Workshops entstehen live mit dem Team im Raum) — blendet nur
   // Nebensächliches aus, das während einer Moderation nie gebraucht wird
@@ -217,6 +280,66 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       }),
     [processes, buffers, liveAnnualThroughput, liveAvailableMinutes]
   )
+
+  // Alle Methodikbefunde an einer Stelle, damit sie eine gemeinsame Rangfolge
+  // bekommen können. Nur die Unterdeckung ist `critical`: Sie ist der einzige
+  // Befund, der eine oben angezeigte Kennzahl entwertet — bei unter 100 %
+  // wächst der Bestand unbegrenzt, damit gilt Little's Law nicht mehr und die
+  // Durchlaufzeit ist die Momentaufnahme einer wandernden Zahl. Die beiden
+  // anderen sind Darstellungsfehler: methodisch falsch, aber die Zahlen
+  // daneben stimmen.
+  const methodFindings = useMemo<MethodFinding[]>(() => {
+    const found: MethodFinding[] = []
+
+    if (kpis.capacityCoverage !== null && kpis.capacityCoverage < 1) {
+      found.push({
+        id: 'capacity-coverage',
+        severity: 'critical',
+        title: `Die Linie deckt nur ${(kpis.capacityCoverage * 100).toFixed(0)} % des Kundenbedarfs`,
+        detail: (
+          <>
+            Der Engpass lässt {kpis.exitRatePerDay?.toFixed(1)} Stk./Tag durch, gefordert sind{' '}
+            {kpis.demandRatePerDay?.toFixed(1)} Stk./Tag. Der{' '}
+            <TermTooltip term="capacityCoverage">Bestand</TermTooltip> wächst dadurch laufend an;
+            die Durchlaufzeit oben ist keine stabile Grösse, solange das so bleibt.
+          </>
+        ),
+      })
+    }
+
+    if (!pacemaker && processes.length > 0) {
+      found.push({
+        id: 'no-pacemaker',
+        severity: 'warning',
+        title: 'Kein Schrittmacher-Prozess festgelegt',
+        detail: (
+          <>
+            Die Produktionssteuerung sendet den Auftrag aktuell an alle Prozesse. Lege im
+            Prozess-Panel einen{' '}
+            <TermTooltip term="pacemaker">Schrittmacher</TermTooltip> fest, um das korrekt
+            darzustellen.
+          </>
+        ),
+      })
+    }
+
+    if (pushBeforePacemaker.length > 0) {
+      found.push({
+        id: 'push-before-pacemaker',
+        severity: 'warning',
+        title: `${pushBeforePacemaker.length}× Push vor dem Schrittmacher statt Supermarkt oder FIFO`,
+        detail: (
+          <>
+            Methodisch braucht alles vor dem{' '}
+            <TermTooltip term="pacemaker">Schrittmacher</TermTooltip> ein Pull-System (Supermarkt
+            oder FIFO) — sonst baut sich davor unkontrolliert Bestand auf.
+          </>
+        ),
+      })
+    }
+
+    return found
+  }, [kpis, pacemaker, processes.length, pushBeforePacemaker.length])
 
   // Live transparency for the "how is this actually calculated" question —
   // shown as a small formula caption under Durchlaufzeit/Taktzeit so a
@@ -488,7 +611,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         x1: from.x,
         x2: to.x,
         y: ladderHighY,
-        label: days !== null ? `${days.toFixed(1)} T` : buffer ? `${buffer.wip_count} Stk` : '0',
+        label: days !== null ? `${days.toFixed(1)} Tage` : buffer ? `${buffer.wip_count} Stk` : '0',
         kind: 'wait',
       })
 
@@ -631,13 +754,13 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <KpiTile
           label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
-          value={`${kpis.totalCycleTimeMinutes.toFixed(1)} min`}
+          value={kpis.totalCycleTimeMinutes.toFixed(1)}
+          unit="min"
         />
         <KpiTile
           label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
-          value={
-            kpis.totalLeadTimeDays !== null ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage` : '–'
-          }
+          value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
+          unit="Tage"
           formula={leadTimeFormula}
         />
         <KpiTile
@@ -645,18 +768,21 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           tier={ratePce(kpis.valueAddedRatioPercent)}
           value={
             kpis.valueAddedRatioPercent !== null
-              ? `${kpis.valueAddedRatioPercent.toFixed(2)} %`
-              : '–'
+              ? kpis.valueAddedRatioPercent.toFixed(2)
+              : KPI_EMPTY
           }
+          unit="%"
         />
         <KpiTile
           label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
-          value={kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} min` : '–'}
+          value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
+          unit="min"
           formula={taktTimeFormula}
         />
         <KpiTile
           label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
-          value={kpis.exitRatePerDay !== null ? `${kpis.exitRatePerDay.toFixed(1)} Stk./Tag` : '–'}
+          value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
+          unit="Stk./Tag"
           formula={exitRateFormula}
           tier={rateCapacityCoverage(kpis.capacityCoverage)}
         />
@@ -669,7 +795,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           not a bug. */}
       <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
-          <label htmlFor="throughput" className="text-sm text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="throughput" className="text-sm text-zinc-600">
             Jahresbedarf Kunde (Stück/Jahr)
           </label>
           <input
@@ -680,11 +806,11 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             onChange={(e) => setThroughputInput(e.target.value)}
             onBlur={handleThroughputBlur}
             placeholder="z. B. 50000"
-            className="w-32 rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="w-32 rounded-control border border-zinc-300 px-2 py-1 text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
-          <label htmlFor="available-minutes" className="text-sm text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="available-minutes" className="text-sm text-zinc-600">
             <TermTooltip term="availableMinutesPerDay">Verfügbare Produktionszeit (Min/Tag)</TermTooltip>
           </label>
           <input
@@ -695,47 +821,24 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             onChange={(e) => setAvailableMinutesInput(e.target.value)}
             onBlur={handleAvailableMinutesBlur}
             placeholder="z. B. 480"
-            className="w-24 rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="w-24 rounded-control border border-zinc-300 px-2 py-1 text-sm"
           />
         </div>
       </div>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </p>
       )}
 
-      {!pacemaker && processes.length > 0 && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          Kein <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> festgelegt — die Produktionssteuerung
-          sendet den Auftrag aktuell an alle Prozesse. Lege im Prozess-Panel einen Schrittmacher fest, um das korrekt
-          darzustellen.
-        </p>
-      )}
-
-      {/* A line below 100% coverage cannot ship what the customer pulls. The
-          consequence is not cosmetic: WIP then grows without bound, so the
-          Durchlaufzeit above is a snapshot of a moving number, not a steady
-          state — Little's Law does not hold. Saying so beats printing a
-          confident figure. */}
-      {kpis.capacityCoverage !== null && kpis.capacityCoverage < 1 && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
-          Die Linie deckt nur{' '}
-          <TermTooltip term="capacityCoverage">{(kpis.capacityCoverage * 100).toFixed(0)} % des Kundenbedarfs</TermTooltip>{' '}
-          — der Engpass lässt {kpis.exitRatePerDay?.toFixed(1)} Stk./Tag durch, gefordert sind{' '}
-          {kpis.demandRatePerDay?.toFixed(1)} Stk./Tag. Der Bestand wächst dadurch laufend an; die Durchlaufzeit ist
-          keine stabile Grösse, solange das so bleibt.
-        </p>
-      )}
-
-      {pushBeforePacemaker.length > 0 && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          Vor dem <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> läuft noch mind. eine Verbindung
-          als Push statt als Supermarkt/FIFO ({pushBeforePacemaker.length}×). Methodisch braucht alles vor dem
-          Schrittmacher ein Pull-System (Supermarkt oder FIFO) — sonst baut sich davor unkontrolliert Bestand auf.
-        </p>
-      )}
+      {/* Die drei Befunde standen frueher als drei gleich grosse Banner
+          untereinander und unterschieden sich nur in Bernstein oder Rot — man
+          sah nicht, was zuerst zaehlt, und bei dreien rutschte die
+          Zeichenflaeche spuerbar nach unten. Die Rangfolge steckt jetzt in
+          `severity`: `critical` heisst, dass eine oben angezeigte Kennzahl
+          dadurch ihre Aussagekraft verliert. */}
+      <MethodCheckPanel findings={methodFindings} />
 
       {/* Zoom controls — the stage auto-fits on load and whenever the
           diagram grows; this is just for manual override. Wheel-zoom needs
@@ -747,10 +850,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
           drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
           festen Bezugspunkt. */}
-      <div className="sticky top-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/95 py-3 backdrop-blur dark:border-zinc-800 dark:bg-black/95">
+      <div className="sticky top-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/95 py-3 backdrop-blur">
         {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
             nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
-        <p className="hidden text-xs text-zinc-500 dark:text-zinc-400 sm:block">
+        <p className="hidden text-xs text-zinc-500 sm:block">
           Strg/Cmd + Mausrad zum Zoomen
         </p>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -776,7 +879,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             aria-pressed={presentationMode}
             className={
               presentationMode
-                ? 'rounded-full bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700'
+                ? 'rounded-control bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700'
                 : secondaryButtonClass
             }
           >
@@ -786,22 +889,22 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
               buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
               (~44px) — the row facilitators reach for most often when
               driving a workshop from a laptop trackpad. */}
-          <div className="flex items-center gap-0.5 rounded-full border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white p-1">
             <button
               type="button"
               onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-              className="rounded-full px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               aria-label="Verkleinern"
             >
               −
             </button>
-            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500">
               {Math.round(stageScale * 100)}%
             </span>
             <button
               type="button"
               onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-              className="rounded-full px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               aria-label="Vergrößern"
             >
               +
@@ -821,8 +924,8 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         ref={stageContainerRef}
         className={
           isFullscreen
-            ? 'fixed inset-0 z-50 overflow-hidden bg-white dark:bg-zinc-950'
-            : 'relative mt-2 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800'
+            ? 'fixed inset-0 z-50 overflow-hidden bg-white'
+            : 'relative mt-2 overflow-hidden rounded-surface border border-zinc-200'
         }
         // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
         // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
@@ -852,31 +955,31 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             Zoom und Ausstieg müssen deshalb hier noch einmal erreichbar sein,
             sonst wäre der Modus eine Falle. */}
         {isFullscreen && (
-          <div className="absolute left-3 top-3 z-10 flex items-center gap-0.5 rounded-full border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/90">
+          <div className="absolute left-3 top-3 z-10 flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur">
             <button
               type="button"
               onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-              className="rounded-full px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               aria-label="Verkleinern"
             >
               −
             </button>
-            <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+            <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-500">
               {Math.round(stageScale * 100)}%
             </span>
             <button
               type="button"
               onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-              className="rounded-full px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               aria-label="Vergrößern"
             >
               +
             </button>
-            <div className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+            <div className="mx-1 h-4 w-px bg-zinc-200" />
             <button
               type="button"
               onClick={() => setIsFullscreen(false)}
-              className="rounded-full px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-control px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
             >
               Schließen
             </button>
@@ -888,8 +991,8 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           aria-label={camera ? 'Ansicht ist verschoben — zurück zur Gesamtansicht' : 'Gesamtansicht einpassen'}
           className={
             camera
-              ? 'absolute right-3 top-3 z-10 rounded-full bg-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-blue-700'
-              : 'absolute right-3 top-3 z-10 rounded-full border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
+              ? 'absolute right-3 top-3 z-10 rounded-control bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-brand-700'
+              : 'absolute right-3 top-3 z-10 rounded-control border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900'
           }
         >
           Einpassen
@@ -1151,7 +1254,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       </div>
 
       {processes.length === 0 && (
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="mt-2 text-sm text-zinc-500">
           Noch keine Prozesse. Leg unten den ersten an.
         </p>
       )}
@@ -1223,7 +1326,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
       />
 
       {/* Toolbar: quick-add + CSV import, grouped in one bordered block */}
-      <div className="mt-6 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="mt-6 rounded-surface border border-zinc-200 p-4">
         <form onSubmit={handleQuickAddSubmit} className="flex flex-wrap items-end gap-3">
           <Field label="Prozessname" htmlFor="qa-name">
             <input
@@ -1263,7 +1366,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
               <button type="button" onClick={() => fileInputRef.current?.click()} className={secondaryButtonClass}>
                 CSV importieren
               </button>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="mt-1 text-xs text-zinc-500">
                 Spalten: name, cycle_time, oee, wip
               </p>
             </div>
@@ -1275,33 +1378,41 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 }
 
 const inputClass =
-  'w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent'
+  'w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent'
 const primaryButtonClass =
-  'rounded-full bg-zinc-950 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200'
+  'rounded-control bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50'
 const secondaryButtonClass =
-  'rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900'
+  'rounded-control border border-zinc-300 px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50'
 
 function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string; children: ReactNode }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+      <label htmlFor={htmlFor} className="block text-xs font-medium text-zinc-600">
         {label}
       </label>
-      <div className="mt-1 [&>input]:rounded-lg [&>input]:border [&>input]:border-zinc-300 [&>input]:px-2 [&>input]:py-1.5 [&>input]:text-sm [&>input]:dark:border-zinc-700 [&>input]:dark:bg-zinc-900 [&>input]:focus:outline-none [&>input]:focus:ring-2 [&>input]:focus:ring-blue-600">
+      <div className="mt-1 [&>input]:rounded-control [&>input]:border [&>input]:border-zinc-300 [&>input]:px-2 [&>input]:py-1.5 [&>input]:text-sm [&>input]:focus:outline-none [&>input]:focus:ring-2 [&>input]:focus:ring-brand-600">
         {children}
       </div>
     </div>
   )
 }
 
+/** Fehlt die Eingabe für eine Kennzahl, steht hier ein Gedankenstrich — und
+ *  daneben wäre eine Einheit eine Aussage über nichts. */
+const KPI_EMPTY = '–'
+
 function KpiTile({
   label,
   value,
+  unit,
   formula,
   tier,
 }: {
   label: ReactNode
+  /** Nur die Ziffern, ohne Einheit — die steht in `unit`. */
   value: string
+  /** Getrennt vom Wert, damit sie kleiner gesetzt werden kann. */
+  unit?: string
   formula?: string
   /**
    * Optional verdict. Only the KPIs with a defensible reference get one — see
@@ -1311,15 +1422,28 @@ function KpiTile({
   tier?: BenchmarkTier | null
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
-      <div className="mt-1 text-lg font-semibold tabular-nums text-zinc-950 dark:text-zinc-50">{value}</div>
+    <div className="rounded-surface border border-zinc-200 bg-white p-4">
+      <div className="text-xs font-medium text-zinc-600">{label}</div>
+      {/* Diese Zahl ist der Grund, warum jemand das Werkzeug überhaupt öffnet.
+          Sie stand vorher in 18px — kleiner als die Dashboard-Überschrift und
+          gleich groß wie der Projektname in der Kopfzeile. Die Einheit läuft
+          kleiner und gedämpft auf derselben Grundlinie mit, damit die Ziffern
+          die Zeile führen und mehrere Kacheln nebeneinander vergleichbar
+          bleiben. */}
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className="text-3xl font-semibold tracking-tight tabular-nums text-zinc-950">
+          {value}
+        </span>
+        {unit && value !== KPI_EMPTY && (
+          <span className="text-sm font-medium text-zinc-500">{unit}</span>
+        )}
+      </div>
       {tier && (
-        <div className="mt-1.5">
+        <div className="mt-2">
           <TierChip tier={tier} />
         </div>
       )}
-      {formula && <div className="mt-0.5 text-[10px] tabular-nums text-zinc-400 dark:text-zinc-500">{formula}</div>}
+      {formula && <div className="mt-1 text-xs tabular-nums text-zinc-600">{formula}</div>}
     </div>
   )
 }
@@ -1536,14 +1660,14 @@ function ProcessEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 rounded-2xl border border-blue-600 bg-white p-4 dark:bg-zinc-950"
+      className="mt-4 rounded-surface border border-brand-600 bg-white p-4"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Prozess bearbeiten</h2>
+        <h2 className="text-sm font-semibold text-zinc-950">Prozess bearbeiten</h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-xs text-zinc-500 hover:underline dark:text-zinc-500"
+          className="text-xs text-zinc-500 hover:underline"
         >
           Schließen
         </button>
@@ -1552,8 +1676,8 @@ function ProcessEditPanel({
       {/* Position: Reihenfolge (←/→) verdrahtet die Puffer-Kette automatisch
           neu; Spur (↑/↓) versetzt die Box auf eine parallele Reihe. Ersetzt
           das frühere freie Ziehen — dadurch keine Überschneidungen mehr. */}
-      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Position</span>
+      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-control bg-zinc-50 px-3 py-2">
+        <span className="text-xs font-medium text-zinc-500">Position</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -1598,25 +1722,25 @@ function ProcessEditPanel({
           </button>
         </div>
         {process.lane > 0 && (
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">Spur {process.lane + 1}</span>
+          <span className="text-xs text-zinc-500">Spur {process.lane + 1}</span>
         )}
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
-          <label htmlFor="ep-name" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="ep-name" className="block text-xs font-medium text-zinc-600">
             Name
           </label>
           <input id="ep-name" value={name} onChange={(e) => setName(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
         <div>
-          <label htmlFor="ep-ct" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="ep-ct" className="block text-xs font-medium text-zinc-600">
             <TermTooltip term="processCycleTime">Zykluszeit (min)</TermTooltip>
           </label>
           <input id="ep-ct" value={cycleTime} onChange={(e) => setCycleTime(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
         <div>
-          <label htmlFor="ep-co" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="ep-co" className="block text-xs font-medium text-zinc-600">
             <TermTooltip term="changeoverTime">Rüstzeit C/O (min)</TermTooltip>
           </label>
           <input
@@ -1627,13 +1751,13 @@ function ProcessEditPanel({
           />
         </div>
         <div>
-          <label htmlFor="ep-oee" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="ep-oee" className="block text-xs font-medium text-zinc-600">
             <TermTooltip term="oee">OEE (%)</TermTooltip>
           </label>
           <input id="ep-oee" value={oee} onChange={(e) => setOee(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
         <div>
-          <label htmlFor="ep-operators" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="ep-operators" className="block text-xs font-medium text-zinc-600">
             <TermTooltip term="operatorCount">Bediener</TermTooltip>
           </label>
           <input
@@ -1643,14 +1767,14 @@ function ProcessEditPanel({
             className={`mt-1 ${inputClass}`}
           />
           {liveEffectiveCycleTime !== null && (
-            <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 text-[10px] text-zinc-500">
               eff. Zykluszeit: {liveEffectiveCycleTime.toFixed(1)} min (fliesst in Bearbeitungszeit/Kapazitäts-Check
               ein — die Zykluszeit selbst bleibt unverändert)
             </p>
           )}
         </div>
         <div>
-          <label htmlFor="ep-before" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="ep-before" className="block text-xs font-medium text-zinc-600">
             <TermTooltip term="wip">WIP davor</TermTooltip>
           </label>
           <input
@@ -1661,7 +1785,7 @@ function ProcessEditPanel({
           />
         </div>
         <div>
-          <label htmlFor="ep-after" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="ep-after" className="block text-xs font-medium text-zinc-600">
             <TermTooltip term="wip">WIP danach</TermTooltip>
           </label>
           <input
@@ -1678,12 +1802,12 @@ function ProcessEditPanel({
           Liste zeigt *alle* tatsächlichen Verbindungen — ein Prozess kann
           mehr als einen Vorgänger (Zusammenführung) oder Nachfolger
           (Aufteilung) haben. */}
-      <div className="mt-3 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-900">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Verbindungen</span>
+      <div className="mt-3 rounded-control bg-zinc-50 px-3 py-2">
+        <span className="text-xs font-medium text-zinc-500">Verbindungen</span>
 
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <div className="text-xs text-zinc-600 dark:text-zinc-400">Vorgänger</div>
+            <div className="text-xs text-zinc-600">Vorgänger</div>
             <ul className="mt-1 space-y-1">
               {incomingEdges.map((edge) => (
                 <li key={edge.id} className="flex items-center justify-between gap-2 text-xs">
@@ -1691,14 +1815,14 @@ function ProcessEditPanel({
                   <button
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
-                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline dark:text-red-400"
+                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline"
                     aria-label={`Verbindung von ${processLabel(edge.from_process_id)} trennen`}
                   >
                     ✕ trennen
                   </button>
                 </li>
               ))}
-              {incomingEdges.length === 0 && <li className="text-xs text-zinc-400">Keine</li>}
+              {incomingEdges.length === 0 && <li className="text-xs text-zinc-600">Keine</li>}
             </ul>
             {predecessorCandidates.length > 0 && (
               <div className="mt-2 flex items-center gap-1">
@@ -1727,7 +1851,7 @@ function ProcessEditPanel({
           </div>
 
           <div>
-            <div className="text-xs text-zinc-600 dark:text-zinc-400">Nachfolger</div>
+            <div className="text-xs text-zinc-600">Nachfolger</div>
             <ul className="mt-1 space-y-1">
               {outgoingEdges.map((edge) => (
                 <li key={edge.id} className="flex items-center justify-between gap-2 text-xs">
@@ -1735,14 +1859,14 @@ function ProcessEditPanel({
                   <button
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
-                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline dark:text-red-400"
+                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline"
                     aria-label={`Verbindung zu ${processLabel(edge.to_process_id)} trennen`}
                   >
                     ✕ trennen
                   </button>
                 </li>
               ))}
-              {outgoingEdges.length === 0 && <li className="text-xs text-zinc-400">Keine</li>}
+              {outgoingEdges.length === 0 && <li className="text-xs text-zinc-600">Keine</li>}
             </ul>
             {successorCandidates.length > 0 && (
               <div className="mt-2 flex items-center gap-1">
@@ -1772,12 +1896,12 @@ function ProcessEditPanel({
         </div>
 
         {connectionError && (
-          <p className="mt-2 text-xs text-red-700 dark:text-red-400">{connectionError}</p>
+          <p className="mt-2 text-xs text-red-700">{connectionError}</p>
         )}
       </div>
 
       <div className="mt-3">
-        <label htmlFor="ep-classification" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <label htmlFor="ep-classification" className="block text-xs font-medium text-zinc-600">
           Wertschöpfungs-Klassifizierung
         </label>
         <select
@@ -1795,14 +1919,14 @@ function ProcessEditPanel({
         </select>
       </div>
 
-      <label className="mt-3 flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+      <label className="mt-3 flex items-center gap-2 text-xs font-medium text-zinc-600">
         <input type="checkbox" checked={isPacemaker} onChange={(e) => setIsPacemaker(e.target.checked)} />
         <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> (bekommt den Auftrag direkt von der
         Produktionssteuerung)
       </label>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
+        <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-xs text-red-700">
           {error}
         </p>
       )}
@@ -1818,8 +1942,8 @@ function ProcessEditPanel({
           disabled={isSaving}
           className={
             confirmDelete
-              ? 'rounded-full border border-red-600 bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50'
-              : 'rounded-full border border-red-300 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950'
+              ? 'rounded-control border border-red-600 bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50'
+              : 'rounded-control border border-red-300 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50'
           }
         >
           {confirmDelete ? 'Wirklich löschen?' : 'Prozess löschen'}
@@ -1890,19 +2014,19 @@ function BufferEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-blue-600 bg-white p-4 dark:bg-zinc-950"
+      className="mt-4 flex flex-wrap items-end gap-3 rounded-surface border border-brand-600 bg-white p-4"
     >
-      <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+      <h2 className="text-sm font-semibold text-zinc-950">
         <TermTooltip term="wip">Lagerbestand (WIP)</TermTooltip>
       </h2>
       <div>
-        <label htmlFor="buf-wip" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <label htmlFor="buf-wip" className="block text-xs font-medium text-zinc-600">
           Stück
         </label>
         <input id="buf-wip" value={value} onChange={(e) => setValue(e.target.value)} className={`mt-1 ${inputClass} w-28`} />
       </div>
       <div>
-        <label htmlFor="buf-type" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <label htmlFor="buf-type" className="block text-xs font-medium text-zinc-600">
           <TermTooltip term="bufferType">Lager-Typ</TermTooltip>
         </label>
         <select
@@ -1926,7 +2050,7 @@ function BufferEditPanel({
         </select>
       </div>
       <div>
-        <label htmlFor="buf-flow" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <label htmlFor="buf-flow" className="block text-xs font-medium text-zinc-600">
           <TermTooltip term="flowStyle">Pfeil-Typ</TermTooltip>
         </label>
         <select
@@ -1943,7 +2067,7 @@ function BufferEditPanel({
       </div>
       {bufferType === 'supermarket' && (
         <div>
-          <label htmlFor="buf-kanban" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor="buf-kanban" className="block text-xs font-medium text-zinc-600">
             <TermTooltip term="kanbanType">Kanban-Typ</TermTooltip>
           </label>
           <select
@@ -1958,12 +2082,12 @@ function BufferEditPanel({
         </div>
       )}
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>
+        <p className="rounded-control bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
       )}
       <button type="submit" disabled={isSaving} className={primaryButtonClass}>
         Speichern
       </button>
-      <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline dark:text-zinc-500">
+      <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline">
         Schließen
       </button>
     </form>
@@ -2016,11 +2140,11 @@ function AnchorEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-blue-600 bg-white p-4 dark:bg-zinc-950"
+      className="mt-4 flex flex-wrap items-end gap-3 rounded-surface border border-brand-600 bg-white p-4"
     >
-      <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">{title} bearbeiten</h2>
+      <h2 className="text-sm font-semibold text-zinc-950">{title} bearbeiten</h2>
       <div>
-        <label htmlFor="anchor-label" className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+        <label htmlFor="anchor-label" className="block text-xs font-medium text-zinc-600">
           Bezeichnung
         </label>
         <input
@@ -2031,12 +2155,12 @@ function AnchorEditPanel({
         />
       </div>
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>
+        <p className="rounded-control bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
       )}
       <button type="submit" disabled={isSaving} className={primaryButtonClass}>
         Speichern
       </button>
-      <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline dark:text-zinc-500">
+      <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline">
         Schließen
       </button>
     </form>
@@ -2517,7 +2641,7 @@ function LadderSummary({
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
       <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
       <Text
-        text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} T` : '–'}
+        text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} Tage` : "–"}
         x={0}
         y={17}
         width={width}
@@ -2528,7 +2652,7 @@ function LadderSummary({
       />
       <Text text="VA" x={0} y={height - 30} width={width} align="center" fontSize={10} fill="#52525b" />
       <Text
-        text={`${valueAddMinutes.toFixed(1)} m`}
+        text={`${valueAddMinutes.toFixed(1)} min`}
         x={0}
         y={height - 18}
         width={width}

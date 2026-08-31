@@ -1,8 +1,36 @@
 @import "tailwindcss";
 
+/* Hell ist hier kein uebersehener Standardwert, sondern eine Entscheidung:
+   Das Ergebnis dieses Werkzeugs ist ein gedrucktes oder projiziertes A3 in
+   Schwarz auf Weiss, und der Konva-Canvas zeichnet genau so. Der frueher
+   automatische Dunkelmodus (prefers-color-scheme) setzte deshalb ein grell
+   weisses Diagramm in eine schwarze Seite. Die Oberflaeche soll dem Artefakt
+   gleichen, das sie erzeugt. */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+@theme {
+  /* Markenfarbe: tiefes Petrol aus der Welt der Werkzeugmaschine, nicht das
+     Vorgabe-Blau des CSS-Rahmenwerks. Drei Gruende fuer genau diesen Ton:
+     Er streitet nicht mit der schwarzweissen Strichzeichnung auf dem Canvas,
+     er ist von den semantischen Farben (Rot = Engpass, Bernstein = Hinweis)
+     eindeutig unterscheidbar, und er traegt bei 8:1 auf Weiss auch Fliesstext.
+     Genau eine Akzentfarbe, ueberall dieselbe. */
+  --color-brand-50: #ecf5f3;
+  --color-brand-100: #d2e8e4;
+  --color-brand-200: #a8d2ca;
+  --color-brand-500: #17786c; /* Auswahl auf dem Canvas — heller, damit sie gegen die Tinte anspringt */
+  --color-brand-600: #0f5a52; /* Grundton: Primaerknoepfe, Links, Fokusring */
+  --color-brand-700: #0b463f; /* Hover */
+
+  /* Zwei Radien, mehr nicht. Vorher waren es fuenf (rounded-full, -2xl, -xl,
+     -lg und cornerRadius 3 auf dem Canvas). Ein Messwerkzeug liest sich
+     praezise mit einer engen, einheitlichen Kante; die voll gerundete Pille
+     ist die Form von Verbraucher-Apps. */
+  --radius-control: 0.375rem; /* 6px — Knoepfe, Eingabefelder, Chips */
+  --radius-surface: 0.625rem; /* 10px — Karten, Panels, Canvas-Rahmen */
 }
 
 @theme inline {
@@ -12,15 +40,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Hier stand frueher `font-family: Arial, Helvetica, sans-serif` aus der
+   Projektvorlage. Es ueberschrieb die per next/font geladene Geist — beide
+   Schriften wurden heruntergeladen und verworfen. Die Familie kommt jetzt
+   ueber die Utility `font-sans` in layout.tsx, damit sie an genau einer
+   Stelle steht und der Canvas sie auslesen kann. */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Tastaturnutzer sehen nie einen Hover-Zustand. Ein sichtbarer, einheitlicher
+   Fokusring ist deshalb kein Zusatz, sondern der einzige Ortungshinweis, den
+   sie haben. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
 }

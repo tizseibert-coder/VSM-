@@ -13,17 +13,38 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VSM Builder",
-  description: "Wertstromanalysen erstellen, live berechnen und im Team optimieren.",
+  // Die Vorlage haengt den Produktnamen an jede Unterseite an, damit ein
+  // Browser-Tab oder ein geteilter Link erkennbar bleibt, wenn er neben
+  // zwanzig anderen steht.
+  title: {
+    default: "VSM Builder — Wertstromanalyse mit Live-Berechnung",
+    template: "%s · VSM Builder",
+  },
+  description:
+    "Wertstromdiagramme nach Rother/Shook zeichnen, Durchlaufzeit, Taktzeit und Wertschoepfungsanteil live berechnen, Future-State-Szenarien gegeneinander rechnen.",
+  applicationName: "VSM Builder",
+  openGraph: {
+    type: "website",
+    locale: "de_DE",
+    siteName: "VSM Builder",
+    title: "VSM Builder — Wertstromanalyse mit Live-Berechnung",
+    description:
+      "Wertstromdiagramme nach Rother/Shook zeichnen, Kennzahlen live berechnen, Future-State-Szenarien vergleichen.",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // Das Produkt ist durchgaengig deutsch. `lang="en"` aus der Vorlage
+    // brachte falsche Silbentrennung, die falsche Vorlesestimme bei
+    // Screenreadern und ein Signal gegen uns in der Suche.
     <html
-      lang="en"
+      lang="de"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/* `font-sans` ist die einzige Stelle, an der die Schriftfamilie gesetzt
+          wird — der Canvas liest sie zur Laufzeit von hier ab. */}
+      <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
 }

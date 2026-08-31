@@ -30,15 +30,15 @@ export default async function DashboardPage({
     : { data: null }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-6 py-10 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
               VSM Builder
             </p>
-            <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950 dark:text-zinc-50">Dashboard</h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">Dashboard</h1>
+            <p className="mt-1 text-sm text-zinc-600">
               Angemeldet als {claims?.email}
               {activeOrg && (
                 <>
@@ -48,15 +48,23 @@ export default async function DashboardPage({
               )}
             </p>
           </div>
-          <form action={signOut}>
-            <button className="shrink-0 rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900">
-              Abmelden
-            </button>
-          </form>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/team"
+              className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              Team
+            </Link>
+            <form action={signOut}>
+              <button className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
+                Abmelden
+              </button>
+            </form>
+          </div>
         </div>
 
         {error && (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
@@ -68,7 +76,7 @@ export default async function DashboardPage({
             auch schneller zu bedienen. */}
         {allOrgs.length > 1 && (
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">Organisation:</span>
+            <span className="text-xs text-zinc-500">Organisation:</span>
             {allOrgs.map((org) => (
               <form key={org.organizationId} action={switchOrg.bind(null, org.organizationId)}>
                 <button
@@ -76,8 +84,8 @@ export default async function DashboardPage({
                   aria-current={org.organizationId === activeOrg?.organizationId ? 'true' : undefined}
                   className={
                     org.organizationId === activeOrg?.organizationId
-                      ? 'rounded-full bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-950'
-                      : 'rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900'
+                      ? 'rounded-control bg-brand-600 px-3 py-1.5 text-xs font-medium text-white'
+                      : 'rounded-control border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100'
                   }
                 >
                   {org.organizationName}
@@ -93,11 +101,11 @@ export default async function DashboardPage({
               name="name"
               placeholder="Neues Projekt, z. B. Baugruppe X"
               required
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm sm:w-72 dark:border-zinc-700 dark:bg-zinc-900"
+              className="w-full rounded-control border border-zinc-300 px-3 py-2 text-sm sm:w-72"
             />
             <button
               type="submit"
-              className="rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+              className="rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
             >
               Erstellen
             </button>
@@ -106,7 +114,7 @@ export default async function DashboardPage({
           <form action={createExampleProject}>
             <button
               type="submit"
-              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
             >
               ✨ Beispiel-VSM laden
             </button>
@@ -115,16 +123,16 @@ export default async function DashboardPage({
 
         <div className="mt-8">
           {!projects || projects.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-500">
+            <div className="rounded-surface border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500">
               Noch keine VSM-Projekte. Leg oben eins an, oder lade das Beispiel-VSM, um die
               Funktionen auszuprobieren.
             </div>
           ) : (
-            <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+            <ul className="divide-y divide-zinc-200 rounded-surface border border-zinc-200">
               {projects.map((project) => (
                 <li
                   key={project.id}
-                  className="flex items-center gap-2 pr-5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                  className="flex items-center gap-2 pr-5 hover:bg-zinc-100"
                 >
                   {/* Der Link umschloss frueher die ganze Zeile. Ein Formular
                       darf nicht in einem <a> stehen, also sitzt der
@@ -135,16 +143,16 @@ export default async function DashboardPage({
                     className="flex min-w-0 flex-1 items-center justify-between px-5 py-4"
                   >
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-zinc-950 dark:text-zinc-50">
+                      <div className="truncate text-sm font-medium text-zinc-950">
                         {project.name}
                       </div>
                       {project.description && (
-                        <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                        <div className="truncate text-xs text-zinc-500">
                           {project.description}
                         </div>
                       )}
                     </div>
-                    <span className="ml-4 shrink-0 text-xs text-zinc-400 dark:text-zinc-600">
+                    <span className="ml-4 shrink-0 text-xs text-zinc-600">
                       Öffnen →
                     </span>
                   </Link>

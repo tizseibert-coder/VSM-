@@ -20,9 +20,9 @@ export function OAuthButtons() {
   return (
     <>
       <div className="mt-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">oder</span>
-        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+        <div className="h-px flex-1 bg-zinc-200" />
+        <span className="text-xs text-zinc-500">oder</span>
+        <div className="h-px flex-1 bg-zinc-200" />
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
@@ -43,7 +43,7 @@ function OAuthButton({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <button
       type="submit"
-      className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+      className="flex w-full items-center justify-center gap-2 rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
     >
       {icon}
       {label}

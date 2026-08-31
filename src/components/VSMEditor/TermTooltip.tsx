@@ -29,7 +29,7 @@ export function TermTooltip({ term, children }: { term: GlossaryKey; children: R
         aria-label={`Erklärung: ${entry.term}`}
         onClick={() => setOpen((prev) => !prev)}
         onBlur={() => setOpen(false)}
-        className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-zinc-400 text-[9px] leading-none text-zinc-500 before:absolute before:inset-[-15px] before:content-[''] hover:border-blue-600 hover:text-blue-600 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-blue-500 dark:hover:text-blue-500"
+        className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-control border border-zinc-400 text-[9px] leading-none text-zinc-500 before:absolute before:inset-[-15px] before:content-[''] hover:border-brand-600 hover:text-brand-600"
       >
         ?
       </button>
@@ -37,9 +37,9 @@ export function TermTooltip({ term, children }: { term: GlossaryKey; children: R
         <span
           id={tooltipId}
           role="tooltip"
-          className="absolute left-0 top-full z-20 mt-1 w-56 rounded-lg border border-zinc-200 bg-white p-2 text-xs font-normal normal-case tracking-normal text-zinc-700 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+          className="absolute left-0 top-full z-20 mt-1 w-56 rounded-control border border-zinc-200 bg-white p-2 text-xs font-normal normal-case tracking-normal text-zinc-700 shadow-lg"
         >
-          <span className="mb-0.5 block font-semibold text-zinc-900 dark:text-zinc-100">{entry.term}</span>
+          <span className="mb-0.5 block font-semibold text-zinc-900">{entry.term}</span>
           {entry.definition}
         </span>
       )}

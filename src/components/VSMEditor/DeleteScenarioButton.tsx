@@ -31,8 +31,8 @@ export default function DeleteScenarioButton({
         onBlur={() => setConfirmDelete(false)}
         className={
           confirmDelete
-            ? 'rounded-full border border-red-600 bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700'
-            : 'rounded-full border border-red-300 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950'
+            ? 'rounded-control border border-red-600 bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700'
+            : 'rounded-control border border-red-300 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50'
         }
       >
         {confirmDelete ? 'Wirklich löschen?' : 'Szenario löschen'}
