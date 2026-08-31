@@ -25,7 +25,8 @@ import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
 import { BalanceChartPanel } from './BalanceChartPanel'
-import { MethodCheckPanel, type MethodFinding } from './MethodCheckPanel'
+import { MethodCheckPanel } from './MethodCheckPanel'
+import { formatFindingCount, rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
 import { TierChip } from './TierChip'
 import type { BenchmarkTier } from '@/lib/vsm/benchmark'
 import { ratePce, rateCapacityCoverage } from '@/lib/vsm/kpiRating'
@@ -545,6 +546,13 @@ export default function VSMCanvas({
       const headerSpace = 52
       const kpiBlockSpace = 58
       const footerSpace = 28
+      // Die Methodikbefunde gehören aufs Blatt: Es geht ins Lenkungsgremium,
+      // und dort ist der Unterschied zwischen "die Zahlen sind belastbar" und
+      // "eine Kennzahl steht unter Vorbehalt" entscheidungsrelevant. Der Platz
+      // wird nur abgezogen, wenn es Befunde gibt — sonst schrumpfte das
+      // Diagramm auch auf einem methodisch sauberen Wertstrom.
+      const rankedFindings = rankFindings(methodFindings)
+      const findingsSpace = rankedFindings.length === 0 ? 0 : 24 + rankedFindings.length * 13
 
       // --- Kopfzeile ------------------------------------------------------
       // Das Blatt verlässt die Anwendung und landet bei Leuten, die sie nie
@@ -569,7 +577,8 @@ export default function VSMCanvas({
       // --- Diagramm -------------------------------------------------------
       const imgProps = pdf.getImageProperties(dataUrl)
       const availableWidth = pageWidth - margin * 2
-      const maxImgHeight = pageHeight - margin * 2 - headerSpace - kpiBlockSpace - footerSpace
+      const maxImgHeight =
+        pageHeight - margin * 2 - headerSpace - kpiBlockSpace - findingsSpace - footerSpace
       let imgWidth = availableWidth
       let imgHeight = (imgProps.height / imgProps.width) * imgWidth
       if (imgHeight > maxImgHeight) {
@@ -609,6 +618,45 @@ export default function VSMCanvas({
         pdf.setTextColor(24, 24, 27)
         pdf.text(value, x, kpiY + 17)
       })
+
+      // --- Methodikprüfung ------------------------------------------------
+      // Nur die Titel, nicht die Begründungen: Das Blatt soll benennen, was zu
+      // klären ist, nicht die Schulung ersetzen. Der Punkt vor der Zeile trägt
+      // dieselbe Bedeutung wie im Panel — rot heisst, dass eine der Zahlen
+      // darüber unter Vorbehalt steht.
+      if (rankedFindings.length > 0) {
+        let findingY = kpiY + kpiBlockSpace - 16
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(
+          `METHODIKPRÜFUNG · ${formatFindingCount(rankedFindings.length)}`,
+          margin,
+          findingY
+        )
+        findingY += 14
+
+        for (const finding of rankedFindings) {
+          if (finding.severity === 'critical') {
+            pdf.setFillColor(163, 42, 31) // dasselbe Rot wie die Engpass-Markierung
+          } else {
+            pdf.setFillColor(180, 83, 9) // Bernstein wie die Hinweisbanner
+          }
+          pdf.circle(margin + 2, findingY - 2.5, 2, 'F')
+
+          pdf.setFontSize(9)
+          pdf.setTextColor(24, 24, 27)
+          // Ein Titel wie "2× Push vor dem Schrittmacher statt Supermarkt oder
+          // FIFO" passt in eine Zeile; ein Projektname darin könnte ihn
+          // sprengen. splitTextToSize schneidet nicht ab, sondern umbricht —
+          // die zusätzliche Zeile ist im Platz nicht eingerechnet, deshalb
+          // wird nur die erste gesetzt und der Rest fällt weg, statt in die
+          // Fusszeile zu laufen.
+          const [firstLine] = pdf.splitTextToSize(finding.title, pageWidth - margin * 2 - 14)
+          pdf.text(firstLine, margin + 12, findingY)
+          findingY += 13
+        }
+      }
 
       // --- Fusszeile ------------------------------------------------------
       const footerY = pageHeight - margin
