@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 export async function signOut() {
@@ -130,4 +131,47 @@ export async function createExampleProject() {
   }
 
   redirect(`/editor/${project.id}`)
+}
+
+// Loescht ein VSM samt allem, was daran haengt. Die Kindtabellen (processes,
+// inventory_buffers, scenarios, reports, benchmark_data, historical_metrics,
+// spaghetti_layouts) haengen mit ON DELETE CASCADE am Projekt, activity_logs
+// mit ON DELETE SET NULL — das Protokoll ueberlebt das Projekt bewusst.
+//
+// Unwiderruflich, deshalb die zweistufige Bestaetigung im Button (dasselbe
+// Muster wie DeleteScenarioButton, UX-Audit Phase 7a Befund #6).
+export async function deleteProject(projectId: string) {
+  const orgResult = await currentUserOrgId()
+  if ('error' in orgResult) {
+    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+  }
+
+  const supabase = await createClient()
+
+  // Zusaetzlich zur RLS-Policy explizit auf die eigene Organisation
+  // eingegrenzt: ein veraltetes Formular soll ins Leere laufen, nicht
+  // stillschweigend etwas anderes treffen.
+  const { error, count } = await supabase
+    .from('projects')
+    .delete({ count: 'exact' })
+    .eq('id', projectId)
+    .eq('organization_id', orgResult.orgId)
+
+  if (error) {
+    console.error('deleteProject failed:', error.message)
+    redirect('/dashboard?error=' + encodeURIComponent('Projekt konnte nicht geloescht werden.'))
+  }
+
+  // count === 0 heisst: nichts getroffen. Entweder war das Projekt schon weg
+  // oder der Nutzer hat keine Schreibrechte — in beiden Faellen waere ein
+  // stilles "erfolgreich" eine Luege.
+  if (count === 0) {
+    redirect(
+      '/dashboard?error=' +
+        encodeURIComponent('Projekt nicht gefunden oder keine Berechtigung zum Loeschen.')
+    )
+  }
+
+  revalidatePath('/dashboard')
+  redirect('/dashboard')
 }

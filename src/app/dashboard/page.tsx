@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { signOut, createProject, createExampleProject } from './actions'
+import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 
 export default async function DashboardPage({
   searchParams,
@@ -105,23 +106,33 @@ export default async function DashboardPage({
           ) : (
             <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
               {projects.map((project) => (
-                <li key={project.id}>
+                <li
+                  key={project.id}
+                  className="flex items-center gap-2 pr-5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  {/* Der Link umschloss frueher die ganze Zeile. Ein Formular
+                      darf nicht in einem <a> stehen, also sitzt der
+                      Loeschen-Button als Geschwister daneben und der Link nimmt
+                      nur noch den Rest der Breite ein. */}
                   <Link
                     href={`/editor/${project.id}`}
-                    className="flex items-center justify-between px-5 py-4 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                    className="flex min-w-0 flex-1 items-center justify-between px-5 py-4"
                   >
-                    <div>
-                      <div className="text-sm font-medium text-zinc-950 dark:text-zinc-50">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-zinc-950 dark:text-zinc-50">
                         {project.name}
                       </div>
                       {project.description && (
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                        <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                           {project.description}
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-zinc-400 dark:text-zinc-600">Öffnen →</span>
+                    <span className="ml-4 shrink-0 text-xs text-zinc-400 dark:text-zinc-600">
+                      Öffnen →
+                    </span>
                   </Link>
+                  <DeleteProjectButton projectId={project.id} projectName={project.name} />
                 </li>
               ))}
             </ul>
