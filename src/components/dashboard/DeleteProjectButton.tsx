@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { deleteProject } from '@/app/dashboard/actions'
+import { deleteProject } from '@/app/[locale]/dashboard/actions'
 
 // Zweistufig, weil unwiderruflich: der erste Klick schaltet scharf, der zweite
 // loescht. Blur setzt zurueck. Dasselbe Muster wie DeleteScenarioButton — ein

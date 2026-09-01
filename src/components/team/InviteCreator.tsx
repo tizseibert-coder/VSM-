@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { createInvite, type CreateInviteResult } from '@/app/team/actions'
+import { createInvite, type CreateInviteResult } from '@/app/[locale]/team/actions'
 import { buttonPrimary, inputMd } from '@/components/ui/buttons'
 
 // Client-Komponente, weil der fertige Link *einmalig* aus der Action

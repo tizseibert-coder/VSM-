@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createScenario } from '@/app/editor/[projectId]/scenario-actions'
+import { createScenario } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 import { buttonPrimary } from '@/components/ui/buttons'
 
 // Extracted from ScenarioSwitcher (which stays a plain Server Component) so

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { signInWithGoogle, signInWithApple } from '@/app/auth/oauth-actions'
+import { signInWithGoogle, signInWithApple } from '@/app/[locale]/auth/oauth-actions'
 
 /**
  * "Mit Apple anmelden" ist ausgeblendet, nicht gelöscht.

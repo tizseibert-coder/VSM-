@@ -81,7 +81,7 @@ import {
   setBufferWip,
   deleteBufferConnection,
   updateProjectLabels,
-} from '@/app/editor/[projectId]/actions'
+} from '@/app/[locale]/editor/[projectId]/actions'
 
 type Project = Tables<'projects'>
 type Process = Tables<'processes'>

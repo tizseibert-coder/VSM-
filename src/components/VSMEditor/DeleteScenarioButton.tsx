@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { deleteScenario } from '@/app/editor/[projectId]/scenario-actions'
+import { deleteScenario } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 
 // Extracted from ScenarioMetaPanel (which stays a plain Server Component)
 // for the same reason NewScenarioDisclosure was split out: this needs real

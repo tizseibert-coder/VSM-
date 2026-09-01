@@ -1,5 +1,5 @@
 import type { Tables } from '@/types/database'
-import { updateScenarioMeta } from '@/app/editor/[projectId]/scenario-actions'
+import { updateScenarioMeta } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 import DeleteScenarioButton from './DeleteScenarioButton'
 import NewScenarioDisclosure from './NewScenarioDisclosure'
 import { buttonPrimary } from '@/components/ui/buttons'

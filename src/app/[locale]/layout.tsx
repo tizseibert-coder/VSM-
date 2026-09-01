@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import { hasLocale } from "next-intl";
+import { NextIntlClientProvider } from "next-intl";
+import { notFound } from "next/navigation";
+import { routing } from "@/i18n/routing";
+import LocaleSwitcher from "@/components/LocaleSwitcher";
+import "../globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,18 +45,41 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Beide Sprachen statisch vorrendern, statt bei jeder Anfrage neu zu
+// entscheiden — next-intl empfiehlt das fuer den [locale]-Root-Layout.
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export default async function RootLayout({
+  children,
+  params,
+}: LayoutProps<"/[locale]">) {
+  const { locale } = await params;
+
+  // Das [locale]-Segment wirkt wie ein Catch-all fuer unbekannte Pfade
+  // (z. B. /irgendwas.txt) — ein ungueltiger Wert landet hier als 404
+  // statt eine falsche Sprache stillschweigend zu rendern.
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+
   return (
-    // Das Produkt ist durchgaengig deutsch. `lang="en"` aus der Vorlage
-    // brachte falsche Silbentrennung, die falsche Vorlesestimme bei
-    // Screenreadern und ein Signal gegen uns in der Suche.
+    // `lang` folgt jetzt der erkannten/gewaehlten Sprache statt fest auf
+    // "de" zu stehen — sonst waere die englische Fassung fuer
+    // Screenreader weiterhin als Deutsch ausgezeichnet.
     <html
-      lang="de"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       {/* `font-sans` ist die einzige Stelle, an der die Schriftfamilie gesetzt
           wird — der Canvas liest sie zur Laufzeit von hier ab. */}
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <NextIntlClientProvider>
+          {children}
+          <LocaleSwitcher />
+        </NextIntlClientProvider>
+      </body>
     </html>
   );
 }
