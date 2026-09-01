@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { createInvite, type CreateInviteResult } from '@/app/team/actions'
+import { buttonPrimary, inputMd } from '@/components/ui/buttons'
 
 // Client-Komponente, weil der fertige Link *einmalig* aus der Action
 // zurueckkommt und angezeigt werden muss. Ueber einen Redirect-Parameter
@@ -23,7 +24,7 @@ export default function InviteCreator() {
           <select
             name="role"
             defaultValue="editor"
-            className="rounded-control border border-zinc-300 px-3 py-2 text-sm"
+            className={inputMd}
           >
             <option value="editor">Bearbeiten (editor)</option>
             <option value="viewer">Nur ansehen (viewer)</option>
@@ -32,7 +33,7 @@ export default function InviteCreator() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className={buttonPrimary}
         >
           {pending ? 'Erstelle…' : 'Einladungslink erstellen'}
         </button>

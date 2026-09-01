@@ -25,7 +25,12 @@ import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
 import { BalanceChartPanel } from './BalanceChartPanel'
-import { MethodCheckPanel, type MethodFinding } from './MethodCheckPanel'
+import BenchmarkPanel from './BenchmarkPanel'
+import { MethodCheckPanel } from './MethodCheckPanel'
+import { formatFindingCount, rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
+import { buttonPrimaryLg, buttonSecondaryLg, inputSm } from '@/components/ui/buttons'
+import { useDemoMutate } from './DemoModeContext'
+import { demoOperations } from '@/lib/vsm/demoStore'
 import { TierChip } from './TierChip'
 import type { BenchmarkTier } from '@/lib/vsm/benchmark'
 import { ratePce, rateCapacityCoverage } from '@/lib/vsm/kpiRating'
@@ -37,7 +42,12 @@ import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
 import { CLASSIFICATION, classificationMarker, type ClassificationValue } from '@/lib/vsm/classification'
-import { buildKpiSummaryLines, buildPdfTitle } from '@/lib/vsm/pdfSummary'
+import {
+  buildKpiSummaryLines,
+  buildPdfFooterLine,
+  buildPdfSubtitle,
+  buildPdfTitle,
+} from '@/lib/vsm/pdfSummary'
 import jsPDF from 'jspdf'
 import {
   customerCloudPosition,
@@ -71,6 +81,7 @@ import {
 
 type Project = Tables<'projects'>
 type Process = Tables<'processes'>
+type BenchmarkReference = Tables<'benchmark_reference'>
 type Buffer = Tables<'inventory_buffers'>
 
 const INK = '#18181b' // zinc-900 — used for all VSM line-art instead of pure black
@@ -104,6 +115,31 @@ function resolveCanvasFont(): string {
 function Text(props: ComponentProps<typeof KonvaText>) {
   return <KonvaText fontFamily={resolveCanvasFont()} {...props} />
 }
+
+/**
+ * Die Schriftgroessen der Zeichenflaeche, vier Stufen. Vorher waren es sechs
+ * (8, 8.5, 10, 11, 12, 13) ueber sechzehn Textmarken verteilt — eine Skala,
+ * die beim Schreiben entstand statt entschieden zu werden (Design-Audit
+ * 2026-08-31, Befund 05).
+ *
+ * Die Zahlen sind Canvas-Einheiten, nicht Pixel: Sie skalieren mit Zoom und
+ * PDF-Export mit, weshalb hier andere Werte stehen als in der Oberfläche
+ * (dort ist 12 px die Untergrenze, siehe globals.css). Massgeblich ist das
+ * gedruckte A3, auf dem das Diagramm groesser steht als am Bildschirm.
+ */
+const CANVAS_TEXT = {
+  /** 13 — was aus zwei Metern lesbar sein muss: Prozessname, die beiden
+   *  Summen der Zeitleiter. */
+  heading: 13,
+  /** 11 — einzelne Zahlen und Namen in einem Symbol: Bedienerzahl, WIP,
+   *  Lieferant/Kunde, ERP-Kasten. */
+  value: 11,
+  /** 10 — Beschriftungen und die Datenzeilen im Prozesskasten. */
+  label: 10,
+  /** 8 — Kuerzel in engen Symbolen, wo mehr nicht hineinpasst: "SS",
+   *  Kanban-Art, Klassifikationsmarke. */
+  tag: 8,
+} as const
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -113,7 +149,29 @@ const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
 // capped and shrunk-to-fit (via computeAutoFitScale) instead of growing
 // the page without bound.
 const MIN_CANVAS_DISPLAY_HEIGHT = 320
+// Rueckfallwert, solange das Fenster noch nicht gemessen ist (Serverlauf und
+// erstes Bild). Danach uebernimmt maxCanvasDisplayHeight.
 const MAX_CANVAS_DISPLAY_HEIGHT = 560
+// Höhe der Kennzahlenleiste, die im Vollbild unten andockt. Sie belegt den
+// Platz, den das Diagramm ohnehin nicht füllen kann, und beantwortet damit im
+// Moderationsmodus die Frage, für die man sonst das Vollbild verlassen musste:
+// was macht die Durchlaufzeit, wenn ich diese Box gerade ändere.
+const FULLSCREEN_KPI_BAR_HEIGHT = 92
+// Was im Seitenfluss oberhalb der Zeichenflaeche kleben bleibt: die fuenf
+// Kennzahlenkacheln samt Formelzeile und die Werkzeugleiste. Im Browser
+// gemessen sind das 271 px; der Aufschlag deckt die Kacheln ab, die bei
+// schlechter Bewertung eine Zeile mehr tragen ("Verbesserungsbedarf").
+//
+// Der Wert deckelt die Zeichenflaeche, damit sie nicht hoeher wird als der
+// Platz unter der klebenden Leiste — sonst muesste man scrollen, um das
+// Diagramm ganz zu sehen, und genau dabei verschwindet es hinter der Leiste.
+const STICKY_CHROME_HEIGHT = 320
+
+/** Die zwei Auswertungen unter dem Diagramm, in Lesereihenfolge. */
+const ANALYSIS_TABS = [
+  { id: 'balance', label: 'Austaktung' },
+  { id: 'benchmark', label: 'Branchenvergleich' },
+] as const
 
 type Selection =
   | { kind: 'process'; id: string }
@@ -125,12 +183,33 @@ interface Props {
   project: Project
   /** null = current/live state; a scenarios.id = editing that Future-State copy. */
   scenarioId: string | null
+  /**
+   * Name des aktiven Szenarios, nur für die Zustandsangabe im PDF. Die ID
+   * allein genügt dafür nicht, und ein Ausdruck ohne Zustandsangabe ist im
+   * Gremium wertlos — siehe buildPdfSubtitle.
+   */
+  scenarioName?: string | null
   initialProcesses: Process[]
   initialBuffers: Buffer[]
+  /**
+   * Vergleichswerte fuer den Branchenvergleich. Leer heisst "keine
+   * hinterlegt" — dann entfaellt der Reiter, statt einen leeren zu zeigen.
+   * Die oeffentliche Demo laeuft ohne.
+   */
+  benchmarkReferences?: BenchmarkReference[]
 }
 
-export default function VSMCanvas({ project, scenarioId, initialProcesses, initialBuffers }: Props) {
+export default function VSMCanvas({
+  project,
+  scenarioId,
+  scenarioName = null,
+  initialProcesses,
+  initialBuffers,
+  benchmarkReferences = [],
+}: Props) {
+  const hasBenchmark = benchmarkReferences.length > 0
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
@@ -184,6 +263,11 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // nur die Hälfte des Sichtfelds ein — man bewegt ständig das Falsche. Im
   // Vollbild gibt es nur noch einen Bewegungsraum, das Problem verschwindet
   // statt gemildert zu werden.
+  // Welche der beiden Auswertungen unter dem Diagramm gerade zu sehen ist.
+  // Beide standen frueher gleichzeitig im Stapel darunter (Design-Audit
+  // 2026-08-31, Befund 06); wer den Benchmark lesen wollte, scrollte an der
+  // Austaktung vorbei, und das Diagramm war laengst aus dem Bild.
+  const [analysisTab, setAnalysisTab] = useState<'balance' | 'benchmark'>('balance')
   const [isFullscreen, setIsFullscreen] = useState(false)
   // Nur im Vollbild gebraucht: dort bestimmt der Bildschirm die Höhe, sonst
   // leitet sie sich aus der Diagrammhöhe ab (viewportHeight weiter unten).
@@ -195,6 +279,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // diagram and the toolbar underneath it, because a short diagram already
   // "fits" a tall fixed viewport at 100% scale and just sits at the top.
   const [viewportWidth, setViewportWidth] = useState(900)
+  // Die Fensterhoehe entscheidet im Seitenfluss darueber, wie hoch die
+  // Zeichenflaeche werden darf. 0 heisst "noch nicht gemessen" (Serverlauf);
+  // dann greift der feste Rueckfallwert.
+  const [windowHeight, setWindowHeight] = useState(0)
   const stageContainerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
@@ -387,10 +475,64 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // the scale from the width alone also avoids the circular dependency between
   // viewport height and auto-fit scale.
   const widthFitScale = Math.max(MIN_READABLE_SCALE, Math.min(1, (viewportWidth - 48) / canvasWidth))
+  // [Design-Audit 2026-08-31, Befund 06] Die Obergrenze war eine feste Zahl
+  // (560 px), unabhaengig vom Bildschirm: Auf einem 1080er-Notebook blieb ein
+  // Drittel des Bildes ungenutzt, waehrend das Diagramm darin auf 60 %
+  // geschrumpft wurde. Sie richtet sich jetzt nach dem Fenster abzueglich
+  // dessen, was oben kleben bleibt.
+  const maxCanvasDisplayHeight =
+    windowHeight > 0
+      ? Math.max(MIN_CANVAS_DISPLAY_HEIGHT, windowHeight - STICKY_CHROME_HEIGHT)
+      : MAX_CANVAS_DISPLAY_HEIGHT
   const viewportHeight = Math.min(
-    MAX_CANVAS_DISPLAY_HEIGHT,
+    maxCanvasDisplayHeight,
     Math.max(MIN_CANVAS_DISPLAY_HEIGHT, canvasHeight * widthFitScale + 32)
   )
+
+  // Dieselben Werte wie in den Kacheln oberhalb der Zeichenfläche, nur
+  // kompakt. Bewusst aus einer Quelle abgeleitet: Zwei Stellen, die dieselbe
+  // Zahl unterschiedlich formatieren, laufen früher oder später auseinander.
+  const fullscreenKpis = useMemo(
+    () => [
+      {
+        label: 'Durchlaufzeit',
+        value: kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY,
+        unit: 'Tage',
+      },
+      {
+        label: 'Wertschöpfungsanteil',
+        value:
+          kpis.valueAddedRatioPercent !== null
+            ? kpis.valueAddedRatioPercent.toFixed(2)
+            : KPI_EMPTY,
+        unit: '%',
+      },
+      {
+        label: 'Taktzeit',
+        value: kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY,
+        unit: 'min',
+      },
+      {
+        label: 'Ist-Ausbringung',
+        value: kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY,
+        unit: 'Stk./Tag',
+      },
+      {
+        label: 'Bearbeitungszeit',
+        value: kpis.totalCycleTimeMinutes.toFixed(1),
+        unit: 'min',
+      },
+    ],
+    [kpis]
+  )
+
+  // Die Höhe, in die eingepasst wird: im Seitenfluss die aus dem Inhalt
+  // abgeleitete Kartenhöhe, im Vollbild der Bildschirm abzüglich der
+  // Kennzahlenleiste, die dort unten andockt.
+  const stageHeight =
+    isFullscreen && measuredHeight > 0
+      ? Math.max(200, measuredHeight - FULLSCREEN_KPI_BAR_HEIGHT)
+      : viewportHeight
 
   // Fit-scale/position for the current content size — recomputed every
   // render (cheap arithmetic), not stored in state. This is what "Einpassen"
@@ -398,10 +540,20 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   // zoom/pan, including right after adding the diagram's first processes.
   const autoFitScale = computeAutoFitScale(
     { width: canvasWidth, height: canvasHeight },
-    { width: viewportWidth, height: viewportHeight },
+    { width: viewportWidth, height: stageHeight },
     24
   )
-  const autoFitPos: Point = { x: (viewportWidth - canvasWidth * autoFitScale) / 2, y: 16 }
+  // Waagrecht war schon immer zentriert, senkrecht stand das Diagramm fest bei
+  // y = 16. Im Seitenfluss stimmt das, weil die Kartenhöhe aus dem Inhalt
+  // abgeleitet ist und es gar keinen Überschuss gibt. Im Vollbild nicht: Ein
+  // Wertstrom ist breit und flach, also bestimmt die Breite den Massstab, und
+  // darunter bleibt zwangsläufig Platz — das Diagramm kann die Höhe gar nicht
+  // füllen, ohne seitlich herauszulaufen. Oben angeschlagen sah das aus wie ein
+  // halb geladenes Bild; zentriert sieht es aus wie ein Blatt.
+  const autoFitPos: Point = {
+    x: (viewportWidth - canvasWidth * autoFitScale) / 2,
+    y: Math.max(16, (stageHeight - canvasHeight * autoFitScale) / 2),
+  }
   const stageScale = camera?.scale ?? autoFitScale
   const stagePos = camera?.pos ?? autoFitPos
 
@@ -419,22 +571,88 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     if (!stage) return
     setIsExportingPdf(true)
     try {
-      const dataUrl = stage.toDataURL({ pixelRatio: 2, mimeType: 'image/png' })
+      // [Fehlerbericht 31.08.2026, iPhone 16] Der Export zeigte nur einen
+      // Ausschnitt: ERP, "Montieren", "Verpacken" — Zeitleiter und halbe Kette
+      // fehlten. Ursache: toDataURL() rastert den *sichtbaren* Bereich der
+      // Bühne. Am Schreibtisch fällt das nie auf, weil das eingepasste
+      // Diagramm dort hineinpasst (Bühne 1102 px, skalierter Inhalt 1059 px).
+      // Auf 375 px ist die Bühne rund 327 px breit, der Maßstab aber bei
+      // MIN_READABLE_SCALE (0.6) gedeckelt — von 1059 px Inhalt blieb knapp
+      // ein Drittel übrig. Dasselbe passiert auf jedem Gerät, sobald jemand
+      // verschoben oder hineingezoomt hat.
+      //
+      // Ein Ausdruck darf nicht davon abhängen, wohin gerade gescrollt wurde.
+      // Also: Bühne kurz auf Originalmaßstab und Inhaltsgrösse stellen,
+      // aufnehmen, zurückstellen. Der Nutzer sieht davon nichts, weil zwischen
+      // den beiden Zuständen kein Bild ausgegeben wird.
+      const restore = {
+        scale: stage.scaleX(),
+        position: stage.position(),
+        width: stage.width(),
+        height: stage.height(),
+      }
+      let dataUrl: string
+      try {
+        stage.scale({ x: 1, y: 1 })
+        stage.position({ x: 0, y: 0 })
+        stage.size({ width: canvasWidth, height: canvasHeight })
+        stage.draw()
+        // Ein sehr breiter Wertstrom ergäbe bei festem Faktor 2 ein Bild von
+        // mehreren tausend Pixeln Kantenlänge; das Blatt gewinnt dadurch
+        // nichts, und manche Browser brechen beim Rastern ab.
+        dataUrl = stage.toDataURL({
+          pixelRatio: Math.min(2, 4000 / canvasWidth),
+          mimeType: 'image/png',
+        })
+      } finally {
+        stage.scale({ x: restore.scale, y: restore.scale })
+        stage.position(restore.position)
+        stage.size({ width: restore.width, height: restore.height })
+        stage.draw()
+      }
+
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 24
-      const titleSpace = 30
-      const kpiBlockSpace = 90
+      const margin = 32
+      // Kopf- und Fusszeile brauchen festen Platz, dazwischen bleibt der Rest
+      // fürs Diagramm.
+      const headerSpace = 52
+      const kpiBlockSpace = 58
+      const footerSpace = 28
+      // Die Methodikbefunde gehören aufs Blatt: Es geht ins Lenkungsgremium,
+      // und dort ist der Unterschied zwischen "die Zahlen sind belastbar" und
+      // "eine Kennzahl steht unter Vorbehalt" entscheidungsrelevant. Der Platz
+      // wird nur abgezogen, wenn es Befunde gibt — sonst schrumpfte das
+      // Diagramm auch auf einem methodisch sauberen Wertstrom.
+      const rankedFindings = rankFindings(methodFindings)
+      const findingsSpace = rankedFindings.length === 0 ? 0 : 24 + rankedFindings.length * 13
 
-      pdf.setFontSize(14)
-      pdf.text(buildPdfTitle(project.name), margin, margin + 10)
+      // --- Kopfzeile ------------------------------------------------------
+      // Das Blatt verlässt die Anwendung und landet bei Leuten, die sie nie
+      // öffnen werden. Es muss deshalb aus sich heraus sagen, was es ist, von
+      // welchem Zustand es spricht und woher es stammt.
+      pdf.setFontSize(7.5)
+      pdf.setTextColor(15, 90, 82) // brand-600
+      pdf.text('VSM BUILDER', margin, margin)
 
-      // Fit the snapshot within the page width, preserving aspect ratio,
-      // leaving room for the title above and the KPI lines below.
+      pdf.setFontSize(15)
+      pdf.setTextColor(24, 24, 27) // INK
+      pdf.text(buildPdfTitle(project.name), margin, margin + 18)
+
+      pdf.setFontSize(9.5)
+      pdf.setTextColor(82, 82, 91) // zinc-600
+      pdf.text(buildPdfSubtitle(scenarioName), margin, margin + 32)
+
+      pdf.setDrawColor(212, 212, 216) // zinc-300
+      pdf.setLineWidth(0.5)
+      pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
+
+      // --- Diagramm -------------------------------------------------------
       const imgProps = pdf.getImageProperties(dataUrl)
       const availableWidth = pageWidth - margin * 2
-      const maxImgHeight = pageHeight - margin * 2 - titleSpace - kpiBlockSpace
+      const maxImgHeight =
+        pageHeight - margin * 2 - headerSpace - kpiBlockSpace - findingsSpace - footerSpace
       let imgWidth = availableWidth
       let imgHeight = (imgProps.height / imgProps.width) * imgWidth
       if (imgHeight > maxImgHeight) {
@@ -442,15 +660,86 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         imgWidth = (imgProps.width / imgProps.height) * imgHeight
       }
       const imgX = margin + (availableWidth - imgWidth) / 2
-      const imgY = margin + titleSpace
-      pdf.addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight)
+      const imgY = margin + headerSpace
+      // Ohne dieses Argument bettet jsPDF das Bild unkomprimiert ein: Der
+      // erste echte Export war 9,1 MB, und 3530 x 860 x 3 Byte ergeben genau
+      // diese 9,1 MB — das Bild war die Datei. Ein Blatt in dieser Groesse
+      // scheitert an den Anhangsgrenzen vieler Firmen-Mailgateways, also
+      // ausgerechnet dort, wo es hinsoll. Strichzeichnung komprimiert sehr
+      // gut, 'FAST' genuegt und haelt den Export auch auf dem Telefon zuegig.
+      pdf.addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight, undefined, 'FAST')
 
-      pdf.setFontSize(10)
-      let lineY = imgY + imgHeight + 24
-      for (const line of buildKpiSummaryLines(kpis)) {
-        pdf.text(line, margin, lineY)
-        lineY += 16
+      // --- Kennzahlen -----------------------------------------------------
+      // Als Spalten statt als Liste, damit sie sich wie auf dem Bildschirm
+      // vergleichen lassen. Der Inhalt kommt weiterhin aus der geprüften
+      // buildKpiSummaryLines; hier wird nur am ersten ": " in Beschriftung und
+      // Wert getrennt. Beide Seiten sind fest formatiert (Begriff bzw. Zahl
+      // mit Einheit), ein zweites ": " kann darin nicht vorkommen.
+      const kpiLines = buildKpiSummaryLines(kpis)
+      const columnWidth = availableWidth / kpiLines.length
+      const kpiY = imgY + imgHeight + 30
+      kpiLines.forEach((line, i) => {
+        const separator = line.indexOf(': ')
+        const label = line.slice(0, separator)
+        const value = line.slice(separator + 2)
+        const x = margin + columnWidth * i
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(label, x, kpiY)
+
+        pdf.setFontSize(14)
+        pdf.setTextColor(24, 24, 27)
+        pdf.text(value, x, kpiY + 17)
+      })
+
+      // --- Methodikprüfung ------------------------------------------------
+      // Nur die Titel, nicht die Begründungen: Das Blatt soll benennen, was zu
+      // klären ist, nicht die Schulung ersetzen. Der Punkt vor der Zeile trägt
+      // dieselbe Bedeutung wie im Panel — rot heisst, dass eine der Zahlen
+      // darüber unter Vorbehalt steht.
+      if (rankedFindings.length > 0) {
+        let findingY = kpiY + kpiBlockSpace - 16
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(
+          `METHODIKPRÜFUNG · ${formatFindingCount(rankedFindings.length)}`,
+          margin,
+          findingY
+        )
+        findingY += 14
+
+        for (const finding of rankedFindings) {
+          if (finding.severity === 'critical') {
+            pdf.setFillColor(163, 42, 31) // dasselbe Rot wie die Engpass-Markierung
+          } else {
+            pdf.setFillColor(180, 83, 9) // Bernstein wie die Hinweisbanner
+          }
+          pdf.circle(margin + 2, findingY - 2.5, 2, 'F')
+
+          pdf.setFontSize(9)
+          pdf.setTextColor(24, 24, 27)
+          // Ein Titel wie "2× Push vor dem Schrittmacher statt Supermarkt oder
+          // FIFO" passt in eine Zeile; ein Projektname darin könnte ihn
+          // sprengen. splitTextToSize schneidet nicht ab, sondern umbricht —
+          // die zusätzliche Zeile ist im Platz nicht eingerechnet, deshalb
+          // wird nur die erste gesetzt und der Rest fällt weg, statt in die
+          // Fusszeile zu laufen.
+          const [firstLine] = pdf.splitTextToSize(finding.title, pageWidth - margin * 2 - 14)
+          pdf.text(firstLine, margin + 12, findingY)
+          findingY += 13
+        }
       }
+
+      // --- Fusszeile ------------------------------------------------------
+      const footerY = pageHeight - margin
+      pdf.setDrawColor(212, 212, 216)
+      pdf.line(margin, footerY - 14, pageWidth - margin, footerY - 14)
+      pdf.setFontSize(8)
+      pdf.setTextColor(82, 82, 91)
+      pdf.text(buildPdfFooterLine(), margin, footerY)
+      pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
 
       pdf.save(`${project.name || 'vsm'}.pdf`)
     } finally {
@@ -464,8 +753,15 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     function measure() {
       const el = stageContainerRef.current
       if (!el) return
-      setViewportWidth(el.clientWidth)
+      // Eine Breite von 0 ist keine Messung, sondern ein Zeitpunkt: Der
+      // Container ist im Moment des Messens noch nicht im Layout (der
+      // Canvas wird nachgeladen). Konva macht daraus eine Zeichenflaeche
+      // ohne Ausdehnung, und der erste drawImage darauf reisst die ganze
+      // Seite mit ("InvalidStateError: ... width or height of 0"). Der
+      // letzte brauchbare Wert bleibt in dem Fall stehen.
+      if (el.clientWidth > 0) setViewportWidth(el.clientWidth)
       setMeasuredHeight(el.clientHeight)
+      setWindowHeight(window.innerHeight)
     }
     measure()
     window.addEventListener('resize', measure)
@@ -660,6 +956,13 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     }
 
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.addProcess(s, { name, cycleTime }))
+        setQuickAddName('')
+        setQuickAddCt('')
+        nameInputRef.current?.focus()
+        return
+      }
     startTransition(async () => {
       try {
         await addProcess(project.id, scenarioId, { name, cycleTime })
@@ -675,6 +978,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
   function handleThroughputBlur() {
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.updateAnnualThroughput(s, liveAnnualThroughput ?? null))
+        return
+      }
     startTransition(async () => {
       try {
         await updateAnnualThroughput(project.id, liveAnnualThroughput)
@@ -688,6 +995,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   function handleAvailableMinutesBlur() {
     if (liveAvailableMinutes === undefined) return // invalid/blank input — leave the stored value untouched
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.updateAvailableMinutes(s, liveAvailableMinutes))
+        return
+      }
     startTransition(async () => {
       try {
         await updateAvailableMinutes(project.id, liveAvailableMinutes)
@@ -726,6 +1037,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
     if (newOrder === chainOrder) return // already at that end, nothing to do
 
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.reorderProcesses(s, newOrder))
+        return
+      }
     startTransition(async () => {
       try {
         await reorderProcesses(project.id, scenarioId, newOrder)
@@ -738,6 +1053,10 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
   function handleChangeLane(processId: string, lane: number) {
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.updateProcessLane(s, processId, Math.max(0, lane)))
+        return
+      }
     startTransition(async () => {
       try {
         await updateProcessLane(project.id, processId, Math.max(0, lane))
@@ -750,50 +1069,12 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
-      {/* Live KPI bar */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <KpiTile
-          label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
-          value={kpis.totalCycleTimeMinutes.toFixed(1)}
-          unit="min"
-        />
-        <KpiTile
-          label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
-          value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
-          unit="Tage"
-          formula={leadTimeFormula}
-        />
-        <KpiTile
-          label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
-          tier={ratePce(kpis.valueAddedRatioPercent)}
-          value={
-            kpis.valueAddedRatioPercent !== null
-              ? kpis.valueAddedRatioPercent.toFixed(2)
-              : KPI_EMPTY
-          }
-          unit="%"
-        />
-        <KpiTile
-          label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
-          value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
-          unit="min"
-          formula={taktTimeFormula}
-        />
-        <KpiTile
-          label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
-          value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
-          unit="Stk./Tag"
-          formula={exitRateFormula}
-          tier={rateCapacityCoverage(kpis.capacityCoverage)}
-        />
-      </div>
-
       {/* Customer demand + available production time — the two inputs that
           drive lead time / takt live. PLT = WIP / Exitrate (Little's Law):
           Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
           deliberately changes PLT — that's the formula working correctly,
           not a bug. */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
           <label htmlFor="throughput" className="text-sm text-zinc-600">
             Jahresbedarf Kunde (Stück/Jahr)
@@ -806,7 +1087,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             onChange={(e) => setThroughputInput(e.target.value)}
             onBlur={handleThroughputBlur}
             placeholder="z. B. 50000"
-            className="w-32 rounded-control border border-zinc-300 px-2 py-1 text-sm"
+            className="w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -821,7 +1102,7 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
             onChange={(e) => setAvailableMinutesInput(e.target.value)}
             onBlur={handleAvailableMinutesBlur}
             placeholder="z. B. 480"
-            className="w-24 rounded-control border border-zinc-300 px-2 py-1 text-sm"
+            className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </div>
       </div>
@@ -840,417 +1121,516 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
           dadurch ihre Aussagekraft verliert. */}
       <MethodCheckPanel findings={methodFindings} />
 
-      {/* Zoom controls — the stage auto-fits on load and whenever the
-          diagram grows; this is just for manual override. Wheel-zoom needs
-          Strg/Cmd (see handleWheel) so a normal scroll down to the toolbar
-          below never zooms the canvas by accident. */}
-      {/* [UX-Audit 2026-08-16, P1] Die Leiste bleibt beim Scrollen stehen.
-          Vorher scrollten Zoom und Einpassen mit der Seite weg — also genau
-          dann ausser Sicht, wenn man sie braucht, weil man sich verschoben
-          hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
-          drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
-          festen Bezugspunkt. */}
-      <div className="sticky top-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/95 py-3 backdrop-blur">
-        {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
-            nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
-        <p className="hidden text-xs text-zinc-500 sm:block">
-          Strg/Cmd + Mausrad zum Zoomen
-        </p>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={isExportingPdf || processes.length === 0}
-            className={secondaryButtonClass}
-          >
-            {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
-          </button>
-          {/* Phase 7b: Präsentationsmodus — blendet CSV-Import und
-              Lieferant/Kunde/ERP-Label-Bearbeitung aus (Nebensächliches für
-              eine laufende Moderation), Prozess-/Puffer-Boxen bleiben
-              editierbar. */}
-          {/* [UX-Audit 2026-08-16, P3] Einstieg in den Vollbildmodus. */}
-          <button type="button" onClick={() => setIsFullscreen(true)} className={secondaryButtonClass}>
-            Vollbild
-          </button>
-          <button
-            type="button"
-            onClick={() => setPresentationMode((prev) => !prev)}
-            aria-pressed={presentationMode}
-            className={
-              presentationMode
-                ? 'rounded-control bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700'
-                : secondaryButtonClass
-            }
-          >
-            {presentationMode ? '✓ Präsentationsmodus' : 'Präsentationsmodus'}
-          </button>
-          {/* UX-Audit Phase 7a finding #1 (touch targets): these three
-              buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
-              (~44px) — the row facilitators reach for most often when
-              driving a workshop from a laptop trackpad. */}
-          <div className="flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white p-1">
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Verkleinern"
-            >
-              −
-            </button>
-            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500">
-              {Math.round(stageScale * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Vergrößern"
-            >
-              +
-            </button>
-            {/* [UX-Audit 2026-08-16, P5] "Einpassen" stand hier ein zweites
-                Mal, seit es zusätzlich auf der Zeichenfläche schwebt. Der
-                schwebende bleibt: er sitzt dort, wo gearbeitet wird, und
-                zeigt zusätzlich an, ob die Ansicht überhaupt verschoben ist. */}
+      {/* Kennzahlenleiste und Zeichenflaeche in einem Rahmen: Eine klebende
+          Leiste haelt nur, solange ihr umschliessender Block im Bild ist.
+          Ohne diesen Rahmen blieben die Kennzahlen auch dann noch oben
+          stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
+          Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
+          wenn das Diagramm den Bildschirm verlaesst. */}
+      <div>
+        {/* [Design-Audit 2026-08-31, Befund 06] Die Kennzahlen standen ueber
+            dem Diagramm und scrollten mit ihm weg: Wer eine Zykluszeit aenderte,
+            sah nie gleichzeitig den Prozess und die Zahl, die sich dadurch
+            aendert. "Live berechnen" stimmte technisch und war nicht
+            wahrnehmbar. Kennzahlen und Werkzeugleiste bleiben jetzt zusammen
+            oben stehen, solange man am Diagramm arbeitet.
+
+            Erst ab `lg` — auf einem Telefon waeren 180 px klebende Leiste die
+            Haelfte des Bildes, und dort scrollt man ohnehin ein Stueck nach dem
+            anderen statt beides nebeneinander zu halten. */}
+        <div className="bg-zinc-50 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
+          {/* Live KPI bar */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <KpiTile
+              label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
+              value={kpis.totalCycleTimeMinutes.toFixed(1)}
+              unit="min"
+            />
+            <KpiTile
+              label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
+              value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
+              unit="Tage"
+              formula={leadTimeFormula}
+            />
+            <KpiTile
+              label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
+              tier={ratePce(kpis.valueAddedRatioPercent)}
+              value={
+                kpis.valueAddedRatioPercent !== null
+                  ? kpis.valueAddedRatioPercent.toFixed(2)
+                  : KPI_EMPTY
+              }
+              unit="%"
+            />
+            <KpiTile
+              label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
+              value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
+              unit="min"
+              formula={taktTimeFormula}
+            />
+            <KpiTile
+              label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
+              value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
+              unit="Stk./Tag"
+              formula={exitRateFormula}
+              tier={rateCapacityCoverage(kpis.capacityCoverage)}
+            />
+          </div>
+
+          {/* Zoom controls — the stage auto-fits on load and whenever the
+              diagram grows; this is just for manual override. Wheel-zoom needs
+              Strg/Cmd (see handleWheel) so a normal scroll down to the toolbar
+              below never zooms the canvas by accident. */}
+          {/* [UX-Audit 2026-08-16, P1] Die Leiste bleibt beim Scrollen stehen.
+              Vorher scrollten Zoom und Einpassen mit der Seite weg — also genau
+              dann ausser Sicht, wenn man sie braucht, weil man sich verschoben
+              hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
+              drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
+              festen Bezugspunkt. */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 py-3">
+            {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
+                nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
+            <p className="hidden text-xs text-zinc-500 sm:block">
+              Strg/Cmd + Mausrad zum Zoomen
+            </p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={isExportingPdf || processes.length === 0}
+                className={primaryButtonClass}
+              >
+                {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
+              </button>
+              {/* Phase 7b: Präsentationsmodus — blendet CSV-Import und
+                  Lieferant/Kunde/ERP-Label-Bearbeitung aus (Nebensächliches für
+                  eine laufende Moderation), Prozess-/Puffer-Boxen bleiben
+                  editierbar. */}
+              {/* [UX-Audit 2026-08-16, P3] Einstieg in den Vollbildmodus. */}
+              <button type="button" onClick={() => setIsFullscreen(true)} className={secondaryButtonClass}>
+                Vollbild
+              </button>
+              {/* [Design-Audit 2026-08-31, Befund 08] Der aktive Zustand war hier
+                  von Hand geschrieben (`px-4 py-3`, ohne Rahmen) und damit 2 px
+                  flacher und 6 px schmaler als der inaktive Sekundaerknopf. Der
+                  Knopf wuchs beim Klicken und schob die Knoepfe daneben weiter —
+                  genau in dem Moment, in dem ein Moderator vor Publikum
+                  umschaltet. Beide Zustaende teilen jetzt dieselbe Groesse aus
+                  `ui/buttons`; es aendert sich nur die Farbe.
+
+                  Das Haekchen bleibt im Aus-Zustand als `invisible` stehen,
+                  statt zu verschwinden: Es ist der Zustandshinweis fuer alle, die
+                  die Farbe nicht unterscheiden, und weil es dort Platz belegt,
+                  aendert auch die Beschriftung die Breite nicht mehr. */}
+              <button
+                type="button"
+                onClick={() => setPresentationMode((prev) => !prev)}
+                aria-pressed={presentationMode}
+                className={presentationMode ? primaryButtonClass : secondaryButtonClass}
+              >
+                <span aria-hidden className={presentationMode ? undefined : 'invisible'}>
+                  ✓{' '}
+                </span>
+                Präsentationsmodus
+              </button>
+              {/* UX-Audit Phase 7a finding #1 (touch targets): these three
+                  buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
+                  (~44px) — the row facilitators reach for most often when
+                  driving a workshop from a laptop trackpad. */}
+              <div className="flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white p-1">
+                <button
+                  type="button"
+                  onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
+                  className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  aria-label="Verkleinern"
+                >
+                  −
+                </button>
+                <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500">
+                  {Math.round(stageScale * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
+                  className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  aria-label="Vergrößern"
+                >
+                  +
+                </button>
+                {/* [UX-Audit 2026-08-16, P5] "Einpassen" stand hier ein zweites
+                    Mal, seit es zusätzlich auf der Zeichenfläche schwebt. Der
+                    schwebende bleibt: er sitzt dort, wo gearbeitet wird, und
+                    zeigt zusätzlich an, ob die Ansicht überhaupt verschoben ist. */}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Canvas — standard VSM black-and-white line art on a white ground.
-          Information flow (dashed/zigzag, ERP) above the process row,
-          material flow (solid/block arrows) at the row, Zeitleiter below. */}
-      <div
-        ref={stageContainerRef}
-        className={
-          isFullscreen
-            ? 'fixed inset-0 z-50 overflow-hidden bg-white'
-            : 'relative mt-2 overflow-hidden rounded-surface border border-zinc-200'
-        }
-        // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
-        // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
-        // Finger auf dem Diagramm hatte und nach unten wischte, verschob das
-        // Diagramm statt die Seite zu scrollen — und kam an die Bedienelemente
-        // darunter nicht mehr heran.
-        //
-        // `pan-y` gibt das vertikale Wischen an den Browser zurück (Konva sieht
-        // die Geste dann gar nicht mehr), waagrechtes Ziehen verschiebt weiter
-        // die Ansicht. `pinch-zoom` bleibt erlaubt, sonst liesse sich auf dem
-        // Telefon gar nicht mehr heranzoomen — die +/−-Knöpfe sind dafür zu
-        // klein zum Zielen.
-        style={{ touchAction: 'pan-y pinch-zoom' }}
-      >
-        {/* Zweiter Weg zurück zur Gesamtansicht, direkt auf der Zeichenfläche.
-            Der gleichnamige Knopf in der Leiste oben bleibt, ist aber genau
-            dann schwer zu finden, wenn man ihn braucht: nach einem
-            versehentlichen Verschieben sucht man ihn zwischen "PDF
-            exportieren" und "Präsentationsmodus", auf schmalen Bildschirmen
-            zusätzlich nach einem Zeilenumbruch. */}
-        {/* [UX-Audit 2026-08-16, P4] Der Knopf beantwortet die Frage "bin ich
-            verschoben?", bevor sie gestellt wird: `camera` ist null, solange
-            die Ansicht automatisch eingepasst ist, und gesetzt, sobald von
-            Hand gezoomt oder geschoben wurde. Nur im zweiten Fall tritt er
-            hervor — sonst wäre es ein Dauerreiz ohne Aussage. */}
-        {/* Im Vollbild liegt die fixierte Leiste hinter der Überlagerung.
-            Zoom und Ausstieg müssen deshalb hier noch einmal erreichbar sein,
-            sonst wäre der Modus eine Falle. */}
-        {isFullscreen && (
-          <div className="absolute left-3 top-3 z-10 flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur">
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Verkleinern"
-            >
-              −
-            </button>
-            <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-500">
-              {Math.round(stageScale * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Vergrößern"
-            >
-              +
-            </button>
-            <div className="mx-1 h-4 w-px bg-zinc-200" />
-            <button
-              type="button"
-              onClick={() => setIsFullscreen(false)}
-              className="rounded-control px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
-            >
-              Schließen
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={handleFitToView}
-          aria-label={camera ? 'Ansicht ist verschoben — zurück zur Gesamtansicht' : 'Gesamtansicht einpassen'}
+        {/* Canvas — standard VSM black-and-white line art on a white ground.
+            Information flow (dashed/zigzag, ERP) above the process row,
+            material flow (solid/block arrows) at the row, Zeitleiter below. */}
+        <div
+          ref={stageContainerRef}
           className={
-            camera
-              ? 'absolute right-3 top-3 z-10 rounded-control bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-brand-700'
-              : 'absolute right-3 top-3 z-10 rounded-control border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900'
+            isFullscreen
+              ? 'fixed inset-0 z-50 overflow-hidden bg-white'
+              : 'relative mt-2 overflow-hidden rounded-surface border border-zinc-200'
           }
+          // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
+          // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
+          // Finger auf dem Diagramm hatte und nach unten wischte, verschob das
+          // Diagramm statt die Seite zu scrollen — und kam an die Bedienelemente
+          // darunter nicht mehr heran.
+          //
+          // `pan-y` gibt das vertikale Wischen an den Browser zurück (Konva sieht
+          // die Geste dann gar nicht mehr), waagrechtes Ziehen verschiebt weiter
+          // die Ansicht. `pinch-zoom` bleibt erlaubt, sonst liesse sich auf dem
+          // Telefon gar nicht mehr heranzoomen — die +/−-Knöpfe sind dafür zu
+          // klein zum Zielen.
+          style={{ touchAction: 'pan-y pinch-zoom' }}
         >
-          Einpassen
-        </button>
-        <Stage
-          ref={stageRef}
-          width={viewportWidth}
-          // Im Vollbild gibt der Bildschirm die Höhe vor, sonst die Höhe des
-          // Diagramminhalts. measuredHeight ist beim ersten Bild nach dem
-          // Umschalten noch 0 — dann greift der bisherige Wert weiter.
-          height={isFullscreen && measuredHeight > 0 ? measuredHeight : viewportHeight}
-          scaleX={stageScale}
-          scaleY={stageScale}
-          x={stagePos.x}
-          y={stagePos.y}
-          // Process boxes are click-only now (no drag), so the Stage can be
-          // simply draggable throughout — there's no child drag target left
-          // to conflict with.
-          draggable
-          onWheel={handleWheel}
-          onDragEnd={(e) => setCamera({ scale: stageScale, pos: { x: e.target.x(), y: e.target.y() } })}
-        >
-          <Layer>
-            <Rect name="canvas-background" x={0} y={0} width={canvasWidth} height={canvasHeight} fill="#ffffff" />
+          {/* Zweiter Weg zurück zur Gesamtansicht, direkt auf der Zeichenfläche.
+              Der gleichnamige Knopf in der Leiste oben bleibt, ist aber genau
+              dann schwer zu finden, wenn man ihn braucht: nach einem
+              versehentlichen Verschieben sucht man ihn zwischen "PDF
+              exportieren" und "Präsentationsmodus", auf schmalen Bildschirmen
+              zusätzlich nach einem Zeilenumbruch. */}
+          {/* [UX-Audit 2026-08-16, P4] Der Knopf beantwortet die Frage "bin ich
+              verschoben?", bevor sie gestellt wird: `camera` ist null, solange
+              die Ansicht automatisch eingepasst ist, und gesetzt, sobald von
+              Hand gezoomt oder geschoben wurde. Nur im zweiten Fall tritt er
+              hervor — sonst wäre es ein Dauerreiz ohne Aussage. */}
+          {/* Im Vollbild liegt die fixierte Leiste hinter der Überlagerung.
+              Zoom und Ausstieg müssen deshalb hier noch einmal erreichbar sein,
+              sonst wäre der Modus eine Falle. */}
+          {isFullscreen && (
+            <div className="absolute left-3 top-3 z-10 flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
+                className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                aria-label="Verkleinern"
+              >
+                −
+              </button>
+              <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-500">
+                {Math.round(stageScale * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
+                className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                aria-label="Vergrößern"
+              >
+                +
+              </button>
+              <div className="mx-1 h-4 w-px bg-zinc-200" />
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                className="rounded-control px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                Schließen
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleFitToView}
+            aria-label={camera ? 'Ansicht ist verschoben — zurück zur Gesamtansicht' : 'Gesamtansicht einpassen'}
+            className={
+              camera
+                ? 'absolute right-3 top-3 z-10 rounded-control bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-brand-700'
+                : 'absolute right-3 top-3 z-10 rounded-control border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900'
+            }
+          >
+            Einpassen
+          </button>
+          <Stage
+            ref={stageRef}
+            width={viewportWidth}
+            // Im Vollbild gibt der Bildschirm die Höhe vor (abzüglich der
+            // Kennzahlenleiste), sonst die Höhe des Diagramminhalts.
+            // measuredHeight ist beim ersten Bild nach dem Umschalten noch 0 —
+            // dann greift der bisherige Wert weiter, siehe stageHeight.
+            height={stageHeight}
+            scaleX={stageScale}
+            scaleY={stageScale}
+            x={stagePos.x}
+            y={stagePos.y}
+            // Process boxes are click-only now (no drag), so the Stage can be
+            // simply draggable throughout — there's no child drag target left
+            // to conflict with.
+            draggable
+            onWheel={handleWheel}
+            onDragEnd={(e) => setCamera({ scale: stageScale, pos: { x: e.target.x(), y: e.target.y() } })}
+          >
+            <Layer>
+              <Rect name="canvas-background" x={0} y={0} width={canvasWidth} height={canvasHeight} fill="#ffffff" />
 
-            {/* Information flow: electronic (zigzag) for customer/ERP/supplier,
-                manual (straight) for ERP -> each process dispatch. */}
-            <ErpBox
-              x={erpPos.x}
-              y={erpPos.y}
-              label={project.erp_label}
-              isSelected={selection?.kind === 'anchor' && selection.anchor === 'erp'}
-              onSelect={() =>
-                setSelection((c) => (c?.kind === 'anchor' && c.anchor === 'erp' ? null : { kind: 'anchor', anchor: 'erp' }))
-              }
-            />
-            <Arrow
-              points={zigzagPoints(
-                customerLeft,
-                { x: erpPos.x + ERP_WIDTH, y: erpPos.y + ERP_HEIGHT / 2 },
-                8
-              )}
-              stroke={INK}
-              fill={INK}
-              strokeWidth={1}
-              pointerLength={6}
-              pointerWidth={6}
-            />
-            <Arrow
-              points={zigzagPoints(
-                { x: erpPos.x, y: erpPos.y + ERP_HEIGHT / 2 },
-                supplierRight,
-                8
-              )}
-              stroke={INK}
-              fill={INK}
-              strokeWidth={1}
-              pointerLength={6}
-              pointerWidth={6}
-            />
-            {dispatchProcesses.map((process) => {
-              const pos = positions[process.id]
-              if (!pos) return null
-              return (
-                <Arrow
-                  key={`info-${process.id}`}
-                  points={[
-                    erpPos.x + ERP_WIDTH / 2,
-                    erpPos.y + ERP_HEIGHT,
-                    pos.x + PROCESS_WIDTH / 2,
-                    pos.y,
-                  ]}
-                  stroke={INK}
-                  fill={INK}
-                  strokeWidth={1}
-                  pointerLength={6}
-                  pointerWidth={6}
-                />
-              )
-            })}
-
-            {/* Material flow */}
-            <CloudShape
-              x={supplierPos.x}
-              y={supplierPos.y}
-              label={project.supplier_name}
-              isSelected={selection?.kind === 'anchor' && selection.anchor === 'supplier'}
-              onSelect={() =>
-                setSelection((c) =>
-                  c?.kind === 'anchor' && c.anchor === 'supplier' ? null : { kind: 'anchor', anchor: 'supplier' }
-                )
-              }
-            />
-
-            {materialSegments.map((seg, i) => {
-              if (seg.kind === 'shipment') return <ShipmentArrow key={i} points={seg.points} />
-              if (seg.kind === 'pull') return <PullArrow key={i} points={seg.points} kanbanType={seg.kanbanType} />
-              // 'continuous' (one-piece flow) uses the same plain arrow as
-              // 'push' — the only difference is that it was never split
-              // around a WIP triangle above, so it's a single unbroken line.
-              // With no BufferMarker sitting on it to click, the line itself
-              // opens the BufferEditPanel (widened via hitStrokeWidth so it's
-              // easy to hit precisely).
-              const isContinuous = seg.kind === 'continuous'
-              const isSelected =
-                isContinuous &&
-                selection?.kind === 'buffer' &&
-                selection.from === seg.fromId &&
-                selection.to === seg.toId
-              return (
-                <Arrow
-                  key={i}
-                  points={seg.points}
-                  stroke={isSelected ? ACCENT : INK}
-                  fill={isSelected ? ACCENT : INK}
-                  strokeWidth={2}
-                  pointerLength={9}
-                  pointerWidth={9}
-                  hitStrokeWidth={isContinuous ? 16 : undefined}
-                  onClick={
-                    isContinuous
-                      ? () =>
-                          setSelection((current) =>
-                            current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
-                              ? null
-                              : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
-                          )
-                      : undefined
-                  }
-                  onTap={
-                    isContinuous
-                      ? () =>
-                          setSelection((current) =>
-                            current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
-                              ? null
-                              : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
-                          )
-                      : undefined
-                  }
-                  onMouseEnter={
-                    isContinuous
-                      ? (e) => {
-                          const stage = e.target.getStage()
-                          if (stage) stage.container().style.cursor = 'pointer'
-                        }
-                      : undefined
-                  }
-                  onMouseLeave={
-                    isContinuous
-                      ? (e) => {
-                          const stage = e.target.getStage()
-                          if (stage) stage.container().style.cursor = 'default'
-                        }
-                      : undefined
-                  }
-                />
-              )
-            })}
-
-            {processes.map((process) => {
-              const pos = positions[process.id]
-              if (!pos) return null
-              const { isBottleneck } = checkCapacity(
-                { cycleTime: process.cycle_time, oee: process.oee, operatorCount: process.operator_count },
-                kpis.taktTimeMinutes
-              )
-              return (
-                <ProcessBox
-                  key={process.id}
-                  process={process}
-                  x={pos.x}
-                  y={pos.y}
-                  isSelected={selection?.kind === 'process' && selection.id === process.id}
-                  isBottleneck={isBottleneck}
-                  counterScale={1 / stageScale}
-                  onSelect={() =>
-                    setSelection((current) =>
-                      current?.kind === 'process' && current.id === process.id
-                        ? null
-                        : { kind: 'process', id: process.id }
-                    )
-                  }
-                />
-              )
-            })}
-
-            {/* Buffer markers paint last (on top of both arrows and process
-                boxes) so the WIP triangle/icon is never hidden — it used to
-                be able to land under a box due to a since-fixed anchor bug,
-                this ordering is defense-in-depth against any future overlap.
-                A 'continuous' (one-piece flow) buffer has no symbol at all —
-                that's the whole point, a direct line with nothing sitting
-                on it — so it's skipped here entirely, not just left blank. */}
-            {edges.map(({ buffer, fromPos, toPos }) => {
-              if (buffer.buffer_type === 'continuous') return null
-              const mid = midpoint(fromPos, toPos)
-              const fromId = buffer.from_process_id
-              const toId = buffer.to_process_id
-              const isSelected = selection?.kind === 'buffer' && selection.from === fromId && selection.to === toId
-              return (
-                <BufferMarker
-                  key={buffer.id}
-                  x={mid.x - BUFFER_SIZE / 2}
-                  y={mid.y - BUFFER_SIZE / 2}
-                  wipCount={buffer.wip_count}
-                  bufferType={buffer.buffer_type ?? 'standard'}
-                  isSelected={isSelected}
-                  onSelect={() =>
-                    setSelection((current) =>
-                      current?.kind === 'buffer' && current.from === fromId && current.to === toId
-                        ? null
-                        : { kind: 'buffer', from: fromId, to: toId }
-                    )
-                  }
-                />
-              )
-            })}
-
-            <CloudShape
-              x={customerPos.x}
-              y={customerPos.y}
-              label={project.customer_name}
-              isSelected={selection?.kind === 'anchor' && selection.anchor === 'customer'}
-              onSelect={() =>
-                setSelection((c) =>
-                  c?.kind === 'anchor' && c.anchor === 'customer' ? null : { kind: 'anchor', anchor: 'customer' }
-                )
-              }
-            />
-
-            {/* Zeitleiter (timeline / ladder) */}
-            {ladderSegments.length > 0 && (
-              <>
-                <Line points={ladderPoints} stroke={INK} strokeWidth={2} />
-                {ladderSegments.map((seg, i) => (
-                  <Text
-                    key={i}
-                    text={seg.label}
-                    x={seg.x1}
-                    width={seg.x2 - seg.x1}
-                    y={seg.kind === 'wait' ? seg.y - 16 : seg.y + 6}
-                    align="center"
-                    fontSize={10}
+              {/* Information flow: electronic (zigzag) for customer/ERP/supplier,
+                  manual (straight) for ERP -> each process dispatch. */}
+              <ErpBox
+                x={erpPos.x}
+                y={erpPos.y}
+                label={project.erp_label}
+                isSelected={selection?.kind === 'anchor' && selection.anchor === 'erp'}
+                onSelect={() =>
+                  setSelection((c) => (c?.kind === 'anchor' && c.anchor === 'erp' ? null : { kind: 'anchor', anchor: 'erp' }))
+                }
+              />
+              <Arrow
+                points={zigzagPoints(
+                  customerLeft,
+                  { x: erpPos.x + ERP_WIDTH, y: erpPos.y + ERP_HEIGHT / 2 },
+                  8
+                )}
+                stroke={INK}
+                fill={INK}
+                strokeWidth={1}
+                pointerLength={6}
+                pointerWidth={6}
+              />
+              <Arrow
+                points={zigzagPoints(
+                  { x: erpPos.x, y: erpPos.y + ERP_HEIGHT / 2 },
+                  supplierRight,
+                  8
+                )}
+                stroke={INK}
+                fill={INK}
+                strokeWidth={1}
+                pointerLength={6}
+                pointerWidth={6}
+              />
+              {dispatchProcesses.map((process) => {
+                const pos = positions[process.id]
+                if (!pos) return null
+                return (
+                  <Arrow
+                    key={`info-${process.id}`}
+                    points={[
+                      erpPos.x + ERP_WIDTH / 2,
+                      erpPos.y + ERP_HEIGHT,
+                      pos.x + PROCESS_WIDTH / 2,
+                      pos.y,
+                    ]}
+                    stroke={INK}
                     fill={INK}
+                    strokeWidth={1}
+                    pointerLength={6}
+                    pointerWidth={6}
                   />
-                ))}
-                <LadderSummary
-                  x={ladderEndX + 12}
-                  yTop={ladderHighY}
-                  yBottom={ladderLowY}
-                  counterScale={1 / stageScale}
-                  leadTimeDays={kpis.totalLeadTimeDays}
-                  valueAddMinutes={kpis.totalCycleTimeMinutes}
-                />
-              </>
-            )}
-          </Layer>
-        </Stage>
+                )
+              })}
+
+              {/* Material flow */}
+              <CloudShape
+                x={supplierPos.x}
+                y={supplierPos.y}
+                label={project.supplier_name}
+                isSelected={selection?.kind === 'anchor' && selection.anchor === 'supplier'}
+                onSelect={() =>
+                  setSelection((c) =>
+                    c?.kind === 'anchor' && c.anchor === 'supplier' ? null : { kind: 'anchor', anchor: 'supplier' }
+                  )
+                }
+              />
+
+              {materialSegments.map((seg, i) => {
+                if (seg.kind === 'shipment') return <ShipmentArrow key={i} points={seg.points} />
+                if (seg.kind === 'pull') return <PullArrow key={i} points={seg.points} kanbanType={seg.kanbanType} />
+                // 'continuous' (one-piece flow) uses the same plain arrow as
+                // 'push' — the only difference is that it was never split
+                // around a WIP triangle above, so it's a single unbroken line.
+                // With no BufferMarker sitting on it to click, the line itself
+                // opens the BufferEditPanel (widened via hitStrokeWidth so it's
+                // easy to hit precisely).
+                const isContinuous = seg.kind === 'continuous'
+                const isSelected =
+                  isContinuous &&
+                  selection?.kind === 'buffer' &&
+                  selection.from === seg.fromId &&
+                  selection.to === seg.toId
+                return (
+                  <Arrow
+                    key={i}
+                    points={seg.points}
+                    stroke={isSelected ? ACCENT : INK}
+                    fill={isSelected ? ACCENT : INK}
+                    strokeWidth={2}
+                    pointerLength={9}
+                    pointerWidth={9}
+                    hitStrokeWidth={isContinuous ? 16 : undefined}
+                    onClick={
+                      isContinuous
+                        ? () =>
+                            setSelection((current) =>
+                              current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
+                                ? null
+                                : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
+                            )
+                        : undefined
+                    }
+                    onTap={
+                      isContinuous
+                        ? () =>
+                            setSelection((current) =>
+                              current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
+                                ? null
+                                : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
+                            )
+                        : undefined
+                    }
+                    onMouseEnter={
+                      isContinuous
+                        ? (e) => {
+                            const stage = e.target.getStage()
+                            if (stage) stage.container().style.cursor = 'pointer'
+                          }
+                        : undefined
+                    }
+                    onMouseLeave={
+                      isContinuous
+                        ? (e) => {
+                            const stage = e.target.getStage()
+                            if (stage) stage.container().style.cursor = 'default'
+                          }
+                        : undefined
+                    }
+                  />
+                )
+              })}
+
+              {processes.map((process) => {
+                const pos = positions[process.id]
+                if (!pos) return null
+                const { isBottleneck } = checkCapacity(
+                  { cycleTime: process.cycle_time, oee: process.oee, operatorCount: process.operator_count },
+                  kpis.taktTimeMinutes
+                )
+                return (
+                  <ProcessBox
+                    key={process.id}
+                    process={process}
+                    x={pos.x}
+                    y={pos.y}
+                    isSelected={selection?.kind === 'process' && selection.id === process.id}
+                    isBottleneck={isBottleneck}
+                    counterScale={1 / stageScale}
+                    onSelect={() =>
+                      setSelection((current) =>
+                        current?.kind === 'process' && current.id === process.id
+                          ? null
+                          : { kind: 'process', id: process.id }
+                      )
+                    }
+                  />
+                )
+              })}
+
+              {/* Buffer markers paint last (on top of both arrows and process
+                  boxes) so the WIP triangle/icon is never hidden — it used to
+                  be able to land under a box due to a since-fixed anchor bug,
+                  this ordering is defense-in-depth against any future overlap.
+                  A 'continuous' (one-piece flow) buffer has no symbol at all —
+                  that's the whole point, a direct line with nothing sitting
+                  on it — so it's skipped here entirely, not just left blank. */}
+              {edges.map(({ buffer, fromPos, toPos }) => {
+                if (buffer.buffer_type === 'continuous') return null
+                const mid = midpoint(fromPos, toPos)
+                const fromId = buffer.from_process_id
+                const toId = buffer.to_process_id
+                const isSelected = selection?.kind === 'buffer' && selection.from === fromId && selection.to === toId
+                return (
+                  <BufferMarker
+                    key={buffer.id}
+                    x={mid.x - BUFFER_SIZE / 2}
+                    y={mid.y - BUFFER_SIZE / 2}
+                    wipCount={buffer.wip_count}
+                    bufferType={buffer.buffer_type ?? 'standard'}
+                    isSelected={isSelected}
+                    onSelect={() =>
+                      setSelection((current) =>
+                        current?.kind === 'buffer' && current.from === fromId && current.to === toId
+                          ? null
+                          : { kind: 'buffer', from: fromId, to: toId }
+                      )
+                    }
+                  />
+                )
+              })}
+
+              <CloudShape
+                x={customerPos.x}
+                y={customerPos.y}
+                label={project.customer_name}
+                isSelected={selection?.kind === 'anchor' && selection.anchor === 'customer'}
+                onSelect={() =>
+                  setSelection((c) =>
+                    c?.kind === 'anchor' && c.anchor === 'customer' ? null : { kind: 'anchor', anchor: 'customer' }
+                  )
+                }
+              />
+
+              {/* Zeitleiter (timeline / ladder) */}
+              {ladderSegments.length > 0 && (
+                <>
+                  <Line points={ladderPoints} stroke={INK} strokeWidth={2} />
+                  {ladderSegments.map((seg, i) => (
+                    <Text
+                      key={i}
+                      text={seg.label}
+                      x={seg.x1}
+                      width={seg.x2 - seg.x1}
+                      y={seg.kind === 'wait' ? seg.y - 16 : seg.y + 6}
+                      align="center"
+                      fontSize={CANVAS_TEXT.label}
+                      fill={INK}
+                    />
+                  ))}
+                  <LadderSummary
+                    x={ladderEndX + 12}
+                    yTop={ladderHighY}
+                    yBottom={ladderLowY}
+                    counterScale={1 / stageScale}
+                    leadTimeDays={kpis.totalLeadTimeDays}
+                    valueAddMinutes={kpis.totalCycleTimeMinutes}
+                  />
+                </>
+              )}
+            </Layer>
+          </Stage>
+
+          {/* Im Vollbild waren die Kennzahlen bisher gar nicht erreichbar: Sie
+              stehen im Seitenfluss oberhalb der Zeichenfläche, und der Modus
+              überdeckt die ganze Seite. Wer also im Workshop eine Zykluszeit
+              änderte, musste das Vollbild verlassen, um die Wirkung zu sehen.
+              Genau die Bewegung, die das Werkzeug überflüssig machen soll. */}
+          {isFullscreen && (
+            <div
+              className="absolute inset-x-0 bottom-0 flex items-stretch gap-px overflow-x-auto border-t border-zinc-200 bg-zinc-100"
+              style={{ height: FULLSCREEN_KPI_BAR_HEIGHT }}
+            >
+              {fullscreenKpis.map((kpi) => (
+                <div
+                  key={kpi.label}
+                  className="flex min-w-[9.5rem] flex-1 flex-col justify-center bg-white px-5"
+                >
+                  <span className="text-xs font-medium text-zinc-600">{kpi.label}</span>
+                  <span className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">
+                      {kpi.value}
+                    </span>
+                    {kpi.value !== KPI_EMPTY && (
+                      <span className="text-xs font-medium text-zinc-500">{kpi.unit}</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {processes.length === 0 && (
@@ -1310,20 +1690,62 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
         />
       )}
 
-      {/* Line balancing. Sits directly under the diagram because it reads the
-          same stations, but answers the other question: not "how long does a
-          unit wait" (the timeline does that) but "which station busts takt". */}
-      <BalanceChartPanel
-        processes={orderedProcesses.map((p) => ({
-          id: p.id,
-          name: p.name,
-          cycleTime: p.cycle_time,
-          operatorCount: p.operator_count,
-          oee: p.oee,
-          wip: p.wip ?? undefined,
-        }))}
-        taktTimeMinutes={kpis.taktTimeMinutes}
-      />
+      {/* [Design-Audit 2026-08-31, Befund 06] Austaktung und Benchmark standen
+          beide im Stapel unter dem Diagramm. Wer den Branchenvergleich lesen
+          wollte, scrollte an der Austaktung vorbei, und das Diagramm war
+          laengst aus dem Bild — die Seite wurde immer laenger, statt eine
+          Frage nach der anderen zu beantworten.
+
+          Beide beziehen sich auf dieselben Stationen und beantworten je eine
+          Frage: "welche Station sprengt den Takt" gegen "wo stehen wir im
+          Vergleich". Immer nur eine davon ist zu sehen; der Reiter sagt, dass
+          es die andere auch gibt. */}
+      <div className="mt-6">
+        {hasBenchmark && (
+          <div role="tablist" aria-label="Auswertungen" className="flex gap-6 border-b border-zinc-200">
+            {ANALYSIS_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`analysis-tab-${tab.id}`}
+                aria-selected={analysisTab === tab.id}
+                aria-controls="analysis-panel"
+                onClick={() => setAnalysisTab(tab.id)}
+                className={
+                  analysisTab === tab.id
+                    ? 'border-b-2 border-brand-600 pb-2.5 pt-1 text-sm font-semibold text-brand-600'
+                    : 'border-b-2 border-transparent pb-2.5 pt-1 text-sm font-medium text-zinc-600 hover:text-zinc-950'
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div
+          id="analysis-panel"
+          role={hasBenchmark ? 'tabpanel' : undefined}
+          aria-labelledby={hasBenchmark ? `analysis-tab-${analysisTab}` : undefined}
+          className={hasBenchmark ? 'mt-4' : undefined}
+        >
+          {analysisTab === 'benchmark' && hasBenchmark ? (
+            <BenchmarkPanel processes={processes} references={benchmarkReferences} />
+          ) : (
+            <BalanceChartPanel
+              processes={orderedProcesses.map((p) => ({
+                id: p.id,
+                name: p.name,
+                cycleTime: p.cycle_time,
+                operatorCount: p.operator_count,
+                oee: p.oee,
+                wip: p.wip ?? undefined,
+              }))}
+              taktTimeMinutes={kpis.taktTimeMinutes}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Toolbar: quick-add + CSV import, grouped in one bordered block */}
       <div className="mt-6 rounded-surface border border-zinc-200 p-4">
@@ -1377,12 +1799,13 @@ export default function VSMCanvas({ project, scenarioId, initialProcesses, initi
   )
 }
 
-const inputClass =
-  'w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent'
-const primaryButtonClass =
-  'rounded-control bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50'
-const secondaryButtonClass =
-  'rounded-control border border-zinc-300 px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50'
+// Die Werkzeugleiste im Editor ist die Reihe, die ein Moderator im Workshop
+// am Trackpad trifft — deshalb durchgaengig die grosse Groesse (44 px). Die
+// Formen selbst kommen aus components/ui/buttons, damit es keine zweite
+// Quelle fuer dieselbe Knopfhoehe gibt.
+const inputClass = `w-full ${inputSm} focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent`
+const primaryButtonClass = buttonPrimaryLg
+const secondaryButtonClass = buttonSecondaryLg
 
 function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string; children: ReactNode }) {
   return (
@@ -1480,6 +1903,7 @@ function ProcessEditPanel({
   onClose: () => void
 }) {
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [name, setName] = useState(process.name)
   const [cycleTime, setCycleTime] = useState(String(process.cycle_time))
@@ -1544,6 +1968,17 @@ function ProcessEditPanel({
   function handleAddPredecessor() {
     if (!addPredecessorId) return
     setConnectionError(null)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.setBufferWip(s, {
+            fromProcessId: addPredecessorId,
+            toProcessId: process.id,
+            wipCount: 0,
+          })
+        )
+        setAddPredecessorId('')
+        return
+      }
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -1562,6 +1997,17 @@ function ProcessEditPanel({
   function handleAddSuccessor() {
     if (!addSuccessorId) return
     setConnectionError(null)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.setBufferWip(s, {
+            fromProcessId: process.id,
+            toProcessId: addSuccessorId,
+            wipCount: 0,
+          })
+        )
+        setAddSuccessorId('')
+        return
+      }
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -1579,6 +2025,10 @@ function ProcessEditPanel({
 
   function handleDisconnect(bufferId: string) {
     setConnectionError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.deleteBufferConnection(s, bufferId))
+        return
+      }
     startTransition(async () => {
       try {
         await deleteBufferConnection(projectId, bufferId)
@@ -1613,6 +2063,31 @@ function ProcessEditPanel({
 
     setError(null)
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) => {
+          const withProcess = demoOperations.updateProcess(s, process.id, {
+            name: name.trim(),
+            cycle_time: ct,
+            oee: oeeNum,
+            operator_count: operatorCountNum,
+            changeover_time: changeoverTimeNum,
+            is_pacemaker: isPacemaker,
+            classification: classification || null,
+          })
+          const withBefore = demoOperations.setBufferWip(withProcess, {
+            fromProcessId: prevProcessId,
+            toProcessId: process.id,
+            wipCount: beforeNum,
+          })
+          return demoOperations.setBufferWip(withBefore, {
+            fromProcessId: process.id,
+            toProcessId: nextProcessId,
+            wipCount: afterNum,
+          })
+        })
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await updateProcess(projectId, process.id, {
@@ -1645,6 +2120,11 @@ function ProcessEditPanel({
 
   function handleDelete() {
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.deleteProcess(s, process.id))
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await deleteProcess(projectId, process.id)
@@ -1767,7 +2247,7 @@ function ProcessEditPanel({
             className={`mt-1 ${inputClass}`}
           />
           {liveEffectiveCycleTime !== null && (
-            <p className="mt-1 text-[10px] text-zinc-500">
+            <p className="mt-1 text-xs text-zinc-500">
               eff. Zykluszeit: {liveEffectiveCycleTime.toFixed(1)} min (fliesst in Bearbeitungszeit/Kapazitäts-Check
               ein — die Zykluszeit selbst bleibt unverändert)
             </p>
@@ -1975,6 +2455,7 @@ function BufferEditPanel({
   onClose: () => void
 }) {
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [value, setValue] = useState(String(currentWip))
   const [bufferType, setBufferType] = useState(currentBufferType)
@@ -1992,6 +2473,20 @@ function BufferEditPanel({
     }
     setError(null)
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.setBufferWip(s, {
+            fromProcessId,
+            toProcessId,
+            wipCount: n,
+            bufferType,
+            flowStyle: flowStyle || null,
+            kanbanType: kanbanType || null,
+          })
+        )
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -2106,6 +2601,7 @@ function AnchorEditPanel({
   onClose: () => void
 }) {
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [value, setValue] = useState(currentLabel)
   const [error, setError] = useState<string | null>(null)
@@ -2121,6 +2617,17 @@ function AnchorEditPanel({
     }
     setError(null)
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.updateProjectLabels(s, {
+            ...(anchor === 'supplier' ? { supplier_name: value.trim() } : {}),
+            ...(anchor === 'customer' ? { customer_name: value.trim() } : {}),
+            ...(anchor === 'erp' ? { erp_label: value.trim() } : {}),
+          })
+        )
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await updateProjectLabels(projectId, {
@@ -2232,7 +2739,7 @@ function ProcessBox({
         y={-6}
         width={22}
         align="center"
-        fontSize={11}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={INK}
       />
@@ -2240,7 +2747,7 @@ function ProcessBox({
         // Kapazitäts-Warnung: effektive Zykluszeit (C/T ÷ OEE) übersteigt die Taktzeit.
         <>
           <Circle x={0} y={0} radius={9} fill={BOTTLENECK} />
-          <Text text="!" x={-9} y={-6} width={18} align="center" fontSize={12} fontStyle="bold" fill="#ffffff" />
+          <Text text="!" x={-9} y={-6} width={18} align="center" fontSize={CANVAS_TEXT.value} fontStyle="bold" fill="#ffffff" />
         </>
       )}
       <Text
@@ -2248,7 +2755,7 @@ function ProcessBox({
         width={PROCESS_WIDTH}
         align="center"
         y={10}
-        fontSize={13}
+        fontSize={CANVAS_TEXT.heading}
         fontStyle="bold"
         fill={INK}
       />
@@ -2262,7 +2769,7 @@ function ProcessBox({
         width={PROCESS_WIDTH}
         align="center"
         y={39}
-        fontSize={10}
+        fontSize={CANVAS_TEXT.label}
         fill="#3f3f46"
         lineHeight={1.5}
       />
@@ -2279,7 +2786,7 @@ function ProcessBox({
             width={PROCESS_WIDTH}
             offsetX={PROCESS_WIDTH / 2}
             align="center"
-            fontSize={10}
+            fontSize={CANVAS_TEXT.label}
             fontStyle="bold"
             fill={BOTTLENECK}
           />
@@ -2295,7 +2802,7 @@ function ProcessBox({
           text={classificationMarker(process.classification) ?? ''}
           x={4}
           y={PROCESS_HEIGHT - 13}
-          fontSize={8.5}
+          fontSize={CANVAS_TEXT.tag}
           fontStyle="bold"
           fill={
             process.classification === 'nva'
@@ -2368,14 +2875,14 @@ function BufferMarker({
         />
       )}
       {bufferType === 'safety_stock' && (
-        <Text text="SS" width={BUFFER_SIZE} align="center" y={4} fontSize={8} fontStyle="bold" fill={stroke} />
+        <Text text="SS" width={BUFFER_SIZE} align="center" y={4} fontSize={CANVAS_TEXT.tag} fontStyle="bold" fill={stroke} />
       )}
       <Text
         text={String(wipCount)}
         width={BUFFER_SIZE}
         align="center"
         y={radius - 4}
-        fontSize={11}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={isEmpty ? EMPTY_BUFFER : INK}
       />
@@ -2410,7 +2917,7 @@ function FifoIcon({ stroke, strokeWidth }: { stroke: string; strokeWidth: number
         height={s * 0.56}
         align="center"
         verticalAlign="middle"
-        fontSize={8}
+        fontSize={CANVAS_TEXT.tag}
         fontStyle="bold"
         fill={stroke}
       />
@@ -2522,7 +3029,7 @@ function CloudShape({
         height={CLOUD_SIZE * 0.75}
         align="center"
         verticalAlign="middle"
-        fontSize={12}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={INK}
       />
@@ -2572,7 +3079,7 @@ function ErpBox({
         height={ERP_HEIGHT}
         align="center"
         verticalAlign="middle"
-        fontSize={11}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={INK}
         lineHeight={1.4}
@@ -2639,25 +3146,25 @@ function LadderSummary({
   return (
     <Group x={x} y={anchorY} scaleX={counterScale} scaleY={counterScale} offsetY={height / 2}>
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
-      <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
+      <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
         text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} Tage` : "–"}
         x={0}
         y={17}
         width={width}
         align="center"
-        fontSize={13}
+        fontSize={CANVAS_TEXT.heading}
         fontStyle="bold"
         fill={INK}
       />
-      <Text text="VA" x={0} y={height - 30} width={width} align="center" fontSize={10} fill="#52525b" />
+      <Text text="VA" x={0} y={height - 30} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
         text={`${valueAddMinutes.toFixed(1)} min`}
         x={0}
         y={height - 18}
         width={width}
         align="center"
-        fontSize={13}
+        fontSize={CANVAS_TEXT.heading}
         fontStyle="bold"
         fill={INK}
       />

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { revokeInvite } from './actions'
 import InviteCreator from '@/components/team/InviteCreator'
+import { buttonDangerSm } from '@/components/ui/buttons'
 
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Inhaber',
@@ -151,7 +152,7 @@ export default async function TeamPage({
                           <form action={revokeInvite.bind(null, inv.id)} className="shrink-0">
                             <button
                               type="submit"
-                              className="rounded-control border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                              className={buttonDangerSm}
                             >
                               Zurückziehen
                             </button>

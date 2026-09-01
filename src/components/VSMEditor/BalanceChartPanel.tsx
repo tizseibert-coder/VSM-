@@ -39,7 +39,7 @@ export function BalanceChartPanel({
   const taktLinePercent = chart.taktTimeMinutes !== null ? (chart.taktTimeMinutes / axisMax) * 100 : null
 
   return (
-    <section className="mt-6 rounded-surface border border-black/10 bg-white p-6">
+    <section className="rounded-surface border border-zinc-200 bg-white p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-zinc-950">
           <TermTooltip term="balanceChart">Austaktungsdiagramm</TermTooltip>
@@ -52,7 +52,7 @@ export function BalanceChartPanel({
       <div className="mt-8 flex gap-3">
         {/* y-axis: only the ceiling and zero — more ticks would not be read. */}
         <div
-          className="flex w-10 shrink-0 flex-col justify-between text-right text-[10px] text-zinc-600"
+          className="flex w-12 shrink-0 flex-col justify-between text-right text-xs text-zinc-600"
           style={{ height: PLOT_HEIGHT_PX }}
           aria-hidden="true"
         >
@@ -69,7 +69,7 @@ export function BalanceChartPanel({
                 className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-dashed border-brand-600"
                 style={{ bottom: `${taktLinePercent}%` }}
               >
-                <span className="absolute -top-5 right-0 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="absolute -top-6 right-0 rounded-control bg-brand-600 px-1.5 py-0.5 text-xs font-medium text-white">
                   Takt {chart.taktTimeMinutes?.toFixed(1)} min
                 </span>
               </div>
@@ -114,7 +114,7 @@ export function BalanceChartPanel({
                 <p className="truncate text-xs font-medium text-zinc-800" title={bar.name}>
                   {bar.name}
                 </p>
-                <p className="text-[11px] tabular-nums text-zinc-500">
+                <p className="text-xs tabular-nums text-zinc-500">
                   {Number.isFinite(bar.totalMinutes) ? `${bar.totalMinutes.toFixed(2)} min` : 'keine Kapazität'}
                   {bar.taktRatio !== null && Number.isFinite(bar.taktRatio) && (
                     <span className={bar.isOverTakt ? ' text-red-600' : ''}>
@@ -124,7 +124,7 @@ export function BalanceChartPanel({
                   )}
                 </p>
                 {bar.isBottleneck && (
-                  <p className="text-[10px] font-medium text-zinc-950">Engpass</p>
+                  <p className="text-xs font-medium text-zinc-950">Engpass</p>
                 )}
               </li>
             ))}
@@ -132,7 +132,7 @@ export function BalanceChartPanel({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-zinc-500">
+      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-zinc-500">
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-emerald-600" /> Arbeit im Takt
         </span>

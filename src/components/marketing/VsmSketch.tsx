@@ -53,12 +53,12 @@ export default function VsmSketch() {
             {s.waitDays && (
               <>
                 <path
-                  d={`M ${mid} ${BOX_Y + 18} L ${mid + 11} ${BOX_Y + 37} L ${mid - 11} ${BOX_Y + 37} Z`}
+                  d={`M ${mid} ${BOX_Y + 14} L ${mid + 14} ${BOX_Y + 38} L ${mid - 14} ${BOX_Y + 38} Z`}
                   fill="none"
                   stroke={INK}
                   strokeWidth="1.4"
                 />
-                <text x={mid} y={BOX_Y + 34} textAnchor="middle" fontSize="8" fill={INK}>
+                <text x={mid} y={BOX_Y + 35} textAnchor="middle" fontSize="7" fill={INK}>
                   {s.waitDays}
                 </text>
               </>
@@ -156,8 +156,8 @@ export default function VsmSketch() {
       <text x="469" y="121" textAnchor="middle" fontSize="7.5" fill={MUTED}>
         PLT
       </text>
-      <text x="469" y="134" textAnchor="middle" fontSize="10" fontWeight="600" fill={INK}>
-        16,8 T
+      <text x="469" y="134" textAnchor="middle" fontSize="9.5" fontWeight="600" fill={INK}>
+        16,8 Tage
       </text>
       <text x="469" y="147" textAnchor="middle" fontSize="7" fill={MUTED}>
         VA 8,7 min

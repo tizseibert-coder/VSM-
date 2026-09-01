@@ -21,10 +21,39 @@ export function buildKpiSummaryLines(kpis: PdfKpiInput): string[] {
   ]
 }
 
-/** Report title line: project name + today's date (Swiss/DACH dd.mm.yyyy convention). */
-export function buildPdfTitle(projectName: string, now: Date = new Date()): string {
+/**
+ * Titelzeile des Blatts: der Projektname, sonst nichts.
+ *
+ * Frueher hing "— Wertstromanalyse (dd.mm.yyyy)" daran. Seit das Blatt eine
+ * Kopf- und eine Fusszeile hat, ist beides doppelt: Die Wortmarke oben und das
+ * Diagramm selbst sagen, um welche Art Dokument es geht, und das Datum steht
+ * in der Fusszeile. Bei einem Projekt namens "Beispiel: Wertstromanalyse
+ * Dreherei" stand das Wort dadurch zweimal in derselben Zeile.
+ */
+export function buildPdfTitle(projectName: string): string {
+  return projectName.trim() || 'Wertstromanalyse'
+}
+
+/** dd.mm.yyyy — die im DACH-Raum erwartete Schreibweise. */
+function formatDate(now: Date): string {
   const dd = String(now.getDate()).padStart(2, '0')
   const mm = String(now.getMonth() + 1).padStart(2, '0')
-  const yyyy = now.getFullYear()
-  return `${projectName} — Wertstromanalyse (${dd}.${mm}.${yyyy})`
+  return `${dd}.${mm}.${now.getFullYear()}`
+}
+
+/**
+ * Benennt den abgebildeten Zustand.
+ *
+ * Ein Ausdruck ohne diese Angabe ist im Lenkungsgremium wertlos: Niemand kann
+ * unterscheiden, ob er die Messung oder einen Verbesserungsvorschlag in der
+ * Hand hält — und genau darauf beruht die Entscheidung, die dort fällt.
+ */
+export function buildPdfSubtitle(scenarioName: string | null): string {
+  const trimmed = scenarioName?.trim()
+  return trimmed ? `Future State: ${trimmed}` : 'Ist-Zustand'
+}
+
+/** Fusszeile: sagt, woraus das Blatt stammt und wann es gezogen wurde. */
+export function buildPdfFooterLine(now: Date = new Date()): string {
+  return `Erstellt mit VSM Builder am ${formatDate(now)}`
 }

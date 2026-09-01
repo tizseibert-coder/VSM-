@@ -1,5 +1,11 @@
 import Link from 'next/link'
 import VsmSketch from '@/components/marketing/VsmSketch'
+import {
+  buttonPrimary,
+  buttonPrimaryLg,
+  buttonSecondary,
+  buttonSecondaryLg,
+} from '@/components/ui/buttons'
 
 /**
  * Die Startseite beantwortet die Fragen, die ein Lean-Praktiker in den ersten
@@ -74,6 +80,12 @@ const WORKSHOP: [string, string][] = [
   ],
 ]
 
+const HOSTING: [string, string, string][] = [
+  ['Datenbank', 'Supabase', 'EU, Region Frankreich'],
+  ['Anwendung', 'Vercel', 'EU, Region Frankreich'],
+  ['Weitere Empfänger', 'Keine', 'Kein Analyse- oder Tracking-Dienst eingebunden'],
+]
+
 const COMPARISON: [string, string, string][] = [
   ['Durchlaufzeit', '18,4 Tage', '9,1 Tage'],
   ['Wertschöpfungsanteil', '0,41 %', '0,83 %'],
@@ -87,10 +99,13 @@ export default function Home() {
     <main className="bg-white">
       <header className="border-b border-zinc-200">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-5">
-          <span className="text-sm font-semibold uppercase tracking-widest text-brand-600">
+          <span className="whitespace-nowrap text-sm font-semibold uppercase tracking-widest text-brand-600">
             VSM Builder
           </span>
           <div className="flex items-center gap-2">
+            <Link href="/demo" className={buttonSecondary}>
+              Demo
+            </Link>
             <Link
               href="/login"
               className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
@@ -99,7 +114,7 @@ export default function Home() {
             </Link>
             <Link
               href="/signup"
-              className="rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className={buttonPrimary}
             >
               Kostenlos starten
             </Link>
@@ -121,21 +136,22 @@ export default function Home() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
+                href="/demo"
+                className={buttonPrimaryLg}
+              >
+                Demo öffnen
+              </Link>
+              <Link
                 href="/signup"
-                className="rounded-control bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+                className={buttonSecondaryLg}
               >
                 Kostenlos starten
               </Link>
-              <Link
-                href="/login"
-                className="rounded-control border border-zinc-300 px-5 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-              >
-                Anmelden
-              </Link>
             </div>
             <p className="mt-4 text-sm text-zinc-600">
-              Nach der Anmeldung liegt ein vollständiges Beispiel-VSM bereit: fünf Prozesse,
-              Bestände, gerechnete Kennzahlen. Ein Klick, keine Dateneingabe.
+              Die Demo läuft ohne Anmeldung: ein vollständiger Wertstrom mit fünf Prozessen,
+              Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu,
+              wie die Durchlaufzeit reagiert.
             </p>
           </div>
 
@@ -266,22 +282,54 @@ export default function Home() {
         </dl>
       </section>
 
+      {/* Die Frage, an der eine Beschaffung in der deutschen Industrie
+          regelmaessig scheitert. Hier stehen ausschliesslich bestaetigte
+          Angaben: Region, die beiden Anbieter, keine weiteren Empfaenger.
+          Zum Auftragsverarbeitungsvertrag steht bewusst nichts, solange
+          keiner vorliegt — eine Andeutung waere schlimmer als Schweigen. */}
+      <section className="border-t border-zinc-200 bg-zinc-50">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
+                Wo die Daten liegen
+              </h2>
+              <p className="mt-3 text-zinc-700">
+                Ein Wertstrom beschreibt Ihre Fertigung: Taktzeiten, Bestände, Engpässe. Wer
+                damit arbeitet, will vorher wissen, wo das gespeichert wird.
+              </p>
+            </div>
+            <dl className="grid gap-px overflow-hidden rounded-surface border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
+              {HOSTING.map(([role, provider, note]) => (
+                <div key={role} className="bg-white px-5 py-5">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-600">
+                    {role}
+                  </dt>
+                  <dd className="mt-1.5 font-medium text-zinc-950">{provider}</dd>
+                  <dd className="mt-1 text-sm leading-relaxed text-zinc-600">{note}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-zinc-200">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-14">
           <div>
             <p className="text-xl font-semibold tracking-tight text-zinc-950">
-              Mit dem Beispiel-VSM anfangen
+              Erst ansehen, dann entscheiden
             </p>
             <p className="mt-2 max-w-lg text-zinc-700">
-              Eine vollständige Dreherei mit fünf Prozessen und Beständen. Anlegen, einen Wert
-              ändern, zusehen, wie die Durchlaufzeit reagiert.
+              Die Demo braucht kein Konto und keine Firmenadresse. Wer danach eigene Wertströme
+              anlegen will, findet dieselben Funktionen im Werkzeug wieder.
             </p>
           </div>
           <Link
-            href="/signup"
-            className="rounded-control bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700"
+            href="/demo"
+            className={buttonPrimaryLg}
           >
-            Kostenlos starten
+            Demo öffnen
           </Link>
         </div>
       </section>
