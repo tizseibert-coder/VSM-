@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import VSMCanvasLoader from '@/components/VSMEditor/VSMCanvasLoader'
-import BenchmarkPanel from '@/components/VSMEditor/BenchmarkPanel'
 import ScenarioSwitcher from '@/components/VSMEditor/ScenarioSwitcher'
 import ScenarioMetaPanel from '@/components/VSMEditor/ScenarioMetaPanel'
 import { buttonSecondary } from '@/components/ui/buttons'
@@ -100,8 +99,8 @@ export default async function EditorPage({
         scenarioName={activeScenario?.name ?? null}
         initialProcesses={processes ?? []}
         initialBuffers={buffers ?? []}
+        benchmarkReferences={benchmarkReferences ?? []}
       />
-      <BenchmarkPanel processes={processes ?? []} references={benchmarkReferences ?? []} />
     </div>
   )
 }

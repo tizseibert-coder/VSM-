@@ -40,56 +40,57 @@ export default function BenchmarkPanel({ processes, references }: Props) {
   if (references.length === 0) return null
 
   return (
-    <div className="mx-auto mt-6 max-w-6xl px-6">
-      <div className="rounded-surface border border-zinc-200 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-zinc-950">Branchenvergleich</h2>
-          <span className="rounded-control bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">
-            Beispieldaten — keine echten Branchenwerte
-          </span>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-3">
-          <select
-            value={industry}
-            onChange={(e) => {
-              setIndustry(e.target.value)
-              const nextSizes = [...new Set(references.filter((r) => r.industry === e.target.value).map((r) => r.company_size))]
-              setCompanySize(nextSizes[0] ?? '')
-            }}
-            className={inputSm}
-          >
-            {industries.map((i) => (
-              <option key={i} value={i}>
-                {i}
-              </option>
-            ))}
-          </select>
-          <select
-            value={companySize}
-            onChange={(e) => setCompanySize(e.target.value)}
-            className={inputSm}
-          >
-            {sizes.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <BenchmarkRow
-            label="Ø Zykluszeit"
-            value={avgCycleTime}
-            unit="min"
-            reference={cycleRef}
-            higherIsBetter={false}
-          />
-          <BenchmarkRow label="Ø OEE" value={avgOee} unit="%" reference={oeeRef} higherIsBetter />
-        </div>
+    // Kein eigener Seitenrahmen mehr (mx-auto max-w-6xl px-6): Das Panel
+    // stand frueher als eigener Block unter dem Editor und bringt seine
+    // Breite seit dem Reiter von der Spalte mit, in der es liegt.
+    <section className="rounded-surface border border-zinc-200 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-zinc-950">Branchenvergleich</h2>
+        <span className="rounded-control bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">
+          Beispieldaten — keine echten Branchenwerte
+        </span>
       </div>
-    </div>
+
+      <div className="mt-3 flex flex-wrap gap-3">
+        <select
+          value={industry}
+          onChange={(e) => {
+            setIndustry(e.target.value)
+            const nextSizes = [...new Set(references.filter((r) => r.industry === e.target.value).map((r) => r.company_size))]
+            setCompanySize(nextSizes[0] ?? '')
+          }}
+          className={inputSm}
+        >
+          {industries.map((i) => (
+            <option key={i} value={i}>
+              {i}
+            </option>
+          ))}
+        </select>
+        <select
+          value={companySize}
+          onChange={(e) => setCompanySize(e.target.value)}
+          className={inputSm}
+        >
+          {sizes.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <BenchmarkRow
+          label="Ø Zykluszeit"
+          value={avgCycleTime}
+          unit="min"
+          reference={cycleRef}
+          higherIsBetter={false}
+        />
+        <BenchmarkRow label="Ø OEE" value={avgOee} unit="%" reference={oeeRef} higherIsBetter />
+      </div>
+    </section>
   )
 }
 

@@ -39,7 +39,7 @@ export function BalanceChartPanel({
   const taktLinePercent = chart.taktTimeMinutes !== null ? (chart.taktTimeMinutes / axisMax) * 100 : null
 
   return (
-    <section className="mt-6 rounded-surface border border-black/10 bg-white p-6">
+    <section className="rounded-surface border border-zinc-200 bg-white p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-zinc-950">
           <TermTooltip term="balanceChart">Austaktungsdiagramm</TermTooltip>

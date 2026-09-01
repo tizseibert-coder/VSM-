@@ -25,6 +25,7 @@ import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
 import { BalanceChartPanel } from './BalanceChartPanel'
+import BenchmarkPanel from './BenchmarkPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
 import { formatFindingCount, rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
 import { buttonPrimaryLg, buttonSecondaryLg, inputSm } from '@/components/ui/buttons'
@@ -80,6 +81,7 @@ import {
 
 type Project = Tables<'projects'>
 type Process = Tables<'processes'>
+type BenchmarkReference = Tables<'benchmark_reference'>
 type Buffer = Tables<'inventory_buffers'>
 
 const INK = '#18181b' // zinc-900 — used for all VSM line-art instead of pure black
@@ -165,6 +167,12 @@ const FULLSCREEN_KPI_BAR_HEIGHT = 92
 // Diagramm ganz zu sehen, und genau dabei verschwindet es hinter der Leiste.
 const STICKY_CHROME_HEIGHT = 320
 
+/** Die zwei Auswertungen unter dem Diagramm, in Lesereihenfolge. */
+const ANALYSIS_TABS = [
+  { id: 'balance', label: 'Austaktung' },
+  { id: 'benchmark', label: 'Branchenvergleich' },
+] as const
+
 type Selection =
   | { kind: 'process'; id: string }
   | { kind: 'buffer'; from: string | null; to: string | null }
@@ -183,6 +191,12 @@ interface Props {
   scenarioName?: string | null
   initialProcesses: Process[]
   initialBuffers: Buffer[]
+  /**
+   * Vergleichswerte fuer den Branchenvergleich. Leer heisst "keine
+   * hinterlegt" — dann entfaellt der Reiter, statt einen leeren zu zeigen.
+   * Die oeffentliche Demo laeuft ohne.
+   */
+  benchmarkReferences?: BenchmarkReference[]
 }
 
 export default function VSMCanvas({
@@ -191,7 +205,9 @@ export default function VSMCanvas({
   scenarioName = null,
   initialProcesses,
   initialBuffers,
+  benchmarkReferences = [],
 }: Props) {
+  const hasBenchmark = benchmarkReferences.length > 0
   const router = useRouter()
   const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
@@ -247,6 +263,11 @@ export default function VSMCanvas({
   // nur die Hälfte des Sichtfelds ein — man bewegt ständig das Falsche. Im
   // Vollbild gibt es nur noch einen Bewegungsraum, das Problem verschwindet
   // statt gemildert zu werden.
+  // Welche der beiden Auswertungen unter dem Diagramm gerade zu sehen ist.
+  // Beide standen frueher gleichzeitig im Stapel darunter (Design-Audit
+  // 2026-08-31, Befund 06); wer den Benchmark lesen wollte, scrollte an der
+  // Austaktung vorbei, und das Diagramm war laengst aus dem Bild.
+  const [analysisTab, setAnalysisTab] = useState<'balance' | 'benchmark'>('balance')
   const [isFullscreen, setIsFullscreen] = useState(false)
   // Nur im Vollbild gebraucht: dort bestimmt der Bildschirm die Höhe, sonst
   // leitet sie sich aus der Diagrammhöhe ab (viewportHeight weiter unten).
@@ -732,7 +753,13 @@ export default function VSMCanvas({
     function measure() {
       const el = stageContainerRef.current
       if (!el) return
-      setViewportWidth(el.clientWidth)
+      // Eine Breite von 0 ist keine Messung, sondern ein Zeitpunkt: Der
+      // Container ist im Moment des Messens noch nicht im Layout (der
+      // Canvas wird nachgeladen). Konva macht daraus eine Zeichenflaeche
+      // ohne Ausdehnung, und der erste drawImage darauf reisst die ganze
+      // Seite mit ("InvalidStateError: ... width or height of 0"). Der
+      // letzte brauchbare Wert bleibt in dem Fall stehen.
+      if (el.clientWidth > 0) setViewportWidth(el.clientWidth)
       setMeasuredHeight(el.clientHeight)
       setWindowHeight(window.innerHeight)
     }
@@ -1663,20 +1690,62 @@ export default function VSMCanvas({
         />
       )}
 
-      {/* Line balancing. Sits directly under the diagram because it reads the
-          same stations, but answers the other question: not "how long does a
-          unit wait" (the timeline does that) but "which station busts takt". */}
-      <BalanceChartPanel
-        processes={orderedProcesses.map((p) => ({
-          id: p.id,
-          name: p.name,
-          cycleTime: p.cycle_time,
-          operatorCount: p.operator_count,
-          oee: p.oee,
-          wip: p.wip ?? undefined,
-        }))}
-        taktTimeMinutes={kpis.taktTimeMinutes}
-      />
+      {/* [Design-Audit 2026-08-31, Befund 06] Austaktung und Benchmark standen
+          beide im Stapel unter dem Diagramm. Wer den Branchenvergleich lesen
+          wollte, scrollte an der Austaktung vorbei, und das Diagramm war
+          laengst aus dem Bild — die Seite wurde immer laenger, statt eine
+          Frage nach der anderen zu beantworten.
+
+          Beide beziehen sich auf dieselben Stationen und beantworten je eine
+          Frage: "welche Station sprengt den Takt" gegen "wo stehen wir im
+          Vergleich". Immer nur eine davon ist zu sehen; der Reiter sagt, dass
+          es die andere auch gibt. */}
+      <div className="mt-6">
+        {hasBenchmark && (
+          <div role="tablist" aria-label="Auswertungen" className="flex gap-6 border-b border-zinc-200">
+            {ANALYSIS_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`analysis-tab-${tab.id}`}
+                aria-selected={analysisTab === tab.id}
+                aria-controls="analysis-panel"
+                onClick={() => setAnalysisTab(tab.id)}
+                className={
+                  analysisTab === tab.id
+                    ? 'border-b-2 border-brand-600 pb-2.5 pt-1 text-sm font-semibold text-brand-600'
+                    : 'border-b-2 border-transparent pb-2.5 pt-1 text-sm font-medium text-zinc-600 hover:text-zinc-950'
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div
+          id="analysis-panel"
+          role={hasBenchmark ? 'tabpanel' : undefined}
+          aria-labelledby={hasBenchmark ? `analysis-tab-${analysisTab}` : undefined}
+          className={hasBenchmark ? 'mt-4' : undefined}
+        >
+          {analysisTab === 'benchmark' && hasBenchmark ? (
+            <BenchmarkPanel processes={processes} references={benchmarkReferences} />
+          ) : (
+            <BalanceChartPanel
+              processes={orderedProcesses.map((p) => ({
+                id: p.id,
+                name: p.name,
+                cycleTime: p.cycle_time,
+                operatorCount: p.operator_count,
+                oee: p.oee,
+                wip: p.wip ?? undefined,
+              }))}
+              taktTimeMinutes={kpis.taktTimeMinutes}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Toolbar: quick-add + CSV import, grouped in one bordered block */}
       <div className="mt-6 rounded-surface border border-zinc-200 p-4">
