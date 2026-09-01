@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { hasLocale } from "next-intl";
 import { NextIntlClientProvider } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
@@ -17,33 +18,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  // Die Vorlage haengt den Produktnamen an jede Unterseite an, damit ein
-  // Browser-Tab oder ein geteilter Link erkennbar bleibt, wenn er neben
-  // zwanzig anderen steht.
-  title: {
-    default: "VSM Builder — Wertstromanalyse mit Live-Berechnung",
-    template: "%s · VSM Builder",
-  },
-  description:
-    "Wertstromdiagramme nach Rother/Shook zeichnen, Durchlaufzeit, Taktzeit und Wertschoepfungsanteil live berechnen, Future-State-Szenarien gegeneinander rechnen.",
-  applicationName: "VSM Builder",
-  openGraph: {
-    type: "website",
-    locale: "de_DE",
-    siteName: "VSM Builder",
-    title: "VSM Builder — Wertstromanalyse mit Live-Berechnung",
-    description:
-      "Wertstromdiagramme nach Rother/Shook zeichnen, Kennzahlen live berechnen, Future-State-Szenarien vergleichen.",
-  },
-  // Das Bild selbst liefert `app/opengraph-image.tsx` ueber die
-  // Dateikonvention. X/Twitter greift auf dasselbe Bild zurueck, braucht
-  // dafuer aber die Kartenart — ohne sie bleibt der Link auch dort eine
-  // Textzeile.
-  twitter: {
-    card: "summary_large_image",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Metadata");
+
+  return {
+    // Die Vorlage haengt den Produktnamen an jede Unterseite an, damit ein
+    // Browser-Tab oder ein geteilter Link erkennbar bleibt, wenn er neben
+    // zwanzig anderen steht.
+    title: {
+      default: t("title"),
+      template: "%s · VSM Builder",
+    },
+    description: t("description"),
+    applicationName: "VSM Builder",
+    openGraph: {
+      type: "website",
+      locale: t("ogLocale"),
+      siteName: "VSM Builder",
+      title: t("ogTitle"),
+      description: t("ogDescription"),
+    },
+    // Das Bild selbst liefert `app/opengraph-image.tsx` ueber die
+    // Dateikonvention. X/Twitter greift auf dasselbe Bild zurueck, braucht
+    // dafuer aber die Kartenart — ohne sie bleibt der Link auch dort eine
+    // Textzeile.
+    twitter: {
+      card: "summary_large_image",
+    },
+  };
+}
 
 // Beide Sprachen statisch vorrendern, statt bei jeder Anfrage neu zu
 // entscheiden — next-intl empfiehlt das fuer den [locale]-Root-Layout.

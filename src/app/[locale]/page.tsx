@@ -1,4 +1,5 @@
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import {
   buttonPrimary,
@@ -20,81 +21,31 @@ import {
  * Unterauftragsverarbeitern und AVV, bevor hier ein Satz dazu stehen darf.
  */
 
-const KPIS = [
-  {
-    name: 'Durchlaufzeit',
-    formula: 'WIP ÷ Ausbringung',
-    note: 'Little’s Law über alle Bestände der Kette.',
-  },
-  {
-    name: 'Taktzeit',
-    formula: 'Verfügbare Min/Tag ÷ Kundenbedarf',
-    note: 'Aus Jahresbedarf und Schichtmodell, nicht geschätzt.',
-  },
-  {
-    name: 'Wertschöpfungsanteil',
-    formula: 'Bearbeitungszeit ÷ Durchlaufzeit',
-    note: 'Die Zahl, die im Lenkungsgremium die Diskussion auslöst.',
-  },
-  {
-    name: 'Ist-Ausbringung',
-    formula: 'Verfügbare Min/Tag ÷ Engpass',
-    note: 'Effektive Zykluszeit inklusive OEE, nicht die nominale.',
-  },
-]
+// Die Inhalte der vier Wiederholungslisten stehen jetzt in
+// messages/{de,en}.json statt hier als Konstanten — sonst gaebe es sie pro
+// Sprache einmal im Quelltext. Die Formen bleiben unveraendert; nur die
+// Herkunft der Werte hat gewechselt.
+type Kpi = { name: string; formula: string; note: string }
+type Check = { title: string; body: string }
+type ComparisonRow = { label: string; current: string; scenario: string }
+type WorkshopItem = { name: string; body: string }
+type HostingItem = { role: string; provider: string; note: string }
 
-const CHECKS = [
-  {
-    severity: 'critical' as const,
-    label: 'Kennzahl betroffen',
-    title: 'Kapazitätsunterdeckung',
-    body: 'Deckt die Linie den Kundenbedarf nicht, wächst der Bestand unbegrenzt. Dann gilt Little’s Law nicht mehr, und das Werkzeug sagt genau das, statt eine Durchlaufzeit zu behaupten.',
-  },
-  {
-    severity: 'warning' as const,
-    label: 'Methodisch unsauber',
-    title: 'Push vor dem Schrittmacher',
-    body: 'Alles vor dem Schrittmacher braucht ein Pull-System. Läuft eine Verbindung noch als Push, wird sie benannt und gezählt.',
-  },
-  {
-    severity: 'warning' as const,
-    label: 'Methodisch unsauber',
-    title: 'Kein Schrittmacher gesetzt',
-    body: 'Ohne Schrittmacher steuert das ERP jeden Prozess einzeln. Das Diagramm zeigt es so, und der Hinweis erklärt, warum das selten gewollt ist.',
-  },
-]
+// Die Schwere pro Methodikbefund bleibt im Code: Sie steuert eine Farbe,
+// ist also Darstellung und keine Uebersetzung — in der JSON-Datei waere sie
+// eine Einladung, sie beim Uebersetzen versehentlich zu aendern.
+const CHECK_SEVERITIES = ['critical', 'warning', 'warning'] as const
 
-const WORKSHOP: [string, string][] = [
-  [
-    'Präsentationsmodus',
-    'Blendet Import und Umbenennung aus. Prozessboxen bleiben editierbar, weil ein Wertstrom im Raum mit dem Team entsteht und nicht vorher fertig ist.',
-  ],
-  [
-    'Vollbild',
-    'Ein Bewegungsraum statt drei. Für den Beamer im Besprechungsraum und das Notebook auf dem Shopfloor.',
-  ],
-  ['PDF-Export', 'Diagramm und Kennzahlen auf A4 quer. Das Blatt, das mit ins Gremium geht.'],
-  [
-    '24 Fachbegriffe im Kontext',
-    'Schrittmacher, Supermarkt, FIFO, Heijunka, EPEI. Erklärt an der Stelle, an der sie auftauchen, damit Green Belts und Werker mitkommen.',
-  ],
-]
+export default async function Home() {
+  const t = await getTranslations('Home')
+  const tNav = await getTranslations('Nav')
 
-const HOSTING: [string, string, string][] = [
-  ['Datenbank', 'Supabase', 'EU, Region Frankreich'],
-  ['Anwendung', 'Vercel', 'EU, Region Frankreich'],
-  ['Weitere Empfänger', 'Keine', 'Kein Analyse- oder Tracking-Dienst eingebunden'],
-]
+  const kpis = t.raw('kpis') as Kpi[]
+  const checks = t.raw('checks') as Check[]
+  const comparison = t.raw('comparison') as ComparisonRow[]
+  const workshop = t.raw('workshop') as WorkshopItem[]
+  const hosting = t.raw('hosting') as HostingItem[]
 
-const COMPARISON: [string, string, string][] = [
-  ['Durchlaufzeit', '18,4 Tage', '9,1 Tage'],
-  ['Wertschöpfungsanteil', '0,41 %', '0,83 %'],
-  ['Investition', '–', '85.000 €'],
-  ['Amortisation', '–', '14 Monate'],
-  ['Risiko', '–', 'Mittel'],
-]
-
-export default function Home() {
   return (
     <main className="bg-white">
       <header className="border-b border-zinc-200">
@@ -104,19 +55,16 @@ export default function Home() {
           </span>
           <div className="flex items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>
-              Demo
+              {tNav('demo')}
             </Link>
             <Link
               href="/login"
               className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
             >
-              Anmelden
+              {tNav('login')}
             </Link>
-            <Link
-              href="/signup"
-              className={buttonPrimary}
-            >
-              Kostenlos starten
+            <Link href="/signup" className={buttonPrimary}>
+              {tNav('signup')}
             </Link>
           </div>
         </div>
@@ -126,33 +74,20 @@ export default function Home() {
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
           <div>
             <h1 className="text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl">
-              Wertstromanalyse, die rechnet.
+              {t('heroTitle')}
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-zinc-700">
-              Symbolik nach Rother und Shook, Durchlaufzeit und Taktzeit live aus den
-              Prozessdaten, Future-State-Szenarien mit Amortisation. Kein Zeichenprogramm mit
-              VSM-Formen, sondern ein Rechenwerkzeug, das nebenbei ein normgerechtes Diagramm
-              zeichnet.
+              {t('heroBody')}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href="/demo"
-                className={buttonPrimaryLg}
-              >
-                Demo öffnen
+              <Link href="/demo" className={buttonPrimaryLg}>
+                {t('heroDemoCta')}
               </Link>
-              <Link
-                href="/signup"
-                className={buttonSecondaryLg}
-              >
-                Kostenlos starten
+              <Link href="/signup" className={buttonSecondaryLg}>
+                {t('heroSignupCta')}
               </Link>
             </div>
-            <p className="mt-4 text-sm text-zinc-600">
-              Die Demo läuft ohne Anmeldung: ein vollständiger Wertstrom mit fünf Prozessen,
-              Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu,
-              wie die Durchlaufzeit reagiert.
-            </p>
+            <p className="mt-4 text-sm text-zinc-600">{t('heroNote')}</p>
           </div>
 
           {/* Das charakteristischste Bild des Fachs steht am Anfang, statt es
@@ -160,8 +95,7 @@ export default function Home() {
           <div className="rounded-surface border border-zinc-200 p-4 sm:p-6">
             <VsmSketch />
             <p className="mt-4 text-xs leading-relaxed text-zinc-600">
-              Ausschnitt eines Ist-Zustands: Prozessboxen mit C/T und OEE, Bestände als Dreieck,
-              darunter die Zeitleiter aus Warte- und Bearbeitungszeit.
+              {t('sketchCaption')}
             </p>
           </div>
         </div>
@@ -170,16 +104,12 @@ export default function Home() {
       <section className="border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-            Jede Zahl zeigt ihren Rechenweg
+            {t('kpisTitle')}
           </h2>
-          <p className="mt-3 max-w-2xl text-zinc-700">
-            Unter jeder Kennzahl steht die Formel mit den Werten, die tatsächlich eingesetzt
-            wurden. Eine überraschende Zahl erklärt sich damit aus ihren eigenen Eingaben, statt
-            wie ein Fehler auszusehen.
-          </p>
+          <p className="mt-3 max-w-2xl text-zinc-700">{t('kpisBody')}</p>
 
           <dl className="mt-8 border-y border-zinc-200">
-            {KPIS.map((kpi) => (
+            {kpis.map((kpi) => (
               <div
                 key={kpi.name}
                 className="grid gap-1 border-b border-zinc-200 py-4 last:border-b-0 sm:grid-cols-[minmax(0,13rem)_minmax(0,17rem)_minmax(0,1fr)] sm:items-baseline sm:gap-6"
@@ -197,26 +127,24 @@ export default function Home() {
         <div className="grid gap-10 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-              Das Werkzeug widerspricht
+              {t('checksTitle')}
             </h2>
-            <p className="mt-3 text-zinc-700">
-              Ein Wertstrom kann methodisch falsch sein und trotzdem gut aussehen. Die
-              Methodikprüfung läuft bei jeder Änderung mit und ordnet nach Schwere: zuerst das,
-              was eine Kennzahl entwertet, danach das, was nur die Darstellung betrifft.
-            </p>
+            <p className="mt-3 text-zinc-700">{t('checksBody')}</p>
           </div>
           <ul className="space-y-px overflow-hidden rounded-surface border border-zinc-200 bg-zinc-200">
-            {CHECKS.map((check) => (
+            {checks.map((check, i) => (
               <li key={check.title} className="flex gap-3 bg-white px-5 py-4">
                 <span
                   aria-hidden
                   className={`mt-2 h-2 w-2 shrink-0 rounded-control ${
-                    check.severity === 'critical' ? 'bg-red-600' : 'bg-amber-500'
+                    CHECK_SEVERITIES[i] === 'critical' ? 'bg-red-600' : 'bg-amber-500'
                   }`}
                 />
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                    {check.label}
+                    {CHECK_SEVERITIES[i] === 'critical'
+                      ? t('severityCritical')
+                      : t('severityWarning')}
                   </p>
                   <p className="mt-0.5 font-medium text-zinc-950">{check.title}</p>
                   <p className="mt-1 text-sm leading-relaxed text-zinc-600">{check.body}</p>
@@ -230,53 +158,50 @@ export default function Home() {
       <section className="border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-            Vom Ist-Zustand zum Business Case
+            {t('comparisonTitle')}
           </h2>
-          <p className="mt-3 max-w-2xl text-zinc-700">
-            Jedes Future-State-Szenario ist eine eigene Kopie des Wertstroms. Der Vergleich
-            stellt sie nebeneinander und übersetzt die Lean-Kennzahlen in die Sprache, in der
-            über Budgets entschieden wird.
-          </p>
+          <p className="mt-3 max-w-2xl text-zinc-700">{t('comparisonBody')}</p>
 
           <div className="mt-8 overflow-x-auto rounded-surface border border-zinc-200 bg-white">
             <table className="w-full min-w-[34rem] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-zinc-200">
-                  <th className="px-5 py-3 text-left font-medium text-zinc-600">Kennzahl</th>
-                  <th className="px-5 py-3 text-left font-medium text-zinc-950">Ist-Zustand</th>
-                  <th className="px-5 py-3 text-left font-medium text-zinc-950">Szenario A</th>
+                  <th className="px-5 py-3 text-left font-medium text-zinc-600">
+                    {t('comparisonColMetric')}
+                  </th>
+                  <th className="px-5 py-3 text-left font-medium text-zinc-950">
+                    {t('comparisonColCurrent')}
+                  </th>
+                  <th className="px-5 py-3 text-left font-medium text-zinc-950">
+                    {t('comparisonColScenario')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="tabular-nums">
-                {COMPARISON.map(([label, ist, soll]) => (
-                  <tr key={label} className="border-b border-zinc-100 last:border-0">
-                    <td className="px-5 py-3 text-zinc-600">{label}</td>
-                    <td className="px-5 py-3 text-zinc-950">{ist}</td>
-                    <td className="px-5 py-3 font-medium text-zinc-950">{soll}</td>
+                {comparison.map((row) => (
+                  <tr key={row.label} className="border-b border-zinc-100 last:border-0">
+                    <td className="px-5 py-3 text-zinc-600">{row.label}</td>
+                    <td className="px-5 py-3 text-zinc-950">{row.current}</td>
+                    <td className="px-5 py-3 font-medium text-zinc-950">{row.scenario}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="mt-3 text-xs text-zinc-600">
-            Beispielwerte zur Veranschaulichung der Spalten.
-          </p>
+          <p className="mt-3 text-xs text-zinc-600">{t('comparisonNote')}</p>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-          Gebaut für den Raum, in dem der Wertstrom entsteht
+          {t('workshopTitle')}
         </h2>
-        <p className="mt-3 max-w-2xl text-zinc-700">
-          Ein VSM wird nicht am Schreibtisch ausgefüllt, sondern vor der Gruppe erarbeitet.
-          Danach muss es auf ein Blatt passen, das jemand anders liest.
-        </p>
+        <p className="mt-3 max-w-2xl text-zinc-700">{t('workshopBody')}</p>
         <dl className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2">
-          {WORKSHOP.map(([name, body]) => (
-            <div key={name}>
-              <dt className="font-medium text-zinc-950">{name}</dt>
-              <dd className="mt-1 text-sm leading-relaxed text-zinc-600">{body}</dd>
+          {workshop.map((item) => (
+            <div key={item.name}>
+              <dt className="font-medium text-zinc-950">{item.name}</dt>
+              <dd className="mt-1 text-sm leading-relaxed text-zinc-600">{item.body}</dd>
             </div>
           ))}
         </dl>
@@ -292,21 +217,18 @@ export default function Home() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
-                Wo die Daten liegen
+                {t('hostingTitle')}
               </h2>
-              <p className="mt-3 text-zinc-700">
-                Ein Wertstrom beschreibt Ihre Fertigung: Taktzeiten, Bestände, Engpässe. Wer
-                damit arbeitet, will vorher wissen, wo das gespeichert wird.
-              </p>
+              <p className="mt-3 text-zinc-700">{t('hostingBody')}</p>
             </div>
             <dl className="grid gap-px overflow-hidden rounded-surface border border-zinc-200 bg-zinc-200 sm:grid-cols-3">
-              {HOSTING.map(([role, provider, note]) => (
-                <div key={role} className="bg-white px-5 py-5">
+              {hosting.map((item) => (
+                <div key={item.role} className="bg-white px-5 py-5">
                   <dt className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                    {role}
+                    {item.role}
                   </dt>
-                  <dd className="mt-1.5 font-medium text-zinc-950">{provider}</dd>
-                  <dd className="mt-1 text-sm leading-relaxed text-zinc-600">{note}</dd>
+                  <dd className="mt-1.5 font-medium text-zinc-950">{item.provider}</dd>
+                  <dd className="mt-1 text-sm leading-relaxed text-zinc-600">{item.note}</dd>
                 </div>
               ))}
             </dl>
@@ -318,18 +240,12 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-14">
           <div>
             <p className="text-xl font-semibold tracking-tight text-zinc-950">
-              Erst ansehen, dann entscheiden
+              {t('ctaTitle')}
             </p>
-            <p className="mt-2 max-w-lg text-zinc-700">
-              Die Demo braucht kein Konto und keine Firmenadresse. Wer danach eigene Wertströme
-              anlegen will, findet dieselben Funktionen im Werkzeug wieder.
-            </p>
+            <p className="mt-2 max-w-lg text-zinc-700">{t('ctaBody')}</p>
           </div>
-          <Link
-            href="/demo"
-            className={buttonPrimaryLg}
-          >
-            Demo öffnen
+          <Link href="/demo" className={buttonPrimaryLg}>
+            {t('ctaButton')}
           </Link>
         </div>
       </section>
@@ -339,7 +255,7 @@ export default function Home() {
           <span className="font-semibold uppercase tracking-widest text-brand-600">
             VSM Builder
           </span>
-          <span>Wertstromanalyse mit Live-Berechnung.</span>
+          <span>{t('footerTagline')}</span>
         </div>
       </footer>
     </main>

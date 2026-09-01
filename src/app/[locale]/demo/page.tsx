@@ -1,12 +1,17 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import DemoCanvas from '@/components/VSMEditor/DemoCanvas'
 import { buttonPrimary, buttonSecondary } from '@/components/ui/buttons'
 
-export const metadata: Metadata = {
-  title: 'Demo',
-  description:
-    'Ein vollständiger Wertstrom zum Ausprobieren, ohne Anmeldung. Zykluszeiten ändern und zusehen, wie Durchlaufzeit, Taktzeit und Wertschöpfungsanteil reagieren.',
+// Statt einer festen `metadata`-Konstante: Titel und Beschreibung haengen
+// jetzt an der Sprache, muessen also pro Anfrage aufgeloest werden.
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('Demo')
+  return {
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+  }
 }
 
 /**
@@ -18,7 +23,10 @@ export const metadata: Metadata = {
  * gespeichert, und es gibt keinen Datenbankzugriff — also auch nichts, was
  * jemand missbrauchen koennte.
  */
-export default function DemoPage() {
+export default async function DemoPage() {
+  const t = await getTranslations('Demo')
+  const tNav = await getTranslations('Nav')
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <header className="border-b border-zinc-200 bg-white">
@@ -31,15 +39,15 @@ export default function DemoPage() {
               VSM Builder
             </Link>
             <h1 className="text-lg font-semibold tracking-tight text-zinc-950">
-              Demo · Dreherei Musterwerk
+              {t('heading')}
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/login" className={buttonSecondary}>
-              Anmelden
+              {tNav('login')}
             </Link>
             <Link href="/signup" className={buttonPrimary}>
-              Kostenlos starten
+              {tNav('signup')}
             </Link>
           </div>
         </div>
@@ -49,9 +57,8 @@ export default function DemoPage() {
           aendert, soll vorher wissen, dass sie nicht bleiben. */}
       <div className="border-b border-zinc-200 bg-brand-50">
         <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-zinc-700">
-          <span className="font-medium text-zinc-950">Alles ist bedienbar.</span> Ändere eine
-          Zykluszeit, verschiebe einen Prozess, setze einen Bestand — die Kennzahlen rechnen
-          live mit. Nichts davon wird gespeichert; ein Neuladen setzt die Demo zurück.
+          <span className="font-medium text-zinc-950">{t('noticeStrong')}</span>{' '}
+          {t('noticeBody')}
         </p>
       </div>
 

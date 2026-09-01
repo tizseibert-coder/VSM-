@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Das Bild, das erscheint, wenn jemand den Link in Teams, LinkedIn oder
@@ -14,6 +15,20 @@ import { ImageResponse } from 'next/og'
  */
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
+/**
+ * Bekannte Einschraenkung: Dieser Alternativtext bleibt auf Deutsch, auch
+ * im englischen Bild.
+ *
+ * `alt` muss ein fester Export sein. Der von Next dafuer vorgesehene Ausweg
+ * (`generateImageMetadata`) scheitert hier: Next ruft die Funktion beim
+ * Sammeln der statischen Parameter auf, also ohne Anfragekontext, und jeder
+ * Uebersetzungszugriff dort ist ein harter Baufehler — auch mit explizit
+ * durchgereichter Sprache, weil `params` in dieser Phase nicht aufloest.
+ *
+ * Der sichtbare Bildinhalt ist vollstaendig uebersetzt; betroffen ist allein
+ * `og:image:alt`, das Vorschaubilder in sozialen Netzen praktisch nie
+ * anzeigen. Deutsch, weil es die Standardsprache ist.
+ */
 export const alt =
   'VSM Builder — Wertstromanalyse mit Live-Berechnung: Wertstromdiagramm mit drei Prozessen, Bestandsdreiecken und Zeitleiter'
 
@@ -54,19 +69,43 @@ function ladderSrc(): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
-const STATIONS = [
-  { name: 'Sägen', ct: 'C/T 1,2 min', oee: 'OEE 82 %' },
-  { name: 'Drehen', ct: 'C/T 3,4 min', oee: 'OEE 78 %' },
-  { name: 'Montage', ct: 'C/T 4,1 min', oee: 'OEE 90 %' },
-]
+// Zahlen als Zahlen, damit das Dezimaltrennzeichen der Sprache folgt
+// ("1,2" gegen "1.2") — siehe dieselbe Ueberlegung in VsmSketch.tsx.
+const STATION_CT_MIN = [1.2, 3.4, 4.1]
+const STATION_OEE = [82, 78, 90]
 
-const KPIS = [
-  { value: '18,4', unit: 'Tage', label: 'Durchlaufzeit' },
-  { value: '0,12', unit: '%', label: 'Wertschöpfungsanteil' },
-  { value: '2,4', unit: 'min', label: 'Taktzeit' },
-]
+export default async function OpengraphImage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  // Die Datei liegt im [locale]-Segment, wird von Next aber ausserhalb des
+  // normalen Anfragezyklus gerendert — die Sprache muss deshalb explizit
+  // durchgereicht werden, statt sich aus dem Kontext zu ergeben.
+  const t = await getTranslations({ locale, namespace: 'OgImage' })
+  const tSketch = await getTranslations({ locale, namespace: 'VsmSketch' })
+  const oneDecimal = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+  const twoDecimals = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 
-export default function OpengraphImage() {
+  const STATIONS = (['process1', 'process2', 'process3'] as const).map((key, i) => ({
+    name: tSketch(key),
+    ct: `C/T ${oneDecimal.format(STATION_CT_MIN[i])} ${t('ctUnit')}`,
+    oee: `OEE ${STATION_OEE[i]} %`,
+  }))
+
+  const KPIS = [
+    { value: oneDecimal.format(18.4), unit: t('kpi1Unit'), label: t('kpi1Label') },
+    { value: twoDecimals.format(0.12), unit: '%', label: t('kpi2Label') },
+    { value: oneDecimal.format(2.4), unit: t('kpi3Unit'), label: t('kpi3Label') },
+  ]
+
   return new ImageResponse(
     (
       <div
@@ -113,11 +152,11 @@ export default function OpengraphImage() {
               color: INK,
             }}
           >
-            Wertstromanalyse mit Live-Berechnung
+            {t('headline')}
           </div>
 
           <div style={{ display: 'flex', marginTop: 16, fontSize: 24, color: MUTED }}>
-            Zeichnen nach Rother/Shook — Durchlaufzeit, Taktzeit und Wertschöpfungsanteil rechnen mit.
+            {t('subline')}
           </div>
 
           {/* Prozesskette: Kasten, Bestand, Kasten. Dieselben Formen wie im

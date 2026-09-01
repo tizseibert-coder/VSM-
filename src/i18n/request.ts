@@ -11,8 +11,13 @@ import { routing } from './routing'
  * (z. B. `app/opengraph-image.tsx`, das bewusst ausserhalb bleibt, siehe
  * dessen eigene Kommentare) und deshalb kein Segment mitbringt.
  */
-export default getRequestConfig(async ({ requestLocale }) => {
-  const requested = await requestLocale
+export default getRequestConfig(async ({ locale: explicitLocale, requestLocale }) => {
+  // Ein ausdruecklich uebergebener Wert (getTranslations({locale})) hat
+  // Vorrang und wird *vor* requestLocale geprueft: Letzteres liest die
+  // Header der Anfrage, und es gibt Stellen, die zur Bauzeit ganz ohne
+  // Anfrage laufen — etwa generateImageMetadata fuer das OG-Bild. Dort
+  // waere ein Zugriff auf die Header ein harter Baufehler.
+  const requested = explicitLocale ?? (await requestLocale)
   const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale
 
   return {

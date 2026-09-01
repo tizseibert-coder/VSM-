@@ -9,37 +9,56 @@
  * Designwechsel still veralten.
  */
 
+import { getLocale, getTranslations } from 'next-intl/server'
+
 const INK = '#18181b'
 const MUTED = '#52525b'
 const RULE = '#d4d4d8'
 
 type Station = {
   x: number
-  name: string
-  ct: string
-  oee: string
+  /** Schluessel im VsmSketch-Namensraum, nicht der Anzeigename selbst. */
+  nameKey: 'process1' | 'process2' | 'process3'
+  ctMin: number
+  oeePercent: number
   /** Wartezeit im Bestand *vor* dieser Station, in Tagen. */
-  waitDays: string | null
+  waitDays: number | null
   operators: number
 }
 
+// Die Zahlen stehen als Zahlen da, nicht als fertige Zeichenketten: Das
+// Dezimaltrennzeichen unterscheidet sich zwischen den Sprachen (1,2 gegen
+// 1.2), und ein hart geschriebenes Komma waere in der englischen Fassung
+// schlicht falsch. Formatiert wird unten mit Intl.NumberFormat.
+//
+// "C/T", "OEE", "PLT" und "VA" bleiben unuebersetzt — das sind in beiden
+// Sprachen dieselben Kuerzel der Wertstrom-Fachsprache.
 const STATIONS: Station[] = [
-  { x: 96, name: 'Sägen', ct: 'C/T: 1,2 min', oee: 'OEE: 82 %', waitDays: null, operators: 1 },
-  { x: 236, name: 'Drehen', ct: 'C/T: 3,4 min', oee: 'OEE: 78 %', waitDays: '4,2', operators: 1 },
-  { x: 376, name: 'Montage', ct: 'C/T: 4,1 min', oee: 'OEE: 90 %', waitDays: '12,6', operators: 2 },
+  { x: 96, nameKey: 'process1', ctMin: 1.2, oeePercent: 82, waitDays: null, operators: 1 },
+  { x: 236, nameKey: 'process2', ctMin: 3.4, oeePercent: 78, waitDays: 4.2, operators: 1 },
+  { x: 376, nameKey: 'process3', ctMin: 4.1, oeePercent: 90, waitDays: 12.6, operators: 2 },
 ]
 
 const BOX_W = 92
 const BOX_H = 58
 const BOX_Y = 34
 
-export default function VsmSketch() {
+export default async function VsmSketch() {
+  const t = await getTranslations('VsmSketch')
+  const locale = await getLocale()
+  // Eine Nachkommastelle, sprachrichtig getrennt: "1,2" auf Deutsch,
+  // "1.2" auf Englisch.
+  const oneDecimal = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+
   return (
     <svg
       viewBox="0 0 500 190"
       className="h-auto w-full"
       role="img"
-      aria-label="Ausschnitt eines Wertstromdiagramms mit drei Prozessen, Bestandsdreiecken und der Zeitleiter darunter"
+      aria-label={t('alt')}
     >
       {/* Materialfluss: Pfeile und Bestände zwischen den Stationen */}
       {STATIONS.map((s, i) => {
@@ -49,7 +68,7 @@ export default function VsmSketch() {
         const to = s.x
         const mid = (from + to) / 2
         return (
-          <g key={`flow-${s.name}`}>
+          <g key={`flow-${s.nameKey}`}>
             {s.waitDays && (
               <>
                 <path
@@ -59,7 +78,7 @@ export default function VsmSketch() {
                   strokeWidth="1.4"
                 />
                 <text x={mid} y={BOX_Y + 35} textAnchor="middle" fontSize="7" fill={INK}>
-                  {s.waitDays}
+                  {oneDecimal.format(s.waitDays)}
                 </text>
               </>
             )}
@@ -81,7 +100,7 @@ export default function VsmSketch() {
 
       {/* Prozessboxen mit Datenkasten */}
       {STATIONS.map((s) => (
-        <g key={s.name}>
+        <g key={s.nameKey}>
           <rect
             x={s.x}
             y={BOX_Y}
@@ -104,7 +123,7 @@ export default function VsmSketch() {
             fontWeight="600"
             fill={INK}
           >
-            {s.name}
+            {t(s.nameKey)}
           </text>
           <line
             x1={s.x + 8}
@@ -115,10 +134,10 @@ export default function VsmSketch() {
             strokeWidth="1"
           />
           <text x={s.x + BOX_W / 2} y={BOX_Y + 33} textAnchor="middle" fontSize="7.5" fill={MUTED}>
-            {s.ct}
+            {`C/T: ${oneDecimal.format(s.ctMin)} ${t('minUnit')}`}
           </text>
           <text x={s.x + BOX_W / 2} y={BOX_Y + 44} textAnchor="middle" fontSize="7.5" fill={MUTED}>
-            {s.oee}
+            {`OEE: ${s.oeePercent} %`}
           </text>
         </g>
       ))}
@@ -131,11 +150,11 @@ export default function VsmSketch() {
         strokeWidth="1.4"
       />
       {[
-        { x: 124, y: 128, text: '4,2 Tage' },
-        { x: 250, y: 128, text: '12,6 Tage' },
-        { x: 180, y: 158, text: '1,2 min' },
-        { x: 320, y: 158, text: '3,4 min' },
-        { x: 414, y: 158, text: '4,1 min' },
+        { x: 124, y: 128, text: `${oneDecimal.format(4.2)} ${t('daysUnit')}` },
+        { x: 250, y: 128, text: `${oneDecimal.format(12.6)} ${t('daysUnit')}` },
+        { x: 180, y: 158, text: `${oneDecimal.format(1.2)} ${t('minUnit')}` },
+        { x: 320, y: 158, text: `${oneDecimal.format(3.4)} ${t('minUnit')}` },
+        { x: 414, y: 158, text: `${oneDecimal.format(4.1)} ${t('minUnit')}` },
       ].map((l) => (
         <text key={l.text + l.x} x={l.x} y={l.y} textAnchor="middle" fontSize="7.5" fill={MUTED}>
           {l.text}
@@ -157,10 +176,10 @@ export default function VsmSketch() {
         PLT
       </text>
       <text x="469" y="134" textAnchor="middle" fontSize="9.5" fontWeight="600" fill={INK}>
-        16,8 Tage
+        {`${oneDecimal.format(16.8)} ${t('daysUnit')}`}
       </text>
       <text x="469" y="147" textAnchor="middle" fontSize="7" fill={MUTED}>
-        VA 8,7 min
+        {`VA ${oneDecimal.format(8.7)} ${t('minUnit')}`}
       </text>
     </svg>
   )

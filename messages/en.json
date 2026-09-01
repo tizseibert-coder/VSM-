@@ -3,5 +3,210 @@
     "label": "Language",
     "de": "German",
     "en": "English"
+  },
+  "Metadata": {
+    "title": "VSM Builder — Value Stream Mapping That Calculates",
+    "description": "Draw value stream maps to Rother/Shook conventions, calculate lead time, takt time and process cycle efficiency live, and compare future-state scenarios against each other.",
+    "ogTitle": "VSM Builder — Value Stream Mapping That Calculates",
+    "ogDescription": "Draw value stream maps to Rother/Shook conventions, calculate metrics live, compare future-state scenarios.",
+    "ogLocale": "en_US"
+  },
+  "Nav": {
+    "demo": "Demo",
+    "login": "Sign in",
+    "signup": "Get started free"
+  },
+  "Home": {
+    "heroTitle": "Value stream mapping that calculates.",
+    "heroBody": "Rother and Shook symbols, lead time and takt time live from your process data, future-state scenarios with payback. Not a drawing tool with VSM shapes, but a calculation tool that happens to draw a standards-compliant map.",
+    "heroDemoCta": "Open the demo",
+    "heroSignupCta": "Get started free",
+    "heroNote": "The demo runs without signing up: a complete value stream with five processes, inventory and calculated metrics. Change one cycle time and watch the lead time respond.",
+    "sketchCaption": "A section of a current-state map: process boxes with C/T and OEE, inventory as triangles, and the timeline of wait and processing time below.",
+    "kpisTitle": "Every number shows its own arithmetic",
+    "kpisBody": "Under each metric sits the formula with the values actually used. A surprising number therefore explains itself from its own inputs, instead of looking like a defect.",
+    "kpis": [
+      {
+        "name": "Lead time",
+        "formula": "WIP ÷ output",
+        "note": "Little’s Law across every inventory point in the chain."
+      },
+      {
+        "name": "Takt time",
+        "formula": "Available min/day ÷ customer demand",
+        "note": "Derived from annual demand and shift pattern, not estimated."
+      },
+      {
+        "name": "Process cycle efficiency",
+        "formula": "Value-added time ÷ lead time",
+        "note": "The number that starts the discussion in the steering committee."
+      },
+      {
+        "name": "Actual output",
+        "formula": "Available min/day ÷ bottleneck",
+        "note": "Effective cycle time including OEE, not the nominal one."
+      }
+    ],
+    "checksTitle": "The tool pushes back",
+    "checksBody": "A value stream can be methodologically wrong and still look fine. The method check runs on every change and ranks by severity: first what invalidates a metric, then what only affects the drawing.",
+    "severityCritical": "Metric affected",
+    "severityWarning": "Methodologically unsound",
+    "checks": [
+      {
+        "title": "Capacity shortfall",
+        "body": "If the line cannot meet customer demand, inventory grows without bound. Little’s Law no longer holds, and the tool says exactly that instead of claiming a lead time."
+      },
+      {
+        "title": "Push upstream of the pacemaker",
+        "body": "Everything upstream of the pacemaker needs a pull system. Where a connection still runs as push, it is named and counted."
+      },
+      {
+        "title": "No pacemaker set",
+        "body": "Without a pacemaker, the ERP schedules every process individually. The map shows it that way, and the note explains why that is rarely intended."
+      }
+    ],
+    "comparisonTitle": "From current state to business case",
+    "comparisonBody": "Each future-state scenario is its own copy of the value stream. The comparison places them side by side and translates the lean metrics into the language budgets are decided in.",
+    "comparisonColMetric": "Metric",
+    "comparisonColCurrent": "Current state",
+    "comparisonColScenario": "Scenario A",
+    "comparisonNote": "Example values, shown to illustrate the columns.",
+    "comparison": [
+      {
+        "label": "Lead time",
+        "current": "18.4 days",
+        "scenario": "9.1 days"
+      },
+      {
+        "label": "Process cycle efficiency",
+        "current": "0.41%",
+        "scenario": "0.83%"
+      },
+      {
+        "label": "Investment",
+        "current": "–",
+        "scenario": "€85,000"
+      },
+      {
+        "label": "Payback",
+        "current": "–",
+        "scenario": "14 months"
+      },
+      {
+        "label": "Risk",
+        "current": "–",
+        "scenario": "Medium"
+      }
+    ],
+    "workshopTitle": "Built for the room where the value stream is created",
+    "workshopBody": "A VSM is not filled in at a desk, it is worked out in front of the group. Afterwards it has to fit on a sheet that someone else reads.",
+    "workshop": [
+      {
+        "name": "Presentation mode",
+        "body": "Hides import and renaming. Process boxes stay editable, because a value stream is created in the room with the team and is not finished beforehand."
+      },
+      {
+        "name": "Full screen",
+        "body": "One movement space instead of three. For the projector in the meeting room and the laptop on the shop floor."
+      },
+      {
+        "name": "PDF export",
+        "body": "Map and metrics on A4 landscape. The sheet that goes into the committee."
+      },
+      {
+        "name": "24 terms explained in context",
+        "body": "Pacemaker, supermarket, FIFO, heijunka, EPEI. Explained where they appear, so green belts and operators can follow."
+      }
+    ],
+    "hostingTitle": "Where your data lives",
+    "hostingBody": "A value stream describes your production: takt times, inventory, bottlenecks. Anyone working with it wants to know up front where that is stored.",
+    "hosting": [
+      {
+        "role": "Database",
+        "provider": "Supabase",
+        "note": "EU, France region"
+      },
+      {
+        "role": "Application",
+        "provider": "Vercel",
+        "note": "EU, France region"
+      },
+      {
+        "role": "Other recipients",
+        "provider": "None",
+        "note": "No analytics or tracking service is embedded"
+      }
+    ],
+    "ctaTitle": "Look first, decide after",
+    "ctaBody": "The demo needs no account and no company address. Anyone who then wants to build their own value streams will find the same functions in the tool.",
+    "ctaButton": "Open the demo",
+    "footerTagline": "Value stream mapping with live calculation."
+  },
+  "VsmSketch": {
+    "alt": "Section of a value stream map with three processes, inventory triangles and the timeline below",
+    "process1": "Sawing",
+    "process2": "Turning",
+    "process3": "Assembly",
+    "daysUnit": "days",
+    "minUnit": "min"
+  },
+  "Demo": {
+    "metaTitle": "Demo",
+    "metaDescription": "A complete value stream to try out, without signing up. Change cycle times and watch lead time, takt time and process cycle efficiency respond.",
+    "heading": "Demo · Musterwerk Machine Shop",
+    "noticeStrong": "Everything is editable.",
+    "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo."
+  },
+  "Login": {
+    "title": "Sign in",
+    "subtitle": "Welcome back to VSM Builder.",
+    "emailLabel": "Email",
+    "submit": "Sign in",
+    "noAccount": "No account yet?",
+    "signupLink": "Sign up"
+  },
+  "Signup": {
+    "title": "Create account",
+    "subtitle": "Start with your first value stream map.",
+    "orgLabel": "Company / team (optional)",
+    "orgPlaceholder": "e.g. Example Ltd",
+    "emailLabel": "Email",
+    "passwordHint": "At least 8 characters.",
+    "submit": "Create account",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Sign in"
+  },
+  "CheckEmail": {
+    "title": "Almost there",
+    "body": "We have sent you a confirmation link by email. Click it to activate your account and sign in.",
+    "backToLogin": "Back to sign in"
+  },
+  "OAuth": {
+    "divider": "or",
+    "google": "Sign in with Google",
+    "apple": "Sign in with Apple"
+  },
+  "ErrorPage": {
+    "title": "The action failed",
+    "body": "The last step could not be completed. Your value streams are unaffected; everything up to the last successful change is saved.",
+    "backToDashboard": "Back to dashboard",
+    "loginAgain": "Sign in again",
+    "hint": "If the error keeps happening, signing in again usually helps: expired sessions are the most common cause."
+  },
+  "OgImage": {
+    "alt": "VSM Builder — value stream mapping with live calculation: a value stream map with three processes, inventory triangles and timeline",
+    "headline": "Value stream mapping with live calculation",
+    "subline": "Drawn to Rother/Shook — lead time, takt time and process cycle efficiency calculate along.",
+    "kpi1Label": "Lead time",
+    "kpi1Unit": "days",
+    "kpi2Label": "Process cycle efficiency",
+    "kpi3Label": "Takt time",
+    "kpi3Unit": "min",
+    "ctUnit": "min"
+  },
+  "PasswordField": {
+    "label": "Password",
+    "show": "Show password",
+    "hide": "Hide password"
   }
 }

@@ -3,5 +3,210 @@
     "label": "Sprache",
     "de": "Deutsch",
     "en": "Englisch"
+  },
+  "Metadata": {
+    "title": "VSM Builder — Wertstromanalyse mit Live-Berechnung",
+    "description": "Wertstromdiagramme nach Rother/Shook zeichnen, Durchlaufzeit, Taktzeit und Wertschoepfungsanteil live berechnen, Future-State-Szenarien gegeneinander rechnen.",
+    "ogTitle": "VSM Builder — Wertstromanalyse mit Live-Berechnung",
+    "ogDescription": "Wertstromdiagramme nach Rother/Shook zeichnen, Kennzahlen live berechnen, Future-State-Szenarien vergleichen.",
+    "ogLocale": "de_DE"
+  },
+  "Nav": {
+    "demo": "Demo",
+    "login": "Anmelden",
+    "signup": "Kostenlos starten"
+  },
+  "Home": {
+    "heroTitle": "Wertstromanalyse, die rechnet.",
+    "heroBody": "Symbolik nach Rother und Shook, Durchlaufzeit und Taktzeit live aus den Prozessdaten, Future-State-Szenarien mit Amortisation. Kein Zeichenprogramm mit VSM-Formen, sondern ein Rechenwerkzeug, das nebenbei ein normgerechtes Diagramm zeichnet.",
+    "heroDemoCta": "Demo öffnen",
+    "heroSignupCta": "Kostenlos starten",
+    "heroNote": "Die Demo läuft ohne Anmeldung: ein vollständiger Wertstrom mit fünf Prozessen, Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu, wie die Durchlaufzeit reagiert.",
+    "sketchCaption": "Ausschnitt eines Ist-Zustands: Prozessboxen mit C/T und OEE, Bestände als Dreieck, darunter die Zeitleiter aus Warte- und Bearbeitungszeit.",
+    "kpisTitle": "Jede Zahl zeigt ihren Rechenweg",
+    "kpisBody": "Unter jeder Kennzahl steht die Formel mit den Werten, die tatsächlich eingesetzt wurden. Eine überraschende Zahl erklärt sich damit aus ihren eigenen Eingaben, statt wie ein Fehler auszusehen.",
+    "kpis": [
+      {
+        "name": "Durchlaufzeit",
+        "formula": "WIP ÷ Ausbringung",
+        "note": "Little’s Law über alle Bestände der Kette."
+      },
+      {
+        "name": "Taktzeit",
+        "formula": "Verfügbare Min/Tag ÷ Kundenbedarf",
+        "note": "Aus Jahresbedarf und Schichtmodell, nicht geschätzt."
+      },
+      {
+        "name": "Wertschöpfungsanteil",
+        "formula": "Bearbeitungszeit ÷ Durchlaufzeit",
+        "note": "Die Zahl, die im Lenkungsgremium die Diskussion auslöst."
+      },
+      {
+        "name": "Ist-Ausbringung",
+        "formula": "Verfügbare Min/Tag ÷ Engpass",
+        "note": "Effektive Zykluszeit inklusive OEE, nicht die nominale."
+      }
+    ],
+    "checksTitle": "Das Werkzeug widerspricht",
+    "checksBody": "Ein Wertstrom kann methodisch falsch sein und trotzdem gut aussehen. Die Methodikprüfung läuft bei jeder Änderung mit und ordnet nach Schwere: zuerst das, was eine Kennzahl entwertet, danach das, was nur die Darstellung betrifft.",
+    "severityCritical": "Kennzahl betroffen",
+    "severityWarning": "Methodisch unsauber",
+    "checks": [
+      {
+        "title": "Kapazitätsunterdeckung",
+        "body": "Deckt die Linie den Kundenbedarf nicht, wächst der Bestand unbegrenzt. Dann gilt Little’s Law nicht mehr, und das Werkzeug sagt genau das, statt eine Durchlaufzeit zu behaupten."
+      },
+      {
+        "title": "Push vor dem Schrittmacher",
+        "body": "Alles vor dem Schrittmacher braucht ein Pull-System. Läuft eine Verbindung noch als Push, wird sie benannt und gezählt."
+      },
+      {
+        "title": "Kein Schrittmacher gesetzt",
+        "body": "Ohne Schrittmacher steuert das ERP jeden Prozess einzeln. Das Diagramm zeigt es so, und der Hinweis erklärt, warum das selten gewollt ist."
+      }
+    ],
+    "comparisonTitle": "Vom Ist-Zustand zum Business Case",
+    "comparisonBody": "Jedes Future-State-Szenario ist eine eigene Kopie des Wertstroms. Der Vergleich stellt sie nebeneinander und übersetzt die Lean-Kennzahlen in die Sprache, in der über Budgets entschieden wird.",
+    "comparisonColMetric": "Kennzahl",
+    "comparisonColCurrent": "Ist-Zustand",
+    "comparisonColScenario": "Szenario A",
+    "comparisonNote": "Beispielwerte zur Veranschaulichung der Spalten.",
+    "comparison": [
+      {
+        "label": "Durchlaufzeit",
+        "current": "18,4 Tage",
+        "scenario": "9,1 Tage"
+      },
+      {
+        "label": "Wertschöpfungsanteil",
+        "current": "0,41 %",
+        "scenario": "0,83 %"
+      },
+      {
+        "label": "Investition",
+        "current": "–",
+        "scenario": "85.000 €"
+      },
+      {
+        "label": "Amortisation",
+        "current": "–",
+        "scenario": "14 Monate"
+      },
+      {
+        "label": "Risiko",
+        "current": "–",
+        "scenario": "Mittel"
+      }
+    ],
+    "workshopTitle": "Gebaut für den Raum, in dem der Wertstrom entsteht",
+    "workshopBody": "Ein VSM wird nicht am Schreibtisch ausgefüllt, sondern vor der Gruppe erarbeitet. Danach muss es auf ein Blatt passen, das jemand anders liest.",
+    "workshop": [
+      {
+        "name": "Präsentationsmodus",
+        "body": "Blendet Import und Umbenennung aus. Prozessboxen bleiben editierbar, weil ein Wertstrom im Raum mit dem Team entsteht und nicht vorher fertig ist."
+      },
+      {
+        "name": "Vollbild",
+        "body": "Ein Bewegungsraum statt drei. Für den Beamer im Besprechungsraum und das Notebook auf dem Shopfloor."
+      },
+      {
+        "name": "PDF-Export",
+        "body": "Diagramm und Kennzahlen auf A4 quer. Das Blatt, das mit ins Gremium geht."
+      },
+      {
+        "name": "24 Fachbegriffe im Kontext",
+        "body": "Schrittmacher, Supermarkt, FIFO, Heijunka, EPEI. Erklärt an der Stelle, an der sie auftauchen, damit Green Belts und Werker mitkommen."
+      }
+    ],
+    "hostingTitle": "Wo die Daten liegen",
+    "hostingBody": "Ein Wertstrom beschreibt Ihre Fertigung: Taktzeiten, Bestände, Engpässe. Wer damit arbeitet, will vorher wissen, wo das gespeichert wird.",
+    "hosting": [
+      {
+        "role": "Datenbank",
+        "provider": "Supabase",
+        "note": "EU, Region Frankreich"
+      },
+      {
+        "role": "Anwendung",
+        "provider": "Vercel",
+        "note": "EU, Region Frankreich"
+      },
+      {
+        "role": "Weitere Empfänger",
+        "provider": "Keine",
+        "note": "Kein Analyse- oder Tracking-Dienst eingebunden"
+      }
+    ],
+    "ctaTitle": "Erst ansehen, dann entscheiden",
+    "ctaBody": "Die Demo braucht kein Konto und keine Firmenadresse. Wer danach eigene Wertströme anlegen will, findet dieselben Funktionen im Werkzeug wieder.",
+    "ctaButton": "Demo öffnen",
+    "footerTagline": "Wertstromanalyse mit Live-Berechnung."
+  },
+  "VsmSketch": {
+    "alt": "Ausschnitt eines Wertstromdiagramms mit drei Prozessen, Bestandsdreiecken und der Zeitleiter darunter",
+    "process1": "Sägen",
+    "process2": "Drehen",
+    "process3": "Montage",
+    "daysUnit": "Tage",
+    "minUnit": "min"
+  },
+  "Demo": {
+    "metaTitle": "Demo",
+    "metaDescription": "Ein vollständiger Wertstrom zum Ausprobieren, ohne Anmeldung. Zykluszeiten ändern und zusehen, wie Durchlaufzeit, Taktzeit und Wertschöpfungsanteil reagieren.",
+    "heading": "Demo · Dreherei Musterwerk",
+    "noticeStrong": "Alles ist bedienbar.",
+    "noticeBody": "Ändere eine Zykluszeit, verschiebe einen Prozess, setze einen Bestand — die Kennzahlen rechnen live mit. Nichts davon wird gespeichert; ein Neuladen setzt die Demo zurück."
+  },
+  "Login": {
+    "title": "Anmelden",
+    "subtitle": "Willkommen zurück bei VSM Builder.",
+    "emailLabel": "E-Mail",
+    "submit": "Anmelden",
+    "noAccount": "Noch kein Konto?",
+    "signupLink": "Registrieren"
+  },
+  "Signup": {
+    "title": "Konto erstellen",
+    "subtitle": "Starte mit deiner ersten Wertstromanalyse.",
+    "orgLabel": "Firma / Team (optional)",
+    "orgPlaceholder": "z. B. Muster AG",
+    "emailLabel": "E-Mail",
+    "passwordHint": "Mindestens 8 Zeichen.",
+    "submit": "Konto erstellen",
+    "hasAccount": "Bereits ein Konto?",
+    "loginLink": "Anmelden"
+  },
+  "CheckEmail": {
+    "title": "Fast geschafft",
+    "body": "Wir haben dir einen Bestätigungslink per E-Mail geschickt. Klicke darauf, um dein Konto zu aktivieren und dich anzumelden.",
+    "backToLogin": "Zurück zur Anmeldung"
+  },
+  "OAuth": {
+    "divider": "oder",
+    "google": "Mit Google anmelden",
+    "apple": "Mit Apple anmelden"
+  },
+  "ErrorPage": {
+    "title": "Die Aktion ist fehlgeschlagen",
+    "body": "Der letzte Schritt konnte nicht abgeschlossen werden. Deine Wertströme sind davon nicht betroffen, gespeichert ist alles bis zur letzten erfolgreichen Änderung.",
+    "backToDashboard": "Zurück zum Dashboard",
+    "loginAgain": "Neu anmelden",
+    "hint": "Tritt der Fehler wiederholt auf, hilft meist eine neue Anmeldung: Abgelaufene Sitzungen sind die häufigste Ursache."
+  },
+  "OgImage": {
+    "alt": "VSM Builder — Wertstromanalyse mit Live-Berechnung: Wertstromdiagramm mit drei Prozessen, Bestandsdreiecken und Zeitleiter",
+    "headline": "Wertstromanalyse mit Live-Berechnung",
+    "subline": "Zeichnen nach Rother/Shook — Durchlaufzeit, Taktzeit und Wertschöpfungsanteil rechnen mit.",
+    "kpi1Label": "Durchlaufzeit",
+    "kpi1Unit": "Tage",
+    "kpi2Label": "Wertschöpfungsanteil",
+    "kpi3Label": "Taktzeit",
+    "kpi3Unit": "min",
+    "ctUnit": "min"
+  },
+  "PasswordField": {
+    "label": "Passwort",
+    "show": "Passwort anzeigen",
+    "hide": "Passwort verbergen"
   }
 }
