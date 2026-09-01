@@ -268,6 +268,14 @@ export default function VSMCanvas({
   // 2026-08-31, Befund 06); wer den Benchmark lesen wollte, scrollte an der
   // Austaktung vorbei, und das Diagramm war laengst aus dem Bild.
   const [analysisTab, setAnalysisTab] = useState<'balance' | 'benchmark'>('balance')
+  // [UX-Audit 2026-08-16, P6] "Strg/Cmd + Mausrad zum Zoomen" stand bisher
+  // dauerhaft da — ein Dauerhinweis ist das Eingestaendnis, dass eine
+  // Interaktion nicht auffindbar ist, und kostet Aufmerksamkeit bei allen,
+  // die es laengst wissen. Er blendet sich jetzt nur ein, wenn jemand ohne
+  // Strg/Cmd ueber der Zeichenflaeche scrollt (siehe handleWheel), und dann
+  // nur fuer zwei Sekunden.
+  const [showZoomHint, setShowZoomHint] = useState(false)
+  const zoomHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   // Nur im Vollbild gebraucht: dort bestimmt der Bildschirm die Höhe, sonst
   // leitet sie sich aus der Diagrammhöhe ab (viewportHeight weiter unten).
@@ -771,6 +779,12 @@ export default function VSMCanvas({
     // Bühne in der alten Größe stehen.
   }, [isFullscreen])
 
+  useEffect(() => {
+    return () => {
+      if (zoomHintTimeoutRef.current) clearTimeout(zoomHintTimeoutRef.current)
+    }
+  }, [])
+
   // Seiten-Scroll sperren, solange Vollbild aktiv ist. Ohne das scrollt die
   // Seite hinter der Überlagerung weiter und man landet beim Verlassen an
   // einer anderen Stelle als vorher.
@@ -794,7 +808,12 @@ export default function VSMCanvas({
     // quick-add bar" into an accidental zoom. Match the Figma/Google-Maps
     // convention: only Strg/Cmd + wheel zooms; a bare wheel is left alone so
     // the browser scrolls the page normally.
-    if (!e.evt.ctrlKey && !e.evt.metaKey) return
+    if (!e.evt.ctrlKey && !e.evt.metaKey) {
+      setShowZoomHint(true)
+      if (zoomHintTimeoutRef.current) clearTimeout(zoomHintTimeoutRef.current)
+      zoomHintTimeoutRef.current = setTimeout(() => setShowZoomHint(false), 2000)
+      return
+    }
     e.evt.preventDefault()
     const stage = e.target.getStage()
     const pointer = stage?.getPointerPosition()
@@ -1069,65 +1088,96 @@ export default function VSMCanvas({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
-      {/* Customer demand + available production time — the two inputs that
-          drive lead time / takt live. PLT = WIP / Exitrate (Little's Law):
-          Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
-          deliberately changes PLT — that's the formula working correctly,
-          not a bug. */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <div className="flex items-center gap-2">
-          <label htmlFor="throughput" className="text-sm text-zinc-600">
-            Jahresbedarf Kunde (Stück/Jahr)
-          </label>
-          <input
-            id="throughput"
-            type="number"
-            min={0}
-            value={throughputInput}
-            onChange={(e) => setThroughputInput(e.target.value)}
-            onBlur={handleThroughputBlur}
-            placeholder="z. B. 50000"
-            className="w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
-          />
+      {/* [UX-Audit 2026-08-16, P2] Am Telefon standen Eingaben,
+          Methodikpruefung und die fuenf Kennzahlenkacheln vor der
+          Zeichenflaeche — 880 px Inhalt, bevor das Arbeitsobjekt ueberhaupt
+          sichtbar wird. Die Quellreihenfolge bleibt (Kontext vor Diagramm ist
+          die sinnvolle Lesereihenfolge fuer eine Vorleseansicht); `order`
+          dreht nur die *Anzeige* unter `lg` um. */}
+      <div className="flex flex-col">
+        <div className="order-3 lg:order-1">
+        {/* Customer demand + available production time — the two inputs that
+            drive lead time / takt live. PLT = WIP / Exitrate (Little's Law):
+            Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
+            deliberately changes PLT — that's the formula working correctly,
+            not a bug. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex items-center gap-2">
+            <label htmlFor="throughput" className="text-sm text-zinc-600">
+              Jahresbedarf Kunde (Stück/Jahr)
+            </label>
+            <input
+              id="throughput"
+              type="number"
+              min={0}
+              value={throughputInput}
+              onChange={(e) => setThroughputInput(e.target.value)}
+              onBlur={handleThroughputBlur}
+              placeholder="z. B. 50000"
+              className="w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="available-minutes" className="text-sm text-zinc-600">
+              <TermTooltip term="availableMinutesPerDay">Verfügbare Produktionszeit (Min/Tag)</TermTooltip>
+            </label>
+            <input
+              id="available-minutes"
+              type="number"
+              min={1}
+              value={availableMinutesInput}
+              onChange={(e) => setAvailableMinutesInput(e.target.value)}
+              onBlur={handleAvailableMinutesBlur}
+              placeholder="z. B. 480"
+              className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="available-minutes" className="text-sm text-zinc-600">
-            <TermTooltip term="availableMinutesPerDay">Verfügbare Produktionszeit (Min/Tag)</TermTooltip>
-          </label>
-          <input
-            id="available-minutes"
-            type="number"
-            min={1}
-            value={availableMinutesInput}
-            onChange={(e) => setAvailableMinutesInput(e.target.value)}
-            onBlur={handleAvailableMinutesBlur}
-            placeholder="z. B. 480"
-            className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
-          />
+
+        {error && (
+          <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
+        {/* Die drei Befunde standen frueher als drei gleich grosse Banner
+            untereinander und unterschieden sich nur in Bernstein oder Rot — man
+            sah nicht, was zuerst zaehlt, und bei dreien rutschte die
+            Zeichenflaeche spuerbar nach unten. Die Rangfolge steckt jetzt in
+            `severity`: `critical` heisst, dass eine oben angezeigte Kennzahl
+            dadurch ihre Aussagekraft verliert. */}
+        <MethodCheckPanel findings={methodFindings} />
         </div>
-      </div>
 
-      {error && (
-        <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+        {/* [UX-Audit 2026-08-16, P2] Dieselben fuenf Werte wie in den Kacheln
+            oben, hier als reine Zahlen ohne Kachelrahmen — "die fuenf Kacheln
+            sind am Telefon reine Flaeche". Zwei Zeilen durch drei Spalten bei
+            fuenf Eintraegen. Nur unter `lg`: dort ersetzt sie die Kacheln,
+            die im Diagramm-Block selbst ab `lg` erst erscheinen. */}
+        <div className="order-2 grid grid-cols-3 gap-x-3 gap-y-3 py-3 lg:hidden">
+          {fullscreenKpis.map((kpi) => (
+            <div key={kpi.label} className="min-w-0">
+              <div className="truncate text-xs text-zinc-500">{kpi.label}</div>
+              <div className="mt-0.5 flex items-baseline gap-1">
+                <span className="text-base font-semibold tabular-nums text-zinc-950">
+                  {kpi.value}
+                </span>
+                {kpi.value !== KPI_EMPTY && (
+                  <span className="text-xs text-zinc-500">{kpi.unit}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
-      {/* Die drei Befunde standen frueher als drei gleich grosse Banner
-          untereinander und unterschieden sich nur in Bernstein oder Rot — man
-          sah nicht, was zuerst zaehlt, und bei dreien rutschte die
-          Zeichenflaeche spuerbar nach unten. Die Rangfolge steckt jetzt in
-          `severity`: `critical` heisst, dass eine oben angezeigte Kennzahl
-          dadurch ihre Aussagekraft verliert. */}
-      <MethodCheckPanel findings={methodFindings} />
-
-      {/* Kennzahlenleiste und Zeichenflaeche in einem Rahmen: Eine klebende
-          Leiste haelt nur, solange ihr umschliessender Block im Bild ist.
-          Ohne diesen Rahmen blieben die Kennzahlen auch dann noch oben
-          stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
-          Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
-          wenn das Diagramm den Bildschirm verlaesst. */}
-      <div>
+        <div className="order-1 lg:order-2">
+          {/* Kennzahlenleiste und Zeichenflaeche in einem Rahmen: Eine klebende
+              Leiste haelt nur, solange ihr umschliessender Block im Bild ist.
+              Ohne diesen Rahmen blieben die Kennzahlen auch dann noch oben
+              stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
+              Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
+              wenn das Diagramm den Bildschirm verlaesst. */}
+          <div>
         {/* [Design-Audit 2026-08-31, Befund 06] Die Kennzahlen standen ueber
             dem Diagramm und scrollten mit ihm weg: Wer eine Zykluszeit aenderte,
             sah nie gleichzeitig den Prozess und die Zahl, die sich dadurch
@@ -1139,8 +1189,9 @@ export default function VSMCanvas({
             Haelfte des Bildes, und dort scrollt man ohnehin ein Stueck nach dem
             anderen statt beides nebeneinander zu halten. */}
         <div className="bg-zinc-50 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
-          {/* Live KPI bar */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Live KPI bar — ab lg; darunter zeigt die kompakte Telefon-
+              Kennzahlenzeile weiter oben dieselben Werte (Befund P2). */}
+          <div className="hidden gap-3 lg:grid lg:grid-cols-5">
             <KpiTile
               label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
               value={kpis.totalCycleTimeMinutes.toFixed(1)}
@@ -1190,7 +1241,11 @@ export default function VSMCanvas({
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 py-3">
             {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
                 nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
-            <p className="hidden text-xs text-zinc-500 sm:block">
+            <p
+              className={`hidden text-xs text-zinc-500 transition-opacity duration-300 sm:block ${
+                showZoomHint ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
               Strg/Cmd + Mausrad zum Zoomen
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -1631,6 +1686,8 @@ export default function VSMCanvas({
             </div>
           )}
         </div>
+        </div>
+      </div>
       </div>
 
       {processes.length === 0 && (
