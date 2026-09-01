@@ -20,6 +20,7 @@ import {
   Line,
   RegularPolygon,
   Circle,
+  Star,
 } from 'react-konva'
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
@@ -64,6 +65,9 @@ import {
   CLOUD_SIZE,
   ERP_WIDTH,
   ERP_HEIGHT,
+  heijunkaBoxPosition,
+  HEIJUNKA_WIDTH,
+  HEIJUNKA_HEIGHT,
 } from '@/lib/vsm/autoLayout'
 import {
   addProcess,
@@ -477,6 +481,7 @@ export default function VSMCanvas({
   const customerPos = customerCloudPosition(processes.length)
   const customerLeft: Point = { x: customerPos.x, y: customerPos.y + (CLOUD_SIZE * 0.75) / 2 }
   const erpPos = erpBoxPosition(processes.length)
+  const heijunkaPos = heijunkaBoxPosition(processes.length)
 
   // Sits below whichever lane is drawn lowest, so it never overlaps a
   // parallel row.
@@ -1443,6 +1448,15 @@ export default function VSMCanvas({
                   setSelection((c) => (c?.kind === 'anchor' && c.anchor === 'erp' ? null : { kind: 'anchor', anchor: 'erp' }))
                 }
               />
+              {/* [Future-State-Wizard, Frage 6] Heijunka gehoert methodisch an
+                  den Steuerungspunkt, nicht an den Schrittmacher-Prozess
+                  selbst — deshalb neben dem ERP-Kasten statt am (beweglichen)
+                  Prozess. Nur sichtbar, wenn der Schrittmacher sie im Wizard
+                  gesetzt hat; ein Projekt ohne Schrittmacher hat auch keine
+                  Heijunka-Box. */}
+              {pacemaker?.has_heijunka && (
+                <HeijunkaBox x={heijunkaPos.x} y={heijunkaPos.y} pitchMinutes={project.pitch_minutes} />
+              )}
               <Arrow
                 points={zigzagPoints(
                   customerLeft,
@@ -2863,7 +2877,8 @@ function ProcessBox({
         // tint — keeps the print-standard B&W convention intact, same
         // restrained-accent approach as the bottleneck border/pacemaker pin.
         // Bottom-left corner is free (bottleneck "!" uses top-left, operator
-        // count uses top-right, pacemaker pin sits above the box).
+        // count uses top-right, pacemaker pin sits above the box, Kaizen-Blitz
+        // uses bottom-right — see below).
         <Text
           text={classificationMarker(process.classification) ?? ''}
           x={4}
@@ -2877,6 +2892,29 @@ function ProcessBox({
                 ? '#b45309' // amber-700 — matches the amber warning banners used elsewhere
                 : '#71717a' // zinc-500 — neutral marker for VA, not a warning
           }
+        />
+      )}
+      {(process.kaizen_note ?? '').trim().length > 0 && (
+        // [Future-State-Wizard, Frage 8] Kaizen-Blitz. Der Plan sah das
+        // Symbol oberhalb der Box mit Text darunter vor; dort stehen bei
+        // einem Schrittmacher-Prozess aber schon der Steuerungs-Pin (mittig)
+        // und immer der Bedienerkreis (oben rechts) — zusaetzlicher Text
+        // waere entweder eng an einem von beiden vorbei oder wuerde in die
+        // von der ERP-Box einlaufenden Informationspfeile hineinragen. Die
+        // freie untere rechte Ecke (Klassifizierung spiegelbildlich unten
+        // links) traegt das Symbol ohne diesen Konflikt; der volle Text
+        // steht in Frage 8 des Wizards, wo er auch bearbeitet wird — auf der
+        // Karte selbst waere fuer mehr als ein Emblem ohnehin kein Platz,
+        // ohne PROCESS_HEIGHT fuer jede Box in der Reihe zu vergroessern.
+        <Star
+          numPoints={6}
+          innerRadius={3}
+          outerRadius={7}
+          x={PROCESS_WIDTH - 10}
+          y={PROCESS_HEIGHT - 11}
+          fill="#ffffff"
+          stroke={INK}
+          strokeWidth={1.2}
         />
       )}
     </Group>
@@ -3166,6 +3204,68 @@ function ErpBox({
         fill={INK}
         lineHeight={1.4}
       />
+    </Group>
+  )
+}
+
+/**
+ * Nivellierungskasten (Heijunka-Box): ein klassisches Raster-Rechteck mit
+ * Faechern fuer Kanban-Karten je Zeitintervall — hier symbolisch als 2x4-
+ * Raster, weil dieses Datenmodell keine einzelnen Produktarten oder
+ * Zeitscheiben kennt, gegen die man ein echtes Belegungsraster zeichnen
+ * koennte. Das Symbol sagt "hier wird nivelliert", nicht "so ist es belegt".
+ *
+ * Der Pitch (Frage 7) steht als Unterschrift darunter, wenn gesetzt — er ist
+ * die Zahl, die aus dem Symbol ein Mass macht: das Steuerungsintervall, in
+ * dem tatsaechlich Kanban gezogen wird.
+ */
+function HeijunkaBox({ x, y, pitchMinutes }: { x: number; y: number; pitchMinutes: number | null }) {
+  const COLUMNS = 4
+  const LABEL_HEIGHT = 16
+  const CAPTION_HEIGHT = 16
+  const gridY = LABEL_HEIGHT
+  const gridHeight = HEIJUNKA_HEIGHT - LABEL_HEIGHT - CAPTION_HEIGHT
+  const colWidth = HEIJUNKA_WIDTH / COLUMNS
+
+  return (
+    <Group x={x} y={y}>
+      <Rect width={HEIJUNKA_WIDTH} height={HEIJUNKA_HEIGHT} fill="#ffffff" stroke={INK} strokeWidth={1.5} cornerRadius={2} />
+      <Text
+        text="Heijunka"
+        width={HEIJUNKA_WIDTH}
+        y={2}
+        align="center"
+        fontSize={CANVAS_TEXT.label}
+        fontStyle="bold"
+        fill={INK}
+      />
+      <Rect x={0} y={gridY} width={HEIJUNKA_WIDTH} height={gridHeight} stroke={INK} strokeWidth={1} />
+      {/* Drei senkrechte und eine waagrechte Trennlinie ergeben die acht
+          Faecher — genug, um als Raster erkennbar zu sein, ohne eine
+          Belegung vorzutaeuschen, die es nicht gibt. */}
+      {Array.from({ length: COLUMNS - 1 }, (_, i) => (
+        <Line
+          key={i}
+          points={[colWidth * (i + 1), gridY, colWidth * (i + 1), gridY + gridHeight]}
+          stroke={INK}
+          strokeWidth={1}
+        />
+      ))}
+      <Line
+        points={[0, gridY + gridHeight / 2, HEIJUNKA_WIDTH, gridY + gridHeight / 2]}
+        stroke={INK}
+        strokeWidth={1}
+      />
+      {pitchMinutes !== null && (
+        <Text
+          text={`Pitch: ${pitchMinutes} min`}
+          width={HEIJUNKA_WIDTH}
+          y={HEIJUNKA_HEIGHT - CAPTION_HEIGHT + 2}
+          align="center"
+          fontSize={CANVAS_TEXT.tag}
+          fill="#3f3f46"
+        />
+      )}
     </Group>
   )
 }
