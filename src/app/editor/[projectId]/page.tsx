@@ -90,7 +90,13 @@ export default async function EditorPage({
             {error}
           </p>
         )}
-        {activeScenario && <ScenarioMetaPanel projectId={projectId} scenario={activeScenario} />}
+        {activeScenario && (
+          <ScenarioMetaPanel
+            projectId={projectId}
+            scenario={activeScenario}
+            usedTypes={(scenarios ?? []).map((s) => s.type)}
+          />
+        )}
       </div>
 
       <VSMCanvasLoader

@@ -60,7 +60,7 @@ export default async function FutureStateOverviewPage({
             bestehendes Szenario, oder lege zuerst eins an.
           </p>
           <div className="mt-4">
-            <NewScenarioDisclosure projectId={projectId} />
+            <NewScenarioDisclosure projectId={projectId} usedTypes={(scenarios ?? []).map((s) => s.type)} />
           </div>
         </div>
       </div>
@@ -156,6 +156,7 @@ export default async function FutureStateOverviewPage({
             projectId={projectId}
             sourceScenarioId={activeScenario.id}
             label="+ Neue Iteration aus diesem Szenario"
+            usedTypes={(scenarios ?? []).map((s) => s.type)}
           />
         </div>
       </div>

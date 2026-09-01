@@ -140,6 +140,15 @@ const CANVAS_TEXT = {
    *  Kanban-Art, Klassifikationsmarke. */
   tag: 8,
 } as const
+
+/**
+ * Zusaetzliche Trefferflaeche rund um jedes Bestandsdreieck (siehe
+ * BufferMarker), in Canvas-Einheiten je Seite. BUFFER_SIZE (50) allein
+ * ergibt am Zoom-Boden MIN_READABLE_SCALE (60 %) nur 30x30 px — unter den
+ * ueblichen 44 px fuer einen Finger. 12 Einheiten je Seite heben die
+ * effektive Groesse auf 74, also 44,4 px bei genau diesem Zoom.
+ */
+const BUFFER_HIT_PADDING = 12
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -2914,6 +2923,22 @@ function BufferMarker({
         if (stage) stage.container().style.cursor = 'default'
       }}
     >
+      {/* [UX-Audit 2026-08-16, kleinere Beobachtung] Unsichtbares Ziel,
+          groesser als das sichtbare Dreieck: BUFFER_SIZE (50 Einheiten) misst
+          am Zoom-Boden (MIN_READABLE_SCALE, 60 %) nur 30x30 px — deutlich
+          unter den 44 px, die ein Finger sicher trifft. Der Puffer bleibt
+          optisch unveraendert; nur die Trefferflaeche wird auf 74 Einheiten
+          aufgeweitet, was am selben Zoom-Boden 44,4 px ergibt.
+          `fill="transparent"` ist hier keine Kosmetik, sondern noetig, damit
+          Konva die Flaeche ueberhaupt in den Hit-Test aufnimmt — ein Rect
+          ganz ohne Fill wird nicht getroffen. */}
+      <Rect
+        x={-BUFFER_HIT_PADDING}
+        y={-BUFFER_HIT_PADDING}
+        width={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
+        height={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
+        fill="transparent"
+      />
       {bufferType === 'supermarket' ? (
         <SupermarketIcon stroke={stroke} strokeWidth={strokeWidth} />
       ) : bufferType === 'fifo' ? (

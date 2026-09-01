@@ -13,9 +13,12 @@ type Scenario = Tables<'scenarios'>
 export default function ScenarioMetaPanel({
   projectId,
   scenario,
+  usedTypes,
 }: {
   projectId: string
   scenario: Scenario
+  /** Alle Szenario-Typen des Projekts — Vorbelegung im Iterations-Dropdown. */
+  usedTypes: (string | null)[]
 }) {
   return (
     <div className="mt-3 flex flex-wrap items-end gap-3 rounded-surface border border-zinc-200 p-4">
@@ -82,7 +85,12 @@ export default function ScenarioMetaPanel({
         </button>
       </form>
 
-      <NewScenarioDisclosure projectId={projectId} sourceScenarioId={scenario.id} label="+ Neue Iteration" />
+      <NewScenarioDisclosure
+        projectId={projectId}
+        sourceScenarioId={scenario.id}
+        label="+ Neue Iteration"
+        usedTypes={usedTypes}
+      />
       <DeleteScenarioButton projectId={projectId} scenarioId={scenario.id} />
     </div>
   )

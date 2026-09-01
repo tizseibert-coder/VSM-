@@ -15,17 +15,31 @@ import { buttonPrimary } from '@/components/ui/buttons'
 // Ist-Zustand exactly as before; passed, it copies that scenario instead, so
 // a second pass at the future state can build on the first one rather than
 // always restarting from scratch.
+//
+// usedTypes: die Buchstaben der bereits vorhandenen Szenarien im Projekt.
+// [UX-Audit 2026-08-16, kleinere Beobachtung] Der Typ stand immer auf "A"
+// vorausgewaehlt, und zwei Szenarien hiessen dadurch "A · Test1" und
+// "A · beb" — das Praefix unterschied nichts mehr, es kostete nur Breite.
+// Vorbelegt wird jetzt der erste noch freie Buchstabe. Ein bereits
+// vergebener bleibt waehlbar (eine zweite Iteration derselben Reihe ist
+// methodisch legitim — "A" nochmal fuer eine weitere Runde an dieser Idee),
+// er ist im Dropdown nur als vergeben gekennzeichnet.
+const SCENARIO_TYPES = ['A', 'B', 'C'] as const
+
 export default function NewScenarioDisclosure({
   projectId,
   sourceScenarioId,
   label,
+  usedTypes = [],
 }: {
   projectId: string
   sourceScenarioId?: string
   label?: string
+  usedTypes?: (string | null)[]
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const buttonLabel = label ?? '+ Neues Szenario'
+  const nextFreeType = SCENARIO_TYPES.find((t) => !usedTypes.includes(t)) ?? SCENARIO_TYPES[0]
 
   if (!isOpen) {
     return (
@@ -57,12 +71,15 @@ export default function NewScenarioDisclosure({
           Typ
           <select
             name="type"
-            defaultValue="A"
+            defaultValue={nextFreeType}
             className="mt-1 w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           >
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
+            {SCENARIO_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+                {usedTypes.includes(t) ? ' (vergeben)' : ''}
+              </option>
+            ))}
           </select>
         </label>
         <label className="text-xs font-medium text-zinc-600">

@@ -40,7 +40,7 @@ export default function ScenarioSwitcher({
         </Link>
       ))}
 
-      <NewScenarioDisclosure projectId={projectId} />
+      <NewScenarioDisclosure projectId={projectId} usedTypes={scenarios.map((s) => s.type)} />
     </div>
   )
 }
