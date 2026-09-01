@@ -31,6 +31,21 @@
      ist die Form von Verbraucher-Apps. */
   --radius-control: 0.375rem; /* 6px — Knoepfe, Eingabefelder, Chips */
   --radius-surface: 0.625rem; /* 10px — Karten, Panels, Canvas-Rahmen */
+
+  /* Schriftgroessen: die Stufen des Rahmenwerks, keine Klammerwerte. Es gab
+     sieben davon (text-[9px] bis text-[11px]), verteilt ueber Tooltip-Marke,
+     Austaktungsdiagramm und Bearbeitungspanel — eine Skala, die niemand
+     entschieden hat, sondern die beim Schreiben entstand.
+
+     `text-xs` (12px) ist die kleinste erlaubte Stufe. Die Begruendung ist die
+     Zielgruppe, nicht der Geschmack: gelesen wird das hier von einem
+     Prozessingenieur Mitte vierzig auf einem Werkstattnotebook, oft im
+     Stehen. Zehn Pixel sind dort keine komfortable Lesegroesse, und
+     ausgerechnet die Formel- und Kennzahlzeilen standen darin.
+
+     Fuer die Zeichenflaeche gilt eine eigene Skala (CANVAS_TEXT in
+     VSMCanvas.tsx): Konva rechnet in Canvas-Einheiten, die beim Zoomen und im
+     PDF mitskalieren, deshalb traegt sie andere Zahlen. */
 }
 
 @theme inline {

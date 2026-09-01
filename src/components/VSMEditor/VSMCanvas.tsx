@@ -113,6 +113,31 @@ function resolveCanvasFont(): string {
 function Text(props: ComponentProps<typeof KonvaText>) {
   return <KonvaText fontFamily={resolveCanvasFont()} {...props} />
 }
+
+/**
+ * Die Schriftgroessen der Zeichenflaeche, vier Stufen. Vorher waren es sechs
+ * (8, 8.5, 10, 11, 12, 13) ueber sechzehn Textmarken verteilt — eine Skala,
+ * die beim Schreiben entstand statt entschieden zu werden (Design-Audit
+ * 2026-08-31, Befund 05).
+ *
+ * Die Zahlen sind Canvas-Einheiten, nicht Pixel: Sie skalieren mit Zoom und
+ * PDF-Export mit, weshalb hier andere Werte stehen als in der Oberfläche
+ * (dort ist 12 px die Untergrenze, siehe globals.css). Massgeblich ist das
+ * gedruckte A3, auf dem das Diagramm groesser steht als am Bildschirm.
+ */
+const CANVAS_TEXT = {
+  /** 13 — was aus zwei Metern lesbar sein muss: Prozessname, die beiden
+   *  Summen der Zeitleiter. */
+  heading: 13,
+  /** 11 — einzelne Zahlen und Namen in einem Symbol: Bedienerzahl, WIP,
+   *  Lieferant/Kunde, ERP-Kasten. */
+  value: 11,
+  /** 10 — Beschriftungen und die Datenzeilen im Prozesskasten. */
+  label: 10,
+  /** 8 — Kuerzel in engen Symbolen, wo mehr nicht hineinpasst: "SS",
+   *  Kanban-Art, Klassifikationsmarke. */
+  tag: 8,
+} as const
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -1115,17 +1140,28 @@ export default function VSMCanvas({
           <button type="button" onClick={() => setIsFullscreen(true)} className={secondaryButtonClass}>
             Vollbild
           </button>
+          {/* [Design-Audit 2026-08-31, Befund 08] Der aktive Zustand war hier
+              von Hand geschrieben (`px-4 py-3`, ohne Rahmen) und damit 2 px
+              flacher und 6 px schmaler als der inaktive Sekundaerknopf. Der
+              Knopf wuchs beim Klicken und schob die Knoepfe daneben weiter —
+              genau in dem Moment, in dem ein Moderator vor Publikum
+              umschaltet. Beide Zustaende teilen jetzt dieselbe Groesse aus
+              `ui/buttons`; es aendert sich nur die Farbe.
+
+              Das Haekchen bleibt im Aus-Zustand als `invisible` stehen,
+              statt zu verschwinden: Es ist der Zustandshinweis fuer alle, die
+              die Farbe nicht unterscheiden, und weil es dort Platz belegt,
+              aendert auch die Beschriftung die Breite nicht mehr. */}
           <button
             type="button"
             onClick={() => setPresentationMode((prev) => !prev)}
             aria-pressed={presentationMode}
-            className={
-              presentationMode
-                ? 'rounded-control bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700'
-                : secondaryButtonClass
-            }
+            className={presentationMode ? primaryButtonClass : secondaryButtonClass}
           >
-            {presentationMode ? '✓ Präsentationsmodus' : 'Präsentationsmodus'}
+            <span aria-hidden className={presentationMode ? undefined : 'invisible'}>
+              ✓{' '}
+            </span>
+            Präsentationsmodus
           </button>
           {/* UX-Audit Phase 7a finding #1 (touch targets): these three
               buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
@@ -1478,7 +1514,7 @@ export default function VSMCanvas({
                     width={seg.x2 - seg.x1}
                     y={seg.kind === 'wait' ? seg.y - 16 : seg.y + 6}
                     align="center"
-                    fontSize={10}
+                    fontSize={CANVAS_TEXT.label}
                     fill={INK}
                   />
                 ))}
@@ -2097,7 +2133,7 @@ function ProcessEditPanel({
             className={`mt-1 ${inputClass}`}
           />
           {liveEffectiveCycleTime !== null && (
-            <p className="mt-1 text-[10px] text-zinc-500">
+            <p className="mt-1 text-xs text-zinc-500">
               eff. Zykluszeit: {liveEffectiveCycleTime.toFixed(1)} min (fliesst in Bearbeitungszeit/Kapazitäts-Check
               ein — die Zykluszeit selbst bleibt unverändert)
             </p>
@@ -2589,7 +2625,7 @@ function ProcessBox({
         y={-6}
         width={22}
         align="center"
-        fontSize={11}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={INK}
       />
@@ -2597,7 +2633,7 @@ function ProcessBox({
         // Kapazitäts-Warnung: effektive Zykluszeit (C/T ÷ OEE) übersteigt die Taktzeit.
         <>
           <Circle x={0} y={0} radius={9} fill={BOTTLENECK} />
-          <Text text="!" x={-9} y={-6} width={18} align="center" fontSize={12} fontStyle="bold" fill="#ffffff" />
+          <Text text="!" x={-9} y={-6} width={18} align="center" fontSize={CANVAS_TEXT.value} fontStyle="bold" fill="#ffffff" />
         </>
       )}
       <Text
@@ -2605,7 +2641,7 @@ function ProcessBox({
         width={PROCESS_WIDTH}
         align="center"
         y={10}
-        fontSize={13}
+        fontSize={CANVAS_TEXT.heading}
         fontStyle="bold"
         fill={INK}
       />
@@ -2619,7 +2655,7 @@ function ProcessBox({
         width={PROCESS_WIDTH}
         align="center"
         y={39}
-        fontSize={10}
+        fontSize={CANVAS_TEXT.label}
         fill="#3f3f46"
         lineHeight={1.5}
       />
@@ -2636,7 +2672,7 @@ function ProcessBox({
             width={PROCESS_WIDTH}
             offsetX={PROCESS_WIDTH / 2}
             align="center"
-            fontSize={10}
+            fontSize={CANVAS_TEXT.label}
             fontStyle="bold"
             fill={BOTTLENECK}
           />
@@ -2652,7 +2688,7 @@ function ProcessBox({
           text={classificationMarker(process.classification) ?? ''}
           x={4}
           y={PROCESS_HEIGHT - 13}
-          fontSize={8.5}
+          fontSize={CANVAS_TEXT.tag}
           fontStyle="bold"
           fill={
             process.classification === 'nva'
@@ -2725,14 +2761,14 @@ function BufferMarker({
         />
       )}
       {bufferType === 'safety_stock' && (
-        <Text text="SS" width={BUFFER_SIZE} align="center" y={4} fontSize={8} fontStyle="bold" fill={stroke} />
+        <Text text="SS" width={BUFFER_SIZE} align="center" y={4} fontSize={CANVAS_TEXT.tag} fontStyle="bold" fill={stroke} />
       )}
       <Text
         text={String(wipCount)}
         width={BUFFER_SIZE}
         align="center"
         y={radius - 4}
-        fontSize={11}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={isEmpty ? EMPTY_BUFFER : INK}
       />
@@ -2767,7 +2803,7 @@ function FifoIcon({ stroke, strokeWidth }: { stroke: string; strokeWidth: number
         height={s * 0.56}
         align="center"
         verticalAlign="middle"
-        fontSize={8}
+        fontSize={CANVAS_TEXT.tag}
         fontStyle="bold"
         fill={stroke}
       />
@@ -2879,7 +2915,7 @@ function CloudShape({
         height={CLOUD_SIZE * 0.75}
         align="center"
         verticalAlign="middle"
-        fontSize={12}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={INK}
       />
@@ -2929,7 +2965,7 @@ function ErpBox({
         height={ERP_HEIGHT}
         align="center"
         verticalAlign="middle"
-        fontSize={11}
+        fontSize={CANVAS_TEXT.value}
         fontStyle="bold"
         fill={INK}
         lineHeight={1.4}
@@ -2996,25 +3032,25 @@ function LadderSummary({
   return (
     <Group x={x} y={anchorY} scaleX={counterScale} scaleY={counterScale} offsetY={height / 2}>
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
-      <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={10} fill="#52525b" />
+      <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
         text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} Tage` : "–"}
         x={0}
         y={17}
         width={width}
         align="center"
-        fontSize={13}
+        fontSize={CANVAS_TEXT.heading}
         fontStyle="bold"
         fill={INK}
       />
-      <Text text="VA" x={0} y={height - 30} width={width} align="center" fontSize={10} fill="#52525b" />
+      <Text text="VA" x={0} y={height - 30} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
         text={`${valueAddMinutes.toFixed(1)} min`}
         x={0}
         y={height - 18}
         width={width}
         align="center"
-        fontSize={13}
+        fontSize={CANVAS_TEXT.heading}
         fontStyle="bold"
         fill={INK}
       />

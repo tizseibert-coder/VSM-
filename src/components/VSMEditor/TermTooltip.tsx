@@ -17,7 +17,7 @@ export function TermTooltip({ term, children }: { term: GlossaryKey; children: R
   return (
     <span className="relative inline-flex items-center gap-1">
       {children}
-      {/* Visible badge stays a compact 14px circle (fits inline in running
+      {/* Visible badge stays a compact 16px circle (fits inline in running
           text/labels); the actual tap/click target is widened to ~44px via
           an absolutely-positioned ::before that extends past the visible
           box without pushing layout — same problem/fix shape as LeanPulse
@@ -29,7 +29,7 @@ export function TermTooltip({ term, children }: { term: GlossaryKey; children: R
         aria-label={`Erklärung: ${entry.term}`}
         onClick={() => setOpen((prev) => !prev)}
         onBlur={() => setOpen(false)}
-        className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-control border border-zinc-400 text-[9px] leading-none text-zinc-500 before:absolute before:inset-[-15px] before:content-[''] hover:border-brand-600 hover:text-brand-600"
+        className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-control border border-zinc-400 text-xs leading-none text-zinc-500 before:absolute before:inset-[-15px] before:content-[''] hover:border-brand-600 hover:text-brand-600"
       >
         ?
       </button>

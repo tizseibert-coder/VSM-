@@ -31,6 +31,13 @@ export const metadata: Metadata = {
     description:
       "Wertstromdiagramme nach Rother/Shook zeichnen, Kennzahlen live berechnen, Future-State-Szenarien vergleichen.",
   },
+  // Das Bild selbst liefert `app/opengraph-image.tsx` ueber die
+  // Dateikonvention. X/Twitter greift auf dasselbe Bild zurueck, braucht
+  // dafuer aber die Kartenart — ohne sie bleibt der Link auch dort eine
+  // Textzeile.
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
