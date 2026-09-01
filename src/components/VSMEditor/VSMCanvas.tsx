@@ -147,12 +147,23 @@ const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
 // capped and shrunk-to-fit (via computeAutoFitScale) instead of growing
 // the page without bound.
 const MIN_CANVAS_DISPLAY_HEIGHT = 320
+// Rueckfallwert, solange das Fenster noch nicht gemessen ist (Serverlauf und
+// erstes Bild). Danach uebernimmt maxCanvasDisplayHeight.
 const MAX_CANVAS_DISPLAY_HEIGHT = 560
 // Höhe der Kennzahlenleiste, die im Vollbild unten andockt. Sie belegt den
 // Platz, den das Diagramm ohnehin nicht füllen kann, und beantwortet damit im
 // Moderationsmodus die Frage, für die man sonst das Vollbild verlassen musste:
 // was macht die Durchlaufzeit, wenn ich diese Box gerade ändere.
 const FULLSCREEN_KPI_BAR_HEIGHT = 92
+// Was im Seitenfluss oberhalb der Zeichenflaeche kleben bleibt: die fuenf
+// Kennzahlenkacheln samt Formelzeile und die Werkzeugleiste. Im Browser
+// gemessen sind das 271 px; der Aufschlag deckt die Kacheln ab, die bei
+// schlechter Bewertung eine Zeile mehr tragen ("Verbesserungsbedarf").
+//
+// Der Wert deckelt die Zeichenflaeche, damit sie nicht hoeher wird als der
+// Platz unter der klebenden Leiste — sonst muesste man scrollen, um das
+// Diagramm ganz zu sehen, und genau dabei verschwindet es hinter der Leiste.
+const STICKY_CHROME_HEIGHT = 320
 
 type Selection =
   | { kind: 'process'; id: string }
@@ -247,6 +258,10 @@ export default function VSMCanvas({
   // diagram and the toolbar underneath it, because a short diagram already
   // "fits" a tall fixed viewport at 100% scale and just sits at the top.
   const [viewportWidth, setViewportWidth] = useState(900)
+  // Die Fensterhoehe entscheidet im Seitenfluss darueber, wie hoch die
+  // Zeichenflaeche werden darf. 0 heisst "noch nicht gemessen" (Serverlauf);
+  // dann greift der feste Rueckfallwert.
+  const [windowHeight, setWindowHeight] = useState(0)
   const stageContainerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
@@ -439,8 +454,17 @@ export default function VSMCanvas({
   // the scale from the width alone also avoids the circular dependency between
   // viewport height and auto-fit scale.
   const widthFitScale = Math.max(MIN_READABLE_SCALE, Math.min(1, (viewportWidth - 48) / canvasWidth))
+  // [Design-Audit 2026-08-31, Befund 06] Die Obergrenze war eine feste Zahl
+  // (560 px), unabhaengig vom Bildschirm: Auf einem 1080er-Notebook blieb ein
+  // Drittel des Bildes ungenutzt, waehrend das Diagramm darin auf 60 %
+  // geschrumpft wurde. Sie richtet sich jetzt nach dem Fenster abzueglich
+  // dessen, was oben kleben bleibt.
+  const maxCanvasDisplayHeight =
+    windowHeight > 0
+      ? Math.max(MIN_CANVAS_DISPLAY_HEIGHT, windowHeight - STICKY_CHROME_HEIGHT)
+      : MAX_CANVAS_DISPLAY_HEIGHT
   const viewportHeight = Math.min(
-    MAX_CANVAS_DISPLAY_HEIGHT,
+    maxCanvasDisplayHeight,
     Math.max(MIN_CANVAS_DISPLAY_HEIGHT, canvasHeight * widthFitScale + 32)
   )
 
@@ -710,6 +734,7 @@ export default function VSMCanvas({
       if (!el) return
       setViewportWidth(el.clientWidth)
       setMeasuredHeight(el.clientHeight)
+      setWindowHeight(window.innerHeight)
     }
     measure()
     window.addEventListener('resize', measure)
@@ -1017,50 +1042,12 @@ export default function VSMCanvas({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
-      {/* Live KPI bar */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <KpiTile
-          label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
-          value={kpis.totalCycleTimeMinutes.toFixed(1)}
-          unit="min"
-        />
-        <KpiTile
-          label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
-          value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
-          unit="Tage"
-          formula={leadTimeFormula}
-        />
-        <KpiTile
-          label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
-          tier={ratePce(kpis.valueAddedRatioPercent)}
-          value={
-            kpis.valueAddedRatioPercent !== null
-              ? kpis.valueAddedRatioPercent.toFixed(2)
-              : KPI_EMPTY
-          }
-          unit="%"
-        />
-        <KpiTile
-          label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
-          value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
-          unit="min"
-          formula={taktTimeFormula}
-        />
-        <KpiTile
-          label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
-          value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
-          unit="Stk./Tag"
-          formula={exitRateFormula}
-          tier={rateCapacityCoverage(kpis.capacityCoverage)}
-        />
-      </div>
-
       {/* Customer demand + available production time — the two inputs that
           drive lead time / takt live. PLT = WIP / Exitrate (Little's Law):
           Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
           deliberately changes PLT — that's the formula working correctly,
           not a bug. */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
           <label htmlFor="throughput" className="text-sm text-zinc-600">
             Jahresbedarf Kunde (Stück/Jahr)
@@ -1107,458 +1094,516 @@ export default function VSMCanvas({
           dadurch ihre Aussagekraft verliert. */}
       <MethodCheckPanel findings={methodFindings} />
 
-      {/* Zoom controls — the stage auto-fits on load and whenever the
-          diagram grows; this is just for manual override. Wheel-zoom needs
-          Strg/Cmd (see handleWheel) so a normal scroll down to the toolbar
-          below never zooms the canvas by accident. */}
-      {/* [UX-Audit 2026-08-16, P1] Die Leiste bleibt beim Scrollen stehen.
-          Vorher scrollten Zoom und Einpassen mit der Seite weg — also genau
-          dann ausser Sicht, wenn man sie braucht, weil man sich verschoben
-          hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
-          drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
-          festen Bezugspunkt. */}
-      <div className="sticky top-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50/95 py-3 backdrop-blur">
-        {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
-            nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
-        <p className="hidden text-xs text-zinc-500 sm:block">
-          Strg/Cmd + Mausrad zum Zoomen
-        </p>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={isExportingPdf || processes.length === 0}
-            className={primaryButtonClass}
-          >
-            {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
-          </button>
-          {/* Phase 7b: Präsentationsmodus — blendet CSV-Import und
-              Lieferant/Kunde/ERP-Label-Bearbeitung aus (Nebensächliches für
-              eine laufende Moderation), Prozess-/Puffer-Boxen bleiben
-              editierbar. */}
-          {/* [UX-Audit 2026-08-16, P3] Einstieg in den Vollbildmodus. */}
-          <button type="button" onClick={() => setIsFullscreen(true)} className={secondaryButtonClass}>
-            Vollbild
-          </button>
-          {/* [Design-Audit 2026-08-31, Befund 08] Der aktive Zustand war hier
-              von Hand geschrieben (`px-4 py-3`, ohne Rahmen) und damit 2 px
-              flacher und 6 px schmaler als der inaktive Sekundaerknopf. Der
-              Knopf wuchs beim Klicken und schob die Knoepfe daneben weiter —
-              genau in dem Moment, in dem ein Moderator vor Publikum
-              umschaltet. Beide Zustaende teilen jetzt dieselbe Groesse aus
-              `ui/buttons`; es aendert sich nur die Farbe.
+      {/* Kennzahlenleiste und Zeichenflaeche in einem Rahmen: Eine klebende
+          Leiste haelt nur, solange ihr umschliessender Block im Bild ist.
+          Ohne diesen Rahmen blieben die Kennzahlen auch dann noch oben
+          stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
+          Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
+          wenn das Diagramm den Bildschirm verlaesst. */}
+      <div>
+        {/* [Design-Audit 2026-08-31, Befund 06] Die Kennzahlen standen ueber
+            dem Diagramm und scrollten mit ihm weg: Wer eine Zykluszeit aenderte,
+            sah nie gleichzeitig den Prozess und die Zahl, die sich dadurch
+            aendert. "Live berechnen" stimmte technisch und war nicht
+            wahrnehmbar. Kennzahlen und Werkzeugleiste bleiben jetzt zusammen
+            oben stehen, solange man am Diagramm arbeitet.
 
-              Das Haekchen bleibt im Aus-Zustand als `invisible` stehen,
-              statt zu verschwinden: Es ist der Zustandshinweis fuer alle, die
-              die Farbe nicht unterscheiden, und weil es dort Platz belegt,
-              aendert auch die Beschriftung die Breite nicht mehr. */}
-          <button
-            type="button"
-            onClick={() => setPresentationMode((prev) => !prev)}
-            aria-pressed={presentationMode}
-            className={presentationMode ? primaryButtonClass : secondaryButtonClass}
-          >
-            <span aria-hidden className={presentationMode ? undefined : 'invisible'}>
-              ✓{' '}
-            </span>
-            Präsentationsmodus
-          </button>
-          {/* UX-Audit Phase 7a finding #1 (touch targets): these three
-              buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
-              (~44px) — the row facilitators reach for most often when
-              driving a workshop from a laptop trackpad. */}
-          <div className="flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white p-1">
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Verkleinern"
-            >
-              −
-            </button>
-            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500">
-              {Math.round(stageScale * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Vergrößern"
-            >
-              +
-            </button>
-            {/* [UX-Audit 2026-08-16, P5] "Einpassen" stand hier ein zweites
-                Mal, seit es zusätzlich auf der Zeichenfläche schwebt. Der
-                schwebende bleibt: er sitzt dort, wo gearbeitet wird, und
-                zeigt zusätzlich an, ob die Ansicht überhaupt verschoben ist. */}
+            Erst ab `lg` — auf einem Telefon waeren 180 px klebende Leiste die
+            Haelfte des Bildes, und dort scrollt man ohnehin ein Stueck nach dem
+            anderen statt beides nebeneinander zu halten. */}
+        <div className="bg-zinc-50 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
+          {/* Live KPI bar */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <KpiTile
+              label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
+              value={kpis.totalCycleTimeMinutes.toFixed(1)}
+              unit="min"
+            />
+            <KpiTile
+              label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
+              value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
+              unit="Tage"
+              formula={leadTimeFormula}
+            />
+            <KpiTile
+              label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
+              tier={ratePce(kpis.valueAddedRatioPercent)}
+              value={
+                kpis.valueAddedRatioPercent !== null
+                  ? kpis.valueAddedRatioPercent.toFixed(2)
+                  : KPI_EMPTY
+              }
+              unit="%"
+            />
+            <KpiTile
+              label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
+              value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
+              unit="min"
+              formula={taktTimeFormula}
+            />
+            <KpiTile
+              label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
+              value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
+              unit="Stk./Tag"
+              formula={exitRateFormula}
+              tier={rateCapacityCoverage(kpis.capacityCoverage)}
+            />
+          </div>
+
+          {/* Zoom controls — the stage auto-fits on load and whenever the
+              diagram grows; this is just for manual override. Wheel-zoom needs
+              Strg/Cmd (see handleWheel) so a normal scroll down to the toolbar
+              below never zooms the canvas by accident. */}
+          {/* [UX-Audit 2026-08-16, P1] Die Leiste bleibt beim Scrollen stehen.
+              Vorher scrollten Zoom und Einpassen mit der Seite weg — also genau
+              dann ausser Sicht, wenn man sie braucht, weil man sich verschoben
+              hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
+              drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
+              festen Bezugspunkt. */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 py-3">
+            {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
+                nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
+            <p className="hidden text-xs text-zinc-500 sm:block">
+              Strg/Cmd + Mausrad zum Zoomen
+            </p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={isExportingPdf || processes.length === 0}
+                className={primaryButtonClass}
+              >
+                {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
+              </button>
+              {/* Phase 7b: Präsentationsmodus — blendet CSV-Import und
+                  Lieferant/Kunde/ERP-Label-Bearbeitung aus (Nebensächliches für
+                  eine laufende Moderation), Prozess-/Puffer-Boxen bleiben
+                  editierbar. */}
+              {/* [UX-Audit 2026-08-16, P3] Einstieg in den Vollbildmodus. */}
+              <button type="button" onClick={() => setIsFullscreen(true)} className={secondaryButtonClass}>
+                Vollbild
+              </button>
+              {/* [Design-Audit 2026-08-31, Befund 08] Der aktive Zustand war hier
+                  von Hand geschrieben (`px-4 py-3`, ohne Rahmen) und damit 2 px
+                  flacher und 6 px schmaler als der inaktive Sekundaerknopf. Der
+                  Knopf wuchs beim Klicken und schob die Knoepfe daneben weiter —
+                  genau in dem Moment, in dem ein Moderator vor Publikum
+                  umschaltet. Beide Zustaende teilen jetzt dieselbe Groesse aus
+                  `ui/buttons`; es aendert sich nur die Farbe.
+
+                  Das Haekchen bleibt im Aus-Zustand als `invisible` stehen,
+                  statt zu verschwinden: Es ist der Zustandshinweis fuer alle, die
+                  die Farbe nicht unterscheiden, und weil es dort Platz belegt,
+                  aendert auch die Beschriftung die Breite nicht mehr. */}
+              <button
+                type="button"
+                onClick={() => setPresentationMode((prev) => !prev)}
+                aria-pressed={presentationMode}
+                className={presentationMode ? primaryButtonClass : secondaryButtonClass}
+              >
+                <span aria-hidden className={presentationMode ? undefined : 'invisible'}>
+                  ✓{' '}
+                </span>
+                Präsentationsmodus
+              </button>
+              {/* UX-Audit Phase 7a finding #1 (touch targets): these three
+                  buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
+                  (~44px) — the row facilitators reach for most often when
+                  driving a workshop from a laptop trackpad. */}
+              <div className="flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white p-1">
+                <button
+                  type="button"
+                  onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
+                  className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  aria-label="Verkleinern"
+                >
+                  −
+                </button>
+                <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-zinc-500">
+                  {Math.round(stageScale * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
+                  className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  aria-label="Vergrößern"
+                >
+                  +
+                </button>
+                {/* [UX-Audit 2026-08-16, P5] "Einpassen" stand hier ein zweites
+                    Mal, seit es zusätzlich auf der Zeichenfläche schwebt. Der
+                    schwebende bleibt: er sitzt dort, wo gearbeitet wird, und
+                    zeigt zusätzlich an, ob die Ansicht überhaupt verschoben ist. */}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Canvas — standard VSM black-and-white line art on a white ground.
-          Information flow (dashed/zigzag, ERP) above the process row,
-          material flow (solid/block arrows) at the row, Zeitleiter below. */}
-      <div
-        ref={stageContainerRef}
-        className={
-          isFullscreen
-            ? 'fixed inset-0 z-50 overflow-hidden bg-white'
-            : 'relative mt-2 overflow-hidden rounded-surface border border-zinc-200'
-        }
-        // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
-        // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
-        // Finger auf dem Diagramm hatte und nach unten wischte, verschob das
-        // Diagramm statt die Seite zu scrollen — und kam an die Bedienelemente
-        // darunter nicht mehr heran.
-        //
-        // `pan-y` gibt das vertikale Wischen an den Browser zurück (Konva sieht
-        // die Geste dann gar nicht mehr), waagrechtes Ziehen verschiebt weiter
-        // die Ansicht. `pinch-zoom` bleibt erlaubt, sonst liesse sich auf dem
-        // Telefon gar nicht mehr heranzoomen — die +/−-Knöpfe sind dafür zu
-        // klein zum Zielen.
-        style={{ touchAction: 'pan-y pinch-zoom' }}
-      >
-        {/* Zweiter Weg zurück zur Gesamtansicht, direkt auf der Zeichenfläche.
-            Der gleichnamige Knopf in der Leiste oben bleibt, ist aber genau
-            dann schwer zu finden, wenn man ihn braucht: nach einem
-            versehentlichen Verschieben sucht man ihn zwischen "PDF
-            exportieren" und "Präsentationsmodus", auf schmalen Bildschirmen
-            zusätzlich nach einem Zeilenumbruch. */}
-        {/* [UX-Audit 2026-08-16, P4] Der Knopf beantwortet die Frage "bin ich
-            verschoben?", bevor sie gestellt wird: `camera` ist null, solange
-            die Ansicht automatisch eingepasst ist, und gesetzt, sobald von
-            Hand gezoomt oder geschoben wurde. Nur im zweiten Fall tritt er
-            hervor — sonst wäre es ein Dauerreiz ohne Aussage. */}
-        {/* Im Vollbild liegt die fixierte Leiste hinter der Überlagerung.
-            Zoom und Ausstieg müssen deshalb hier noch einmal erreichbar sein,
-            sonst wäre der Modus eine Falle. */}
-        {isFullscreen && (
-          <div className="absolute left-3 top-3 z-10 flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur">
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Verkleinern"
-            >
-              −
-            </button>
-            <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-500">
-              {Math.round(stageScale * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
-              className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-              aria-label="Vergrößern"
-            >
-              +
-            </button>
-            <div className="mx-1 h-4 w-px bg-zinc-200" />
-            <button
-              type="button"
-              onClick={() => setIsFullscreen(false)}
-              className="rounded-control px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
-            >
-              Schließen
-            </button>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={handleFitToView}
-          aria-label={camera ? 'Ansicht ist verschoben — zurück zur Gesamtansicht' : 'Gesamtansicht einpassen'}
+        {/* Canvas — standard VSM black-and-white line art on a white ground.
+            Information flow (dashed/zigzag, ERP) above the process row,
+            material flow (solid/block arrows) at the row, Zeitleiter below. */}
+        <div
+          ref={stageContainerRef}
           className={
-            camera
-              ? 'absolute right-3 top-3 z-10 rounded-control bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-brand-700'
-              : 'absolute right-3 top-3 z-10 rounded-control border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900'
+            isFullscreen
+              ? 'fixed inset-0 z-50 overflow-hidden bg-white'
+              : 'relative mt-2 overflow-hidden rounded-surface border border-zinc-200'
           }
+          // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
+          // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
+          // Finger auf dem Diagramm hatte und nach unten wischte, verschob das
+          // Diagramm statt die Seite zu scrollen — und kam an die Bedienelemente
+          // darunter nicht mehr heran.
+          //
+          // `pan-y` gibt das vertikale Wischen an den Browser zurück (Konva sieht
+          // die Geste dann gar nicht mehr), waagrechtes Ziehen verschiebt weiter
+          // die Ansicht. `pinch-zoom` bleibt erlaubt, sonst liesse sich auf dem
+          // Telefon gar nicht mehr heranzoomen — die +/−-Knöpfe sind dafür zu
+          // klein zum Zielen.
+          style={{ touchAction: 'pan-y pinch-zoom' }}
         >
-          Einpassen
-        </button>
-        <Stage
-          ref={stageRef}
-          width={viewportWidth}
-          // Im Vollbild gibt der Bildschirm die Höhe vor (abzüglich der
-          // Kennzahlenleiste), sonst die Höhe des Diagramminhalts.
-          // measuredHeight ist beim ersten Bild nach dem Umschalten noch 0 —
-          // dann greift der bisherige Wert weiter, siehe stageHeight.
-          height={stageHeight}
-          scaleX={stageScale}
-          scaleY={stageScale}
-          x={stagePos.x}
-          y={stagePos.y}
-          // Process boxes are click-only now (no drag), so the Stage can be
-          // simply draggable throughout — there's no child drag target left
-          // to conflict with.
-          draggable
-          onWheel={handleWheel}
-          onDragEnd={(e) => setCamera({ scale: stageScale, pos: { x: e.target.x(), y: e.target.y() } })}
-        >
-          <Layer>
-            <Rect name="canvas-background" x={0} y={0} width={canvasWidth} height={canvasHeight} fill="#ffffff" />
-
-            {/* Information flow: electronic (zigzag) for customer/ERP/supplier,
-                manual (straight) for ERP -> each process dispatch. */}
-            <ErpBox
-              x={erpPos.x}
-              y={erpPos.y}
-              label={project.erp_label}
-              isSelected={selection?.kind === 'anchor' && selection.anchor === 'erp'}
-              onSelect={() =>
-                setSelection((c) => (c?.kind === 'anchor' && c.anchor === 'erp' ? null : { kind: 'anchor', anchor: 'erp' }))
-              }
-            />
-            <Arrow
-              points={zigzagPoints(
-                customerLeft,
-                { x: erpPos.x + ERP_WIDTH, y: erpPos.y + ERP_HEIGHT / 2 },
-                8
-              )}
-              stroke={INK}
-              fill={INK}
-              strokeWidth={1}
-              pointerLength={6}
-              pointerWidth={6}
-            />
-            <Arrow
-              points={zigzagPoints(
-                { x: erpPos.x, y: erpPos.y + ERP_HEIGHT / 2 },
-                supplierRight,
-                8
-              )}
-              stroke={INK}
-              fill={INK}
-              strokeWidth={1}
-              pointerLength={6}
-              pointerWidth={6}
-            />
-            {dispatchProcesses.map((process) => {
-              const pos = positions[process.id]
-              if (!pos) return null
-              return (
-                <Arrow
-                  key={`info-${process.id}`}
-                  points={[
-                    erpPos.x + ERP_WIDTH / 2,
-                    erpPos.y + ERP_HEIGHT,
-                    pos.x + PROCESS_WIDTH / 2,
-                    pos.y,
-                  ]}
-                  stroke={INK}
-                  fill={INK}
-                  strokeWidth={1}
-                  pointerLength={6}
-                  pointerWidth={6}
-                />
-              )
-            })}
-
-            {/* Material flow */}
-            <CloudShape
-              x={supplierPos.x}
-              y={supplierPos.y}
-              label={project.supplier_name}
-              isSelected={selection?.kind === 'anchor' && selection.anchor === 'supplier'}
-              onSelect={() =>
-                setSelection((c) =>
-                  c?.kind === 'anchor' && c.anchor === 'supplier' ? null : { kind: 'anchor', anchor: 'supplier' }
-                )
-              }
-            />
-
-            {materialSegments.map((seg, i) => {
-              if (seg.kind === 'shipment') return <ShipmentArrow key={i} points={seg.points} />
-              if (seg.kind === 'pull') return <PullArrow key={i} points={seg.points} kanbanType={seg.kanbanType} />
-              // 'continuous' (one-piece flow) uses the same plain arrow as
-              // 'push' — the only difference is that it was never split
-              // around a WIP triangle above, so it's a single unbroken line.
-              // With no BufferMarker sitting on it to click, the line itself
-              // opens the BufferEditPanel (widened via hitStrokeWidth so it's
-              // easy to hit precisely).
-              const isContinuous = seg.kind === 'continuous'
-              const isSelected =
-                isContinuous &&
-                selection?.kind === 'buffer' &&
-                selection.from === seg.fromId &&
-                selection.to === seg.toId
-              return (
-                <Arrow
-                  key={i}
-                  points={seg.points}
-                  stroke={isSelected ? ACCENT : INK}
-                  fill={isSelected ? ACCENT : INK}
-                  strokeWidth={2}
-                  pointerLength={9}
-                  pointerWidth={9}
-                  hitStrokeWidth={isContinuous ? 16 : undefined}
-                  onClick={
-                    isContinuous
-                      ? () =>
-                          setSelection((current) =>
-                            current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
-                              ? null
-                              : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
-                          )
-                      : undefined
-                  }
-                  onTap={
-                    isContinuous
-                      ? () =>
-                          setSelection((current) =>
-                            current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
-                              ? null
-                              : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
-                          )
-                      : undefined
-                  }
-                  onMouseEnter={
-                    isContinuous
-                      ? (e) => {
-                          const stage = e.target.getStage()
-                          if (stage) stage.container().style.cursor = 'pointer'
-                        }
-                      : undefined
-                  }
-                  onMouseLeave={
-                    isContinuous
-                      ? (e) => {
-                          const stage = e.target.getStage()
-                          if (stage) stage.container().style.cursor = 'default'
-                        }
-                      : undefined
-                  }
-                />
-              )
-            })}
-
-            {processes.map((process) => {
-              const pos = positions[process.id]
-              if (!pos) return null
-              const { isBottleneck } = checkCapacity(
-                { cycleTime: process.cycle_time, oee: process.oee, operatorCount: process.operator_count },
-                kpis.taktTimeMinutes
-              )
-              return (
-                <ProcessBox
-                  key={process.id}
-                  process={process}
-                  x={pos.x}
-                  y={pos.y}
-                  isSelected={selection?.kind === 'process' && selection.id === process.id}
-                  isBottleneck={isBottleneck}
-                  counterScale={1 / stageScale}
-                  onSelect={() =>
-                    setSelection((current) =>
-                      current?.kind === 'process' && current.id === process.id
-                        ? null
-                        : { kind: 'process', id: process.id }
-                    )
-                  }
-                />
-              )
-            })}
-
-            {/* Buffer markers paint last (on top of both arrows and process
-                boxes) so the WIP triangle/icon is never hidden — it used to
-                be able to land under a box due to a since-fixed anchor bug,
-                this ordering is defense-in-depth against any future overlap.
-                A 'continuous' (one-piece flow) buffer has no symbol at all —
-                that's the whole point, a direct line with nothing sitting
-                on it — so it's skipped here entirely, not just left blank. */}
-            {edges.map(({ buffer, fromPos, toPos }) => {
-              if (buffer.buffer_type === 'continuous') return null
-              const mid = midpoint(fromPos, toPos)
-              const fromId = buffer.from_process_id
-              const toId = buffer.to_process_id
-              const isSelected = selection?.kind === 'buffer' && selection.from === fromId && selection.to === toId
-              return (
-                <BufferMarker
-                  key={buffer.id}
-                  x={mid.x - BUFFER_SIZE / 2}
-                  y={mid.y - BUFFER_SIZE / 2}
-                  wipCount={buffer.wip_count}
-                  bufferType={buffer.buffer_type ?? 'standard'}
-                  isSelected={isSelected}
-                  onSelect={() =>
-                    setSelection((current) =>
-                      current?.kind === 'buffer' && current.from === fromId && current.to === toId
-                        ? null
-                        : { kind: 'buffer', from: fromId, to: toId }
-                    )
-                  }
-                />
-              )
-            })}
-
-            <CloudShape
-              x={customerPos.x}
-              y={customerPos.y}
-              label={project.customer_name}
-              isSelected={selection?.kind === 'anchor' && selection.anchor === 'customer'}
-              onSelect={() =>
-                setSelection((c) =>
-                  c?.kind === 'anchor' && c.anchor === 'customer' ? null : { kind: 'anchor', anchor: 'customer' }
-                )
-              }
-            />
-
-            {/* Zeitleiter (timeline / ladder) */}
-            {ladderSegments.length > 0 && (
-              <>
-                <Line points={ladderPoints} stroke={INK} strokeWidth={2} />
-                {ladderSegments.map((seg, i) => (
-                  <Text
-                    key={i}
-                    text={seg.label}
-                    x={seg.x1}
-                    width={seg.x2 - seg.x1}
-                    y={seg.kind === 'wait' ? seg.y - 16 : seg.y + 6}
-                    align="center"
-                    fontSize={CANVAS_TEXT.label}
-                    fill={INK}
-                  />
-                ))}
-                <LadderSummary
-                  x={ladderEndX + 12}
-                  yTop={ladderHighY}
-                  yBottom={ladderLowY}
-                  counterScale={1 / stageScale}
-                  leadTimeDays={kpis.totalLeadTimeDays}
-                  valueAddMinutes={kpis.totalCycleTimeMinutes}
-                />
-              </>
-            )}
-          </Layer>
-        </Stage>
-
-        {/* Im Vollbild waren die Kennzahlen bisher gar nicht erreichbar: Sie
-            stehen im Seitenfluss oberhalb der Zeichenfläche, und der Modus
-            überdeckt die ganze Seite. Wer also im Workshop eine Zykluszeit
-            änderte, musste das Vollbild verlassen, um die Wirkung zu sehen.
-            Genau die Bewegung, die das Werkzeug überflüssig machen soll. */}
-        {isFullscreen && (
-          <div
-            className="absolute inset-x-0 bottom-0 flex items-stretch gap-px overflow-x-auto border-t border-zinc-200 bg-zinc-100"
-            style={{ height: FULLSCREEN_KPI_BAR_HEIGHT }}
-          >
-            {fullscreenKpis.map((kpi) => (
-              <div
-                key={kpi.label}
-                className="flex min-w-[9.5rem] flex-1 flex-col justify-center bg-white px-5"
+          {/* Zweiter Weg zurück zur Gesamtansicht, direkt auf der Zeichenfläche.
+              Der gleichnamige Knopf in der Leiste oben bleibt, ist aber genau
+              dann schwer zu finden, wenn man ihn braucht: nach einem
+              versehentlichen Verschieben sucht man ihn zwischen "PDF
+              exportieren" und "Präsentationsmodus", auf schmalen Bildschirmen
+              zusätzlich nach einem Zeilenumbruch. */}
+          {/* [UX-Audit 2026-08-16, P4] Der Knopf beantwortet die Frage "bin ich
+              verschoben?", bevor sie gestellt wird: `camera` ist null, solange
+              die Ansicht automatisch eingepasst ist, und gesetzt, sobald von
+              Hand gezoomt oder geschoben wurde. Nur im zweiten Fall tritt er
+              hervor — sonst wäre es ein Dauerreiz ohne Aussage. */}
+          {/* Im Vollbild liegt die fixierte Leiste hinter der Überlagerung.
+              Zoom und Ausstieg müssen deshalb hier noch einmal erreichbar sein,
+              sonst wäre der Modus eine Falle. */}
+          {isFullscreen && (
+            <div className="absolute left-3 top-3 z-10 flex items-center gap-0.5 rounded-control border border-zinc-200 bg-white/90 p-1 shadow-sm backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
+                className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                aria-label="Verkleinern"
               >
-                <span className="text-xs font-medium text-zinc-600">{kpi.label}</span>
-                <span className="mt-1 flex items-baseline gap-1.5">
-                  <span className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">
-                    {kpi.value}
+                −
+              </button>
+              <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-500">
+                {Math.round(stageScale * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
+                className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                aria-label="Vergrößern"
+              >
+                +
+              </button>
+              <div className="mx-1 h-4 w-px bg-zinc-200" />
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                className="rounded-control px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                Schließen
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleFitToView}
+            aria-label={camera ? 'Ansicht ist verschoben — zurück zur Gesamtansicht' : 'Gesamtansicht einpassen'}
+            className={
+              camera
+                ? 'absolute right-3 top-3 z-10 rounded-control bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-brand-700'
+                : 'absolute right-3 top-3 z-10 rounded-control border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900'
+            }
+          >
+            Einpassen
+          </button>
+          <Stage
+            ref={stageRef}
+            width={viewportWidth}
+            // Im Vollbild gibt der Bildschirm die Höhe vor (abzüglich der
+            // Kennzahlenleiste), sonst die Höhe des Diagramminhalts.
+            // measuredHeight ist beim ersten Bild nach dem Umschalten noch 0 —
+            // dann greift der bisherige Wert weiter, siehe stageHeight.
+            height={stageHeight}
+            scaleX={stageScale}
+            scaleY={stageScale}
+            x={stagePos.x}
+            y={stagePos.y}
+            // Process boxes are click-only now (no drag), so the Stage can be
+            // simply draggable throughout — there's no child drag target left
+            // to conflict with.
+            draggable
+            onWheel={handleWheel}
+            onDragEnd={(e) => setCamera({ scale: stageScale, pos: { x: e.target.x(), y: e.target.y() } })}
+          >
+            <Layer>
+              <Rect name="canvas-background" x={0} y={0} width={canvasWidth} height={canvasHeight} fill="#ffffff" />
+
+              {/* Information flow: electronic (zigzag) for customer/ERP/supplier,
+                  manual (straight) for ERP -> each process dispatch. */}
+              <ErpBox
+                x={erpPos.x}
+                y={erpPos.y}
+                label={project.erp_label}
+                isSelected={selection?.kind === 'anchor' && selection.anchor === 'erp'}
+                onSelect={() =>
+                  setSelection((c) => (c?.kind === 'anchor' && c.anchor === 'erp' ? null : { kind: 'anchor', anchor: 'erp' }))
+                }
+              />
+              <Arrow
+                points={zigzagPoints(
+                  customerLeft,
+                  { x: erpPos.x + ERP_WIDTH, y: erpPos.y + ERP_HEIGHT / 2 },
+                  8
+                )}
+                stroke={INK}
+                fill={INK}
+                strokeWidth={1}
+                pointerLength={6}
+                pointerWidth={6}
+              />
+              <Arrow
+                points={zigzagPoints(
+                  { x: erpPos.x, y: erpPos.y + ERP_HEIGHT / 2 },
+                  supplierRight,
+                  8
+                )}
+                stroke={INK}
+                fill={INK}
+                strokeWidth={1}
+                pointerLength={6}
+                pointerWidth={6}
+              />
+              {dispatchProcesses.map((process) => {
+                const pos = positions[process.id]
+                if (!pos) return null
+                return (
+                  <Arrow
+                    key={`info-${process.id}`}
+                    points={[
+                      erpPos.x + ERP_WIDTH / 2,
+                      erpPos.y + ERP_HEIGHT,
+                      pos.x + PROCESS_WIDTH / 2,
+                      pos.y,
+                    ]}
+                    stroke={INK}
+                    fill={INK}
+                    strokeWidth={1}
+                    pointerLength={6}
+                    pointerWidth={6}
+                  />
+                )
+              })}
+
+              {/* Material flow */}
+              <CloudShape
+                x={supplierPos.x}
+                y={supplierPos.y}
+                label={project.supplier_name}
+                isSelected={selection?.kind === 'anchor' && selection.anchor === 'supplier'}
+                onSelect={() =>
+                  setSelection((c) =>
+                    c?.kind === 'anchor' && c.anchor === 'supplier' ? null : { kind: 'anchor', anchor: 'supplier' }
+                  )
+                }
+              />
+
+              {materialSegments.map((seg, i) => {
+                if (seg.kind === 'shipment') return <ShipmentArrow key={i} points={seg.points} />
+                if (seg.kind === 'pull') return <PullArrow key={i} points={seg.points} kanbanType={seg.kanbanType} />
+                // 'continuous' (one-piece flow) uses the same plain arrow as
+                // 'push' — the only difference is that it was never split
+                // around a WIP triangle above, so it's a single unbroken line.
+                // With no BufferMarker sitting on it to click, the line itself
+                // opens the BufferEditPanel (widened via hitStrokeWidth so it's
+                // easy to hit precisely).
+                const isContinuous = seg.kind === 'continuous'
+                const isSelected =
+                  isContinuous &&
+                  selection?.kind === 'buffer' &&
+                  selection.from === seg.fromId &&
+                  selection.to === seg.toId
+                return (
+                  <Arrow
+                    key={i}
+                    points={seg.points}
+                    stroke={isSelected ? ACCENT : INK}
+                    fill={isSelected ? ACCENT : INK}
+                    strokeWidth={2}
+                    pointerLength={9}
+                    pointerWidth={9}
+                    hitStrokeWidth={isContinuous ? 16 : undefined}
+                    onClick={
+                      isContinuous
+                        ? () =>
+                            setSelection((current) =>
+                              current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
+                                ? null
+                                : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
+                            )
+                        : undefined
+                    }
+                    onTap={
+                      isContinuous
+                        ? () =>
+                            setSelection((current) =>
+                              current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
+                                ? null
+                                : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
+                            )
+                        : undefined
+                    }
+                    onMouseEnter={
+                      isContinuous
+                        ? (e) => {
+                            const stage = e.target.getStage()
+                            if (stage) stage.container().style.cursor = 'pointer'
+                          }
+                        : undefined
+                    }
+                    onMouseLeave={
+                      isContinuous
+                        ? (e) => {
+                            const stage = e.target.getStage()
+                            if (stage) stage.container().style.cursor = 'default'
+                          }
+                        : undefined
+                    }
+                  />
+                )
+              })}
+
+              {processes.map((process) => {
+                const pos = positions[process.id]
+                if (!pos) return null
+                const { isBottleneck } = checkCapacity(
+                  { cycleTime: process.cycle_time, oee: process.oee, operatorCount: process.operator_count },
+                  kpis.taktTimeMinutes
+                )
+                return (
+                  <ProcessBox
+                    key={process.id}
+                    process={process}
+                    x={pos.x}
+                    y={pos.y}
+                    isSelected={selection?.kind === 'process' && selection.id === process.id}
+                    isBottleneck={isBottleneck}
+                    counterScale={1 / stageScale}
+                    onSelect={() =>
+                      setSelection((current) =>
+                        current?.kind === 'process' && current.id === process.id
+                          ? null
+                          : { kind: 'process', id: process.id }
+                      )
+                    }
+                  />
+                )
+              })}
+
+              {/* Buffer markers paint last (on top of both arrows and process
+                  boxes) so the WIP triangle/icon is never hidden — it used to
+                  be able to land under a box due to a since-fixed anchor bug,
+                  this ordering is defense-in-depth against any future overlap.
+                  A 'continuous' (one-piece flow) buffer has no symbol at all —
+                  that's the whole point, a direct line with nothing sitting
+                  on it — so it's skipped here entirely, not just left blank. */}
+              {edges.map(({ buffer, fromPos, toPos }) => {
+                if (buffer.buffer_type === 'continuous') return null
+                const mid = midpoint(fromPos, toPos)
+                const fromId = buffer.from_process_id
+                const toId = buffer.to_process_id
+                const isSelected = selection?.kind === 'buffer' && selection.from === fromId && selection.to === toId
+                return (
+                  <BufferMarker
+                    key={buffer.id}
+                    x={mid.x - BUFFER_SIZE / 2}
+                    y={mid.y - BUFFER_SIZE / 2}
+                    wipCount={buffer.wip_count}
+                    bufferType={buffer.buffer_type ?? 'standard'}
+                    isSelected={isSelected}
+                    onSelect={() =>
+                      setSelection((current) =>
+                        current?.kind === 'buffer' && current.from === fromId && current.to === toId
+                          ? null
+                          : { kind: 'buffer', from: fromId, to: toId }
+                      )
+                    }
+                  />
+                )
+              })}
+
+              <CloudShape
+                x={customerPos.x}
+                y={customerPos.y}
+                label={project.customer_name}
+                isSelected={selection?.kind === 'anchor' && selection.anchor === 'customer'}
+                onSelect={() =>
+                  setSelection((c) =>
+                    c?.kind === 'anchor' && c.anchor === 'customer' ? null : { kind: 'anchor', anchor: 'customer' }
+                  )
+                }
+              />
+
+              {/* Zeitleiter (timeline / ladder) */}
+              {ladderSegments.length > 0 && (
+                <>
+                  <Line points={ladderPoints} stroke={INK} strokeWidth={2} />
+                  {ladderSegments.map((seg, i) => (
+                    <Text
+                      key={i}
+                      text={seg.label}
+                      x={seg.x1}
+                      width={seg.x2 - seg.x1}
+                      y={seg.kind === 'wait' ? seg.y - 16 : seg.y + 6}
+                      align="center"
+                      fontSize={CANVAS_TEXT.label}
+                      fill={INK}
+                    />
+                  ))}
+                  <LadderSummary
+                    x={ladderEndX + 12}
+                    yTop={ladderHighY}
+                    yBottom={ladderLowY}
+                    counterScale={1 / stageScale}
+                    leadTimeDays={kpis.totalLeadTimeDays}
+                    valueAddMinutes={kpis.totalCycleTimeMinutes}
+                  />
+                </>
+              )}
+            </Layer>
+          </Stage>
+
+          {/* Im Vollbild waren die Kennzahlen bisher gar nicht erreichbar: Sie
+              stehen im Seitenfluss oberhalb der Zeichenfläche, und der Modus
+              überdeckt die ganze Seite. Wer also im Workshop eine Zykluszeit
+              änderte, musste das Vollbild verlassen, um die Wirkung zu sehen.
+              Genau die Bewegung, die das Werkzeug überflüssig machen soll. */}
+          {isFullscreen && (
+            <div
+              className="absolute inset-x-0 bottom-0 flex items-stretch gap-px overflow-x-auto border-t border-zinc-200 bg-zinc-100"
+              style={{ height: FULLSCREEN_KPI_BAR_HEIGHT }}
+            >
+              {fullscreenKpis.map((kpi) => (
+                <div
+                  key={kpi.label}
+                  className="flex min-w-[9.5rem] flex-1 flex-col justify-center bg-white px-5"
+                >
+                  <span className="text-xs font-medium text-zinc-600">{kpi.label}</span>
+                  <span className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-2xl font-semibold tracking-tight tabular-nums text-zinc-950">
+                      {kpi.value}
+                    </span>
+                    {kpi.value !== KPI_EMPTY && (
+                      <span className="text-xs font-medium text-zinc-500">{kpi.unit}</span>
+                    )}
                   </span>
-                  {kpi.value !== KPI_EMPTY && (
-                    <span className="text-xs font-medium text-zinc-500">{kpi.unit}</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {processes.length === 0 && (
