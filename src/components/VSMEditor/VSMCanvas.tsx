@@ -28,6 +28,8 @@ import { BalanceChartPanel } from './BalanceChartPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
 import { formatFindingCount, rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
 import { buttonPrimaryLg, buttonSecondaryLg, inputSm } from '@/components/ui/buttons'
+import { useDemoMutate } from './DemoModeContext'
+import { demoOperations } from '@/lib/vsm/demoStore'
 import { TierChip } from './TierChip'
 import type { BenchmarkTier } from '@/lib/vsm/benchmark'
 import { ratePce, rateCapacityCoverage } from '@/lib/vsm/kpiRating'
@@ -155,6 +157,7 @@ export default function VSMCanvas({
   initialBuffers,
 }: Props) {
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
@@ -876,6 +879,13 @@ export default function VSMCanvas({
     }
 
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.addProcess(s, { name, cycleTime }))
+        setQuickAddName('')
+        setQuickAddCt('')
+        nameInputRef.current?.focus()
+        return
+      }
     startTransition(async () => {
       try {
         await addProcess(project.id, scenarioId, { name, cycleTime })
@@ -891,6 +901,10 @@ export default function VSMCanvas({
 
   function handleThroughputBlur() {
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.updateAnnualThroughput(s, liveAnnualThroughput ?? null))
+        return
+      }
     startTransition(async () => {
       try {
         await updateAnnualThroughput(project.id, liveAnnualThroughput)
@@ -904,6 +918,10 @@ export default function VSMCanvas({
   function handleAvailableMinutesBlur() {
     if (liveAvailableMinutes === undefined) return // invalid/blank input — leave the stored value untouched
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.updateAvailableMinutes(s, liveAvailableMinutes))
+        return
+      }
     startTransition(async () => {
       try {
         await updateAvailableMinutes(project.id, liveAvailableMinutes)
@@ -942,6 +960,10 @@ export default function VSMCanvas({
     if (newOrder === chainOrder) return // already at that end, nothing to do
 
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.reorderProcesses(s, newOrder))
+        return
+      }
     startTransition(async () => {
       try {
         await reorderProcesses(project.id, scenarioId, newOrder)
@@ -954,6 +976,10 @@ export default function VSMCanvas({
 
   function handleChangeLane(processId: string, lane: number) {
     setError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.updateProcessLane(s, processId, Math.max(0, lane)))
+        return
+      }
     startTransition(async () => {
       try {
         await updateProcessLane(project.id, processId, Math.max(0, lane))
@@ -1727,6 +1753,7 @@ function ProcessEditPanel({
   onClose: () => void
 }) {
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [name, setName] = useState(process.name)
   const [cycleTime, setCycleTime] = useState(String(process.cycle_time))
@@ -1791,6 +1818,17 @@ function ProcessEditPanel({
   function handleAddPredecessor() {
     if (!addPredecessorId) return
     setConnectionError(null)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.setBufferWip(s, {
+            fromProcessId: addPredecessorId,
+            toProcessId: process.id,
+            wipCount: 0,
+          })
+        )
+        setAddPredecessorId('')
+        return
+      }
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -1809,6 +1847,17 @@ function ProcessEditPanel({
   function handleAddSuccessor() {
     if (!addSuccessorId) return
     setConnectionError(null)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.setBufferWip(s, {
+            fromProcessId: process.id,
+            toProcessId: addSuccessorId,
+            wipCount: 0,
+          })
+        )
+        setAddSuccessorId('')
+        return
+      }
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -1826,6 +1875,10 @@ function ProcessEditPanel({
 
   function handleDisconnect(bufferId: string) {
     setConnectionError(null)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.deleteBufferConnection(s, bufferId))
+        return
+      }
     startTransition(async () => {
       try {
         await deleteBufferConnection(projectId, bufferId)
@@ -1860,6 +1913,31 @@ function ProcessEditPanel({
 
     setError(null)
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) => {
+          const withProcess = demoOperations.updateProcess(s, process.id, {
+            name: name.trim(),
+            cycle_time: ct,
+            oee: oeeNum,
+            operator_count: operatorCountNum,
+            changeover_time: changeoverTimeNum,
+            is_pacemaker: isPacemaker,
+            classification: classification || null,
+          })
+          const withBefore = demoOperations.setBufferWip(withProcess, {
+            fromProcessId: prevProcessId,
+            toProcessId: process.id,
+            wipCount: beforeNum,
+          })
+          return demoOperations.setBufferWip(withBefore, {
+            fromProcessId: process.id,
+            toProcessId: nextProcessId,
+            wipCount: afterNum,
+          })
+        })
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await updateProcess(projectId, process.id, {
@@ -1892,6 +1970,11 @@ function ProcessEditPanel({
 
   function handleDelete() {
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) => demoOperations.deleteProcess(s, process.id))
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await deleteProcess(projectId, process.id)
@@ -2222,6 +2305,7 @@ function BufferEditPanel({
   onClose: () => void
 }) {
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [value, setValue] = useState(String(currentWip))
   const [bufferType, setBufferType] = useState(currentBufferType)
@@ -2239,6 +2323,20 @@ function BufferEditPanel({
     }
     setError(null)
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.setBufferWip(s, {
+            fromProcessId,
+            toProcessId,
+            wipCount: n,
+            bufferType,
+            flowStyle: flowStyle || null,
+            kanbanType: kanbanType || null,
+          })
+        )
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -2353,6 +2451,7 @@ function AnchorEditPanel({
   onClose: () => void
 }) {
   const router = useRouter()
+  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [value, setValue] = useState(currentLabel)
   const [error, setError] = useState<string | null>(null)
@@ -2368,6 +2467,17 @@ function AnchorEditPanel({
     }
     setError(null)
     setIsSaving(true)
+      if (demoMutate) {
+        demoMutate((s) =>
+          demoOperations.updateProjectLabels(s, {
+            ...(anchor === 'supplier' ? { supplier_name: value.trim() } : {}),
+            ...(anchor === 'customer' ? { customer_name: value.trim() } : {}),
+            ...(anchor === 'erp' ? { erp_label: value.trim() } : {}),
+          })
+        )
+        onClose()
+        return
+      }
     startTransition(async () => {
       try {
         await updateProjectLabels(projectId, {

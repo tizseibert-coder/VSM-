@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import VsmSketch from '@/components/marketing/VsmSketch'
-import { buttonPrimary, buttonPrimaryLg, buttonSecondaryLg } from '@/components/ui/buttons'
+import {
+  buttonPrimary,
+  buttonPrimaryLg,
+  buttonSecondary,
+  buttonSecondaryLg,
+} from '@/components/ui/buttons'
 
 /**
  * Die Startseite beantwortet die Fragen, die ein Lean-Praktiker in den ersten
@@ -98,6 +103,9 @@ export default function Home() {
             VSM Builder
           </span>
           <div className="flex items-center gap-2">
+            <Link href="/demo" className={buttonSecondary}>
+              Demo
+            </Link>
             <Link
               href="/login"
               className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
@@ -128,21 +136,22 @@ export default function Home() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                href="/signup"
+                href="/demo"
                 className={buttonPrimaryLg}
+              >
+                Demo öffnen
+              </Link>
+              <Link
+                href="/signup"
+                className={buttonSecondaryLg}
               >
                 Kostenlos starten
               </Link>
-              <Link
-                href="/login"
-                className={buttonSecondaryLg}
-              >
-                Anmelden
-              </Link>
             </div>
             <p className="mt-4 text-sm text-zinc-600">
-              Nach der Anmeldung liegt ein vollständiges Beispiel-VSM bereit: fünf Prozesse,
-              Bestände, gerechnete Kennzahlen. Ein Klick, keine Dateneingabe.
+              Die Demo läuft ohne Anmeldung: ein vollständiger Wertstrom mit fünf Prozessen,
+              Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu,
+              wie die Durchlaufzeit reagiert.
             </p>
           </div>
 
@@ -309,18 +318,18 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-14">
           <div>
             <p className="text-xl font-semibold tracking-tight text-zinc-950">
-              Mit dem Beispiel-VSM anfangen
+              Erst ansehen, dann entscheiden
             </p>
             <p className="mt-2 max-w-lg text-zinc-700">
-              Eine vollständige Dreherei mit fünf Prozessen und Beständen. Anlegen, einen Wert
-              ändern, zusehen, wie die Durchlaufzeit reagiert.
+              Die Demo braucht kein Konto und keine Firmenadresse. Wer danach eigene Wertströme
+              anlegen will, findet dieselben Funktionen im Werkzeug wieder.
             </p>
           </div>
           <Link
-            href="/signup"
+            href="/demo"
             className={buttonPrimaryLg}
           >
-            Kostenlos starten
+            Demo öffnen
           </Link>
         </div>
       </section>
