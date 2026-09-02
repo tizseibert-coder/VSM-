@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
 
-const RISK_LABEL: Record<string, string> = { low: 'Niedrig', medium: 'Mittel', high: 'Hoch' }
+// Zuordnung Risikostufe -> Uebersetzungsschluessel im Namensraum `Scenario`.
+const RISK_KEY: Record<string, string> = { low: 'riskLow', medium: 'riskMedium', high: 'riskHigh' }
 
 export default async function ComparePage({
   params,
@@ -11,6 +13,9 @@ export default async function ComparePage({
   params: Promise<{ projectId: string }>
 }) {
   const { projectId } = await params
+  const t = await getTranslations('Compare')
+  const tEd = await getTranslations('Editor')
+  const tSc = await getTranslations('Scenario')
   const supabase = await createClient()
 
   const { data: project } = await supabase.from('projects').select('*').eq('id', projectId).maybeSingle()
@@ -30,7 +35,7 @@ export default async function ComparePage({
   const states: ComparisonState[] = [
     {
       id: null,
-      label: 'Ist-Zustand',
+      label: tSc('currentState'),
       processes: (allProcesses ?? [])
         .filter((p) => p.scenario_id === null)
         .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
@@ -40,7 +45,7 @@ export default async function ComparePage({
     },
     ...(scenarios ?? []).map((scenario) => ({
       id: scenario.id,
-      label: `${scenario.type ?? '?'} · ${scenario.name ?? 'Szenario'}`,
+      label: `${scenario.type ?? '?'} · ${scenario.name ?? ''}`,
       processes: (allProcesses ?? [])
         .filter((p) => p.scenario_id === scenario.id)
         .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
@@ -53,30 +58,45 @@ export default async function ComparePage({
   const rows = buildComparisonRows(states, project.annual_throughput)
 
   const metricRows: { label: string; format: (r: (typeof rows)[number]) => string }[] = [
-    { label: 'Prozesse', format: (r) => String(r.processCount) },
-    { label: 'Bearbeitungszeit', format: (r) => `${r.totalCycleTimeMinutes.toFixed(1)} min` },
-    { label: 'Durchlaufzeit', format: (r) => (r.totalLeadTimeDays !== null && r.totalLeadTimeDays > 0 ? `${r.totalLeadTimeDays.toFixed(1)} Tage` : '–') },
+    { label: t('processes'), format: (r) => String(r.processCount) },
     {
-      label: 'Wertschöpfungsanteil',
-      format: (r) => (r.valueAddedRatioPercent !== null ? `${r.valueAddedRatioPercent.toFixed(2)} %` : '–'),
+      label: tEd('kpiCycleTimeSum'),
+      format: (r) => `${r.totalCycleTimeMinutes.toFixed(1)} ${tEd('unitMin')}`,
     },
-    { label: 'Taktzeit', format: (r) => (r.taktTimeMinutes !== null ? `${r.taktTimeMinutes.toFixed(1)} min` : '–') },
+    {
+      label: tEd('kpiLeadTime'),
+      format: (r) =>
+        r.totalLeadTimeDays !== null && r.totalLeadTimeDays > 0
+          ? `${r.totalLeadTimeDays.toFixed(1)} ${tEd('unitDays')}`
+          : '–',
+    },
+    {
+      label: tEd('kpiPce'),
+      format: (r) =>
+        r.valueAddedRatioPercent !== null
+          ? `${r.valueAddedRatioPercent.toFixed(2)} ${tEd('unitPercent')}`
+          : '–',
+    },
+    {
+      label: tEd('kpiTaktTime'),
+      format: (r) =>
+        r.taktTimeMinutes !== null ? `${r.taktTimeMinutes.toFixed(1)} ${tEd('unitMin')}` : '–',
+    },
   ]
 
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-5xl">
         <Link href={`/editor/${projectId}`} className="text-xs text-zinc-500 hover:underline">
-          ← Zurück zum Editor
+          {t('backToEditor')}
         </Link>
         <h1 className="mt-1 text-2xl font-semibold text-zinc-950">
-          Szenario-Vergleich — {project.name}
+          {t('title', { project: project.name })}
         </h1>
 
         {states.length <= 1 && (
           <p className="mt-4 rounded-control bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
-            Noch kein Future-State-Szenario angelegt. Öffne den Editor und lege über „+ Neues Szenario&rdquo; einen
-            Soll-Zustand an, um ihn hier mit dem Ist-Zustand zu vergleichen.
+            {t('empty')}
           </p>
         )}
 
@@ -84,7 +104,7 @@ export default async function ComparePage({
           <table className="w-full min-w-[480px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-zinc-200">
-                <th className="p-3 text-left font-medium text-zinc-500">Kennzahl</th>
+                <th className="p-3 text-left font-medium text-zinc-500">{t('metric')}</th>
                 {rows.map((r) => (
                   <th key={r.id ?? 'ist'} className="p-3 text-left font-medium text-zinc-950">
                     <Link
@@ -117,7 +137,7 @@ export default async function ComparePage({
             <table className="w-full min-w-[480px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-zinc-200">
-                  <th className="p-3 text-left font-medium text-zinc-500">Business Case</th>
+                  <th className="p-3 text-left font-medium text-zinc-500">{t('businessCase')}</th>
                   {(scenarios ?? []).map((s) => (
                     <th key={s.id} className="p-3 text-left font-medium text-zinc-950">
                       {s.type} · {s.name}
@@ -127,7 +147,7 @@ export default async function ComparePage({
               </thead>
               <tbody>
                 <tr className="border-b border-zinc-100">
-                  <td className="p-3 text-zinc-500">Investition</td>
+                  <td className="p-3 text-zinc-500">{t('investment')}</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950">
                       {s.investment_chf != null ? `CHF ${s.investment_chf.toLocaleString('de-CH')}` : '–'}
@@ -135,18 +155,18 @@ export default async function ComparePage({
                   ))}
                 </tr>
                 <tr className="border-b border-zinc-100">
-                  <td className="p-3 text-zinc-500">Payback</td>
+                  <td className="p-3 text-zinc-500">{t('payback')}</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950">
-                      {s.payback_months != null ? `${s.payback_months} Monate` : '–'}
+                      {s.payback_months != null ? t('months', { count: s.payback_months }) : '–'}
                     </td>
                   ))}
                 </tr>
                 <tr>
-                  <td className="p-3 text-zinc-500">Risiko</td>
+                  <td className="p-3 text-zinc-500">{t('risk')}</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950">
-                      {s.risk_level ? (RISK_LABEL[s.risk_level] ?? s.risk_level) : '–'}
+                      {s.risk_level ? (RISK_KEY[s.risk_level] ? tSc(RISK_KEY[s.risk_level]) : s.risk_level) : '–'}
                     </td>
                   ))}
                 </tr>

@@ -1,5 +1,6 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
@@ -19,7 +20,7 @@ export async function createScenario(projectId: string, formData: FormData) {
   const sourceScenarioId = (formData.get('sourceScenarioId') as string | null) || null
 
   if (!type || !['A', 'B', 'C'].includes(type) || !name) {
-    redirect(`/editor/${projectId}?error=` + encodeURIComponent('Typ und Name sind erforderlich.'))
+    redirect(`/editor/${projectId}?error=` + encodeURIComponent(await tErr('scenarioTypeAndName')))
   }
 
   const supabase = await createClient()
@@ -32,7 +33,7 @@ export async function createScenario(projectId: string, formData: FormData) {
   if (scenarioError || !scenario) {
     redirect(
       `/editor/${projectId}?error=` +
-        encodeURIComponent(scenarioError?.message ?? 'Szenario konnte nicht angelegt werden.')
+        encodeURIComponent(scenarioError?.message ?? await tErr('scenarioCreate'))
     )
   }
 
@@ -74,7 +75,7 @@ export async function createScenario(projectId: string, formData: FormData) {
     if (copyError || !copiedProcesses) {
       redirect(
         `/editor/${projectId}?error=` +
-          encodeURIComponent(copyError?.message ?? 'Prozesse konnten nicht kopiert werden.')
+          encodeURIComponent(copyError?.message ?? await tErr('scenarioCopyProcesses'))
       )
     }
     for (const cp of copiedProcesses ?? []) {
@@ -144,4 +145,12 @@ export async function updateScenarioMeta(projectId: string, scenarioId: string, 
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
   revalidatePath(`/editor/${projectId}/compare`)
+}
+
+// Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und
+// muessen deshalb der Sprache folgen. getTranslations() liest sie hier aus
+// dem Cookie, das die Middleware gesetzt hat.
+async function tErr(key: string): Promise<string> {
+  const t = await getTranslations('Errors')
+  return t(key)
 }

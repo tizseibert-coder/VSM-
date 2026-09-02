@@ -1,5 +1,6 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { parseProcessesCsv } from '@/lib/vsm/csvImport'
@@ -48,7 +49,7 @@ export async function addProcess(projectId: string, scenarioId: string | null, i
     .select('id')
     .single()
   if (insertError || !newProcess) {
-    throw new Error(insertError?.message ?? 'Prozess konnte nicht angelegt werden.')
+    throw new Error(insertError?.message ?? await tErr('processCreate'))
   }
 
   if (terminalBuffer) {
@@ -120,7 +121,7 @@ export async function importProcessesCsv(projectId: string, scenarioId: string |
   const rows = parseProcessesCsv(csvText)
 
   if (rows.length === 0) {
-    throw new Error('Die CSV-Datei enthält keine Zeilen.')
+    throw new Error(await tErr('csvEmpty'))
   }
 
   const supabase = await createClient()
@@ -415,4 +416,12 @@ export async function updateKaizenNote(projectId: string, processId: string, kai
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
   revalidatePath(`/editor/${projectId}/future-state`)
+}
+
+// Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und
+// muessen deshalb der Sprache folgen. getTranslations() liest sie hier aus
+// dem Cookie, das die Middleware gesetzt hat.
+async function tErr(key: string): Promise<string> {
+  const t = await getTranslations('Errors')
+  return t(key)
 }

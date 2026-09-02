@@ -1,14 +1,17 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { deriveFutureStateQuestions, type FutureStateInput } from '@/lib/vsm/futureStateQuestions'
 import { TermTooltip } from '@/components/VSMEditor/TermTooltip'
 import { submitTaktTime, submitBuffer, submitPacemaker, submitHeijunka, submitPitch, submitKaizenNote } from '../wizard-actions'
 
-const STATUS_LABEL: Record<string, string> = {
-  answered: 'Beantwortet',
-  open: 'Offen',
-  not_applicable: 'Noch nicht relevant',
+// Nur die Zuordnung Status -> Uebersetzungsschluessel; die Texte stehen im
+// Namensraum `Wizard`.
+const STATUS_KEY: Record<string, string> = {
+  answered: 'statusAnswered',
+  open: 'statusOpen',
+  not_applicable: 'statusNotApplicable',
 }
 
 const STATUS_CLASS: Record<string, string> = {
@@ -33,6 +36,8 @@ export default async function FutureStateQuestionPage({
   searchParams: Promise<{ scenario?: string; saved?: string }>
 }) {
   const { projectId, questionId } = await params
+  const t = await getTranslations('Wizard')
+  const tFs = await getTranslations('FutureState')
   const { scenario: scenarioParam, saved } = await searchParams
   const qid = Number(questionId)
   if (!Number.isInteger(qid) || qid < 1 || qid > 8) notFound()
@@ -99,23 +104,27 @@ export default async function FutureStateQuestionPage({
           href={`/editor/${projectId}/future-state${scenarioQuery}`}
           className="text-xs text-zinc-500 hover:underline"
         >
-          ← Alle 8 Fragen
+          {t('allQuestions')}
         </Link>
 
         <div className="mt-2 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium text-zinc-500">Frage {qid} von 8</p>
-            <h1 className="mt-0.5 text-xl font-semibold text-zinc-950">{current.question}</h1>
+            <p className="text-xs font-medium text-zinc-500">{t('questionOf', { id: qid })}</p>
+            <h1 className="mt-0.5 text-xl font-semibold text-zinc-950">
+              {tFs(`questions.${current.questionKey}`)}
+            </h1>
           </div>
           <span className={`shrink-0 rounded-control px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[current.status]}`}>
-            {STATUS_LABEL[current.status]}
+            {t(STATUS_KEY[current.status])}
           </span>
         </div>
-        <p className="mt-2 text-sm text-zinc-600">{current.summary}</p>
+        <p className="mt-2 text-sm text-zinc-600">
+          {tFs(`summary.${current.summaryKey}`, current.summaryValues)}
+        </p>
 
         {saved === '1' && (
           <p className="mt-4 rounded-control bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            ✓ Gespeichert.
+            {t('saved')}
           </p>
         )}
 
@@ -123,7 +132,7 @@ export default async function FutureStateQuestionPage({
           {qid === 1 && (
             <form action={submitTaktTime.bind(null, projectId, scenario.id)} className="flex flex-col gap-3">
               <label className="text-xs font-medium text-zinc-600">
-                <TermTooltip term="exitRate">Jahresbedarf (Stück/Jahr)</TermTooltip>
+                <TermTooltip term="exitRate">{t('q1AnnualDemand')}</TermTooltip>
                 <input
                   name="annualThroughput"
                   type="number"
@@ -133,7 +142,7 @@ export default async function FutureStateQuestionPage({
                 />
               </label>
               <label className="text-xs font-medium text-zinc-600">
-                <TermTooltip term="availableMinutesPerDay">Verfügbare Produktionszeit (min/Tag)</TermTooltip>
+                <TermTooltip term="availableMinutesPerDay">{t('q1AvailableMinutes')}</TermTooltip>
                 <input
                   name="availableMinutesPerDay"
                   type="number"
@@ -143,7 +152,7 @@ export default async function FutureStateQuestionPage({
                 />
               </label>
               <button type="submit" className={SUBMIT_CLASS}>
-                Speichern
+                {t('save')}
               </button>
             </form>
           )}
@@ -160,15 +169,15 @@ export default async function FutureStateQuestionPage({
                     Übergabe an den Kunden{terminal?.from_process_id ? ` (nach ${boundaryLabel(terminal.from_process_id, '?')})` : ''}.
                   </p>
                   <label className="text-xs font-medium text-zinc-600">
-                    Art des Fertigwarenbestands
+                    {t('q2Kind')}
                     <select name="bufferType" defaultValue={terminal?.buffer_type ?? 'standard'} className={FIELD_CLASS}>
-                      <option value="standard">Direktversand (kein Bestand)</option>
-                      <option value="supermarket">Fertigwarenlager als Supermarkt</option>
-                      <option value="safety_stock">Sicherheitsbestand</option>
+                      <option value="standard">{t('q2DirectShip')}</option>
+                      <option value="supermarket">{t('q2Supermarket')}</option>
+                      <option value="safety_stock">{t('q2SafetyStock')}</option>
                     </select>
                   </label>
                   <label className="text-xs font-medium text-zinc-600">
-                    <TermTooltip term="wip">Bestand (Stück)</TermTooltip>
+                    <TermTooltip term="wip">{t('q2Stock')}</TermTooltip>
                     <input
                       name="wipCount"
                       type="number"
@@ -178,7 +187,7 @@ export default async function FutureStateQuestionPage({
                     />
                   </label>
                   <button type="submit" className={SUBMIT_CLASS}>
-                    Speichern
+                    {t('save')}
                   </button>
                 </form>
               )
@@ -190,14 +199,14 @@ export default async function FutureStateQuestionPage({
               if (internal.length === 0) {
                 return (
                   <p className="text-sm text-zinc-500">
-                    Noch keine internen Verbindungen zwischen Prozessen vorhanden.
+                    {t('noInternalConnections')}
                   </p>
                 )
               }
               return (
                 <div className="flex flex-col gap-3">
                   <p className="text-xs text-zinc-500">
-                    Nur die Ja/Nein-Entscheidung „läuft diese Verbindung ohne Zwischenpuffer direkt weiter?&rdquo; —
+                    {t('q3Hint')} —
                     für Supermarkt/FIFO/Push bei den verbleibenden Verbindungen siehe Frage 4.
                   </p>
                   {internal.map((b) => (
@@ -217,10 +226,10 @@ export default async function FutureStateQuestionPage({
                           value="continuous"
                           defaultChecked={b.buffer_type === 'continuous'}
                         />
-                        <TermTooltip term="onePieceFlow">Continuous Flow</TermTooltip>
+                        <TermTooltip term="onePieceFlow">{t('q3ContinuousFlow')}</TermTooltip>
                       </label>
                       <button type="submit" className={SUBMIT_CLASS}>
-                        Speichern
+                        {t('save')}
                       </button>
                     </form>
                   ))}
@@ -241,21 +250,21 @@ export default async function FutureStateQuestionPage({
               if (relevant.length === 0 && continuousCount === 0) {
                 return (
                   <p className="text-sm text-zinc-500">
-                    Noch keine internen Verbindungen zwischen Prozessen vorhanden.
+                    {t('noInternalConnections')}
                   </p>
                 )
               }
               if (relevant.length === 0) {
                 return (
                   <p className="text-sm text-zinc-500">
-                    Alle internen Verbindungen laufen bereits als Continuous Flow (Frage 3) — nichts mehr zu steuern.
+                    {t('q4AllContinuous')}
                   </p>
                 )
               }
               return (
                 <div className="flex flex-col gap-3">
                   <p className="text-xs text-zinc-500">
-                    Push oder Pull für die Verbindungen, die nicht bereits Continuous Flow sind (Frage 3).
+                    {t('q4Hint')}
                   </p>
                   {relevant.map((b) => (
                     <form
@@ -269,9 +278,9 @@ export default async function FutureStateQuestionPage({
                       <label className="text-xs text-zinc-500">
                         <TermTooltip term="bufferType">Typ</TermTooltip>
                         <select name="bufferType" defaultValue={b.buffer_type ?? 'standard'} className={FIELD_CLASS}>
-                          <option value="standard">Standard (Push)</option>
-                          <option value="supermarket">Supermarkt (Pull)</option>
-                          <option value="fifo">FIFO-Bahn (Pull)</option>
+                          <option value="standard">{t('q4Standard')}</option>
+                          <option value="supermarket">{t('q4Supermarket')}</option>
+                          <option value="fifo">{t('q4Fifo')}</option>
                         </select>
                       </label>
                       <label className="text-xs text-zinc-500">
@@ -279,7 +288,7 @@ export default async function FutureStateQuestionPage({
                         <input name="wipCount" type="number" min={0} defaultValue={b.wip_count} className={FIELD_CLASS} />
                       </label>
                       <button type="submit" className={SUBMIT_CLASS}>
-                        Speichern
+                        {t('save')}
                       </button>
                     </form>
                   ))}
@@ -289,11 +298,11 @@ export default async function FutureStateQuestionPage({
 
           {qid === 5 &&
             (allProcesses.length === 0 ? (
-              <p className="text-sm text-zinc-500">Noch keine Prozesse angelegt.</p>
+              <p className="text-sm text-zinc-500">{t('noProcesses')}</p>
             ) : (
               <form action={submitPacemaker.bind(null, projectId, scenario.id)} className="flex flex-col gap-3">
                 <label className="text-xs font-medium text-zinc-600">
-                  <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip>
+                  <TermTooltip term="pacemaker">{t('q5Pacemaker')}</TermTooltip>
                   <select name="processId" defaultValue={pacemaker?.id ?? ''} className={FIELD_CLASS}>
                     <option value="" disabled>
                       — Prozess wählen —
@@ -306,7 +315,7 @@ export default async function FutureStateQuestionPage({
                   </select>
                 </label>
                 <button type="submit" className={SUBMIT_CLASS}>
-                  Als Schrittmacher setzen
+                  {t('q5SetPacemaker')}
                 </button>
               </form>
             ))}
@@ -314,7 +323,7 @@ export default async function FutureStateQuestionPage({
           {qid === 6 &&
             (!pacemaker ? (
               <p className="text-sm text-zinc-500">
-                Erst Frage 5 (Schrittmacher) beantworten — Heijunka hängt methodisch am Schrittmacher.
+                {t('q6NeedsPacemaker')}
               </p>
             ) : (
               <form
@@ -324,10 +333,10 @@ export default async function FutureStateQuestionPage({
                 <p className="text-xs text-zinc-500">Schrittmacher: {pacemaker.name}</p>
                 <label className="flex items-center gap-2 text-sm text-zinc-700">
                   <input type="checkbox" name="hasHeijunka" defaultChecked={pacemaker.has_heijunka} />
-                  <TermTooltip term="heijunka">Heijunka-Box aktiv</TermTooltip>
+                  <TermTooltip term="heijunka">{t('q6HeijunkaActive')}</TermTooltip>
                 </label>
                 <button type="submit" className={SUBMIT_CLASS}>
-                  Speichern
+                  {t('save')}
                 </button>
               </form>
             ))}
@@ -335,7 +344,7 @@ export default async function FutureStateQuestionPage({
           {qid === 7 && (
             <form action={submitPitch.bind(null, projectId, scenario.id)} className="flex flex-col gap-3">
               <label className="text-xs font-medium text-zinc-600">
-                <TermTooltip term="pitch">Pitch (min)</TermTooltip>
+                <TermTooltip term="pitch">{t('q7Pitch')}</TermTooltip>
                 <input
                   name="pitchMinutes"
                   type="number"
@@ -346,14 +355,14 @@ export default async function FutureStateQuestionPage({
                 />
               </label>
               <button type="submit" className={SUBMIT_CLASS}>
-                Speichern
+                {t('save')}
               </button>
             </form>
           )}
 
           {qid === 8 &&
             (allProcesses.length === 0 ? (
-              <p className="text-sm text-zinc-500">Noch keine Prozesse angelegt.</p>
+              <p className="text-sm text-zinc-500">{t('noProcesses')}</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {allProcesses.map((p) => (
@@ -368,12 +377,12 @@ export default async function FutureStateQuestionPage({
                         name="kaizenNote"
                         rows={2}
                         defaultValue={p.kaizen_note ?? ''}
-                        placeholder="z. B. Rüstzeit halbieren"
+                        placeholder={t('q8NotePlaceholder')}
                         className={FIELD_CLASS}
                       />
                     </label>
                     <button type="submit" className={`${SUBMIT_CLASS} self-start`}>
-                      Speichern
+                      {t('save')}
                     </button>
                   </form>
                 ))}
@@ -404,7 +413,7 @@ export default async function FutureStateQuestionPage({
               href={`/editor/${projectId}/future-state${scenarioQuery}`}
               className="text-sm font-medium text-zinc-950 hover:underline"
             >
-              Zur Übersicht →
+              {t('toOverview')}
             </Link>
           )}
         </div>

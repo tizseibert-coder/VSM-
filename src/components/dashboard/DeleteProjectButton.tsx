@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { deleteProject } from '@/app/[locale]/dashboard/actions'
 
 // Zweistufig, weil unwiderruflich: der erste Klick schaltet scharf, der zweite
@@ -17,6 +18,7 @@ export default function DeleteProjectButton({
   projectId: string
   projectName: string
 }) {
+  const t = useTranslations('Dashboard')
   const [armed, setArmed] = useState(false)
 
   return (
@@ -37,7 +39,7 @@ export default function DeleteProjectButton({
             : 'rounded-control border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
         }
       >
-        {armed ? `„${projectName}" wirklich löschen?` : 'Löschen'}
+        {armed ? t('deleteConfirm', { name: projectName }) : t('delete')}
       </button>
     </form>
   )

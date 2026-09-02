@@ -1,4 +1,5 @@
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signOut, createProject, createExampleProject, switchOrg } from './actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
@@ -12,6 +13,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+  const t = await getTranslations('Dashboard')
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims
@@ -39,9 +41,9 @@ export default async function DashboardPage({
             <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
               VSM Builder
             </p>
-            <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">Dashboard</h1>
+            <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
             <p className="mt-1 text-sm text-zinc-600">
-              Angemeldet als {claims?.email}
+              {t('signedInAs', { email: claims?.email ?? '' })}
               {activeOrg && (
                 <>
                   {' '}
@@ -55,11 +57,11 @@ export default async function DashboardPage({
               href="/team"
               className={buttonSecondary}
             >
-              Team
+              {t('team')}
             </Link>
             <form action={signOut}>
               <button className={buttonSecondary}>
-                Abmelden
+                {t('signOut')}
               </button>
             </form>
           </div>
@@ -78,7 +80,7 @@ export default async function DashboardPage({
             auch schneller zu bedienen. */}
         {allOrgs.length > 1 && (
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-zinc-500">Organisation:</span>
+            <span className="text-xs text-zinc-500">{t('organisation')}</span>
             {allOrgs.map((org) => (
               <form key={org.organizationId} action={switchOrg.bind(null, org.organizationId)}>
                 <button
@@ -101,7 +103,7 @@ export default async function DashboardPage({
           <form action={createProject} className="flex min-w-0 items-center gap-2">
             <input
               name="name"
-              placeholder="Neues Projekt, z. B. Baugruppe X"
+              placeholder={t('newProjectPlaceholder')}
               required
               className="w-full rounded-control border border-zinc-300 px-3 py-2 text-sm sm:w-72"
             />
@@ -109,7 +111,7 @@ export default async function DashboardPage({
               type="submit"
               className={buttonPrimary}
             >
-              Erstellen
+              {t('create')}
             </button>
           </form>
 
@@ -123,7 +125,7 @@ export default async function DashboardPage({
                 type="submit"
                 className={buttonSecondary}
               >
-                Beispiel-VSM laden
+                {t('loadExample')}
               </button>
             </form>
           )}
@@ -135,7 +137,7 @@ export default async function DashboardPage({
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
                 <div>
                   <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
-                    Mit dem Beispiel-VSM anfangen
+                    {t('emptyTitle')}
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-zinc-600">
                     Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen.
@@ -147,11 +149,11 @@ export default async function DashboardPage({
                       type="submit"
                       className={buttonPrimaryLg}
                     >
-                      Beispiel-VSM laden
+                      {t('loadExample')}
                     </button>
                   </form>
                   <p className="mt-3 text-xs text-zinc-600">
-                    Jederzeit löschbar. Oder leg oben ein eigenes Projekt an.
+                    {t('emptyHint')}
                   </p>
                 </div>
                 <div className="rounded-control border border-zinc-200 p-4">
@@ -185,7 +187,7 @@ export default async function DashboardPage({
                       )}
                     </div>
                     <span className="ml-4 shrink-0 text-xs text-zinc-600">
-                      Öffnen →
+                      {t('open')}
                     </span>
                   </Link>
                   <DeleteProjectButton projectId={project.id} projectName={project.name} />

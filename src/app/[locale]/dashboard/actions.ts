@@ -1,5 +1,6 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
@@ -51,7 +52,7 @@ export async function switchOrg(orgId: string) {
 export async function createProject(formData: FormData) {
   const name = (formData.get('name') as string | null)?.trim()
   if (!name) {
-    redirect('/dashboard?error=' + encodeURIComponent('Projektname darf nicht leer sein.'))
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('projectNameEmpty')))
   }
 
   const orgResult = await currentUserOrgId()
@@ -72,7 +73,7 @@ export async function createProject(formData: FormData) {
     // banner — meaningless to a non-technical user mid-workshop. Logged
     // server-side for debugging, generic German text shown to the user.
     if (error) console.error('createProject failed:', error.message)
-    redirect('/dashboard?error=' + encodeURIComponent('Projekt konnte nicht erstellt werden.'))
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('projectCreate')))
   }
 
   redirect(`/editor/${project.id}`)
@@ -93,7 +94,7 @@ export async function createExampleProject() {
     .insert({
       organization_id: orgResult.orgId,
       name: 'Beispiel: Wertstromanalyse Dreherei',
-      description: 'Beispielprojekt mit Beispieldaten zum Ausprobieren — jederzeit löschbar.',
+      description: await tErr('exampleDescription'),
       annual_throughput: 50000,
     })
     .select('id')
@@ -101,7 +102,7 @@ export async function createExampleProject() {
 
   if (projectError || !project) {
     if (projectError) console.error('createExampleProject (project) failed:', projectError.message)
-    redirect('/dashboard?error=' + encodeURIComponent('Beispiel konnte nicht erstellt werden.'))
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('exampleCreate')))
   }
 
   const exampleProcesses = [
@@ -122,7 +123,7 @@ export async function createExampleProject() {
 
   if (processesError) {
     console.error('createExampleProject (processes) failed:', processesError.message)
-    redirect('/dashboard?error=' + encodeURIComponent('Beispiel-Prozesse konnten nicht angelegt werden.'))
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('exampleProcesses')))
   }
 
   if (insertedProcesses && insertedProcesses.length > 0) {
@@ -148,7 +149,7 @@ export async function createExampleProject() {
     const { error: bufferError } = await supabase.from('inventory_buffers').insert(bufferRows)
     if (bufferError) {
       console.error('createExampleProject (buffers) failed:', bufferError.message)
-      redirect('/dashboard?error=' + encodeURIComponent('Beispiel-Puffer konnten nicht angelegt werden.'))
+      redirect('/dashboard?error=' + encodeURIComponent(await tErr('exampleBuffers')))
     }
   }
 
@@ -181,7 +182,7 @@ export async function deleteProject(projectId: string) {
 
   if (error) {
     console.error('deleteProject failed:', error.message)
-    redirect('/dashboard?error=' + encodeURIComponent('Projekt konnte nicht geloescht werden.'))
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('projectDelete')))
   }
 
   // count === 0 heisst: nichts getroffen. Entweder war das Projekt schon weg
@@ -190,10 +191,18 @@ export async function deleteProject(projectId: string) {
   if (count === 0) {
     redirect(
       '/dashboard?error=' +
-        encodeURIComponent('Projekt nicht gefunden oder keine Berechtigung zum Loeschen.')
+        encodeURIComponent(await tErr('projectNotFound'))
     )
   }
 
   revalidatePath('/dashboard')
   redirect('/dashboard')
+}
+
+// Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und
+// muessen deshalb der Sprache folgen. getTranslations() liest sie hier aus
+// dem Cookie, das die Middleware gesetzt hat.
+async function tErr(key: string): Promise<string> {
+  const t = await getTranslations('Errors')
+  return t(key)
 }

@@ -1,5 +1,6 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
 import { createHash, randomBytes } from 'node:crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
@@ -29,7 +30,7 @@ export async function createInvite(
 ): Promise<CreateInviteResult> {
   const role = formData.get('role')
   if (role !== 'editor' && role !== 'viewer') {
-    return { ok: false, error: 'Ungültige Rolle.' }
+    return { ok: false, error: await tErr('inviteRoleInvalid') }
   }
 
   const orgResult = await getActiveOrg()
@@ -61,7 +62,7 @@ export async function createInvite(
 
   if (error) {
     console.error('createInvite failed:', error.message)
-    return { ok: false, error: 'Einladung konnte nicht erstellt werden.' }
+    return { ok: false, error: await tErr('inviteCreate') }
   }
 
   const headerList = await headers()
@@ -98,9 +99,17 @@ export async function revokeInvite(invitationId: string) {
 
   if (error) {
     console.error('revokeInvite failed:', error.message)
-    redirect('/team?error=' + encodeURIComponent('Einladung konnte nicht zurückgezogen werden.'))
+    redirect('/team?error=' + encodeURIComponent(await tErr('inviteRevoke')))
   }
 
   revalidatePath('/team')
   redirect('/team')
+}
+
+// Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und
+// muessen deshalb der Sprache folgen. getTranslations() liest sie hier aus
+// dem Cookie, das die Middleware gesetzt hat.
+async function tErr(key: string): Promise<string> {
+  const t = await getTranslations('Errors')
+  return t(key)
 }

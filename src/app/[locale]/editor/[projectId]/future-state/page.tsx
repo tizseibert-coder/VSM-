@@ -1,14 +1,17 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { deriveFutureStateQuestions, type FutureStateInput } from '@/lib/vsm/futureStateQuestions'
 import NewScenarioDisclosure from '@/components/VSMEditor/NewScenarioDisclosure'
 import { buttonSecondary } from '@/components/ui/buttons'
 
-const STATUS_LABEL: Record<string, string> = {
-  answered: 'Beantwortet',
-  open: 'Offen',
-  not_applicable: 'Noch nicht relevant',
+// Nur die Zuordnung Status -> Uebersetzungsschluessel; die Texte stehen im
+// Namensraum `Wizard`.
+const STATUS_KEY: Record<string, string> = {
+  answered: 'statusAnswered',
+  open: 'statusOpen',
+  not_applicable: 'statusNotApplicable',
 }
 
 const STATUS_CLASS: Record<string, string> = {
@@ -31,6 +34,8 @@ export default async function FutureStateOverviewPage({
   searchParams: Promise<{ scenario?: string }>
 }) {
   const { projectId } = await params
+  const t = await getTranslations('Wizard')
+  const tFs = await getTranslations('FutureState')
   const { scenario: scenarioParam } = await searchParams
   const supabase = await createClient()
 
@@ -52,12 +57,11 @@ export default async function FutureStateOverviewPage({
       <div className="min-h-screen bg-zinc-50 px-6 py-10">
         <div className="mx-auto max-w-2xl">
           <Link href={`/editor/${projectId}`} className="text-xs text-zinc-500 hover:underline">
-            ← Zurück zum Editor
+            {t('backToEditor')}
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-zinc-950">Future-State-Wizard</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
           <p className="mt-4 rounded-control bg-zinc-100 px-3 py-3 text-sm text-zinc-600">
-            Der Future-State-Wizard führt durch die 8 Fragen für ein konkretes Szenario. Wähle im Editor ein
-            bestehendes Szenario, oder lege zuerst eins an.
+            {t('noScenario')}
           </p>
           <div className="mt-4">
             <NewScenarioDisclosure projectId={projectId} usedTypes={(scenarios ?? []).map((s) => s.type)} />
@@ -114,13 +118,16 @@ export default async function FutureStateOverviewPage({
           href={`/editor/${projectId}?scenario=${activeScenario.id}`}
           className="text-xs text-zinc-500 hover:underline"
         >
-          ← Zurück zum Editor
+          {t('backToEditor')}
         </Link>
         <h1 className="mt-1 text-2xl font-semibold text-zinc-950">
-          Future-State-Wizard — {activeScenario.type} · {activeScenario.name}
+          {t('titleWithScenario', {
+            type: activeScenario.type ?? '',
+            name: activeScenario.name ?? '',
+          })}
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          {answeredCount} von 8 Fragen beantwortet. Kein fester Ablauf — springe direkt zu jeder Frage, auch mehrfach.
+          {t('progress', { answered: answeredCount })}
         </p>
 
         <ol className="mt-6 flex flex-col gap-2">
@@ -131,14 +138,16 @@ export default async function FutureStateOverviewPage({
                 className="flex items-start justify-between gap-4 rounded-surface border border-zinc-200 bg-white p-4 hover:border-zinc-400"
               >
                 <div>
-                  <p className="text-xs font-medium text-zinc-500">Frage {q.id}</p>
-                  <p className="mt-0.5 font-medium text-zinc-950">{q.question}</p>
-                  <p className="mt-1 text-sm text-zinc-600">{q.summary}</p>
+                  <p className="text-xs font-medium text-zinc-500">{t('questionLabel', { id: q.id })}</p>
+                  <p className="mt-0.5 font-medium text-zinc-950">{tFs(`questions.${q.questionKey}`)}</p>
+                  <p className="mt-1 text-sm text-zinc-600">
+                    {tFs(`summary.${q.summaryKey}`, q.summaryValues)}
+                  </p>
                 </div>
                 <span
                   className={`shrink-0 rounded-control px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[q.status]}`}
                 >
-                  {STATUS_LABEL[q.status]}
+                  {t(STATUS_KEY[q.status])}
                 </span>
               </Link>
             </li>
@@ -150,12 +159,12 @@ export default async function FutureStateOverviewPage({
             href={`/editor/${projectId}/compare`}
             className={buttonSecondary}
           >
-            Zum Szenario-Vergleich →
+            {t('toCompare')}
           </Link>
           <NewScenarioDisclosure
             projectId={projectId}
             sourceScenarioId={activeScenario.id}
-            label="+ Neue Iteration aus diesem Szenario"
+            label={t('newIterationFrom')}
             usedTypes={(scenarios ?? []).map((s) => s.type)}
           />
         </div>

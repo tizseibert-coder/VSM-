@@ -1,14 +1,17 @@
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { revokeInvite } from './actions'
 import InviteCreator from '@/components/team/InviteCreator'
 import { buttonDangerSm } from '@/components/ui/buttons'
 
-const ROLE_LABEL: Record<string, string> = {
-  owner: 'Inhaber',
-  editor: 'Bearbeiten',
-  viewer: 'Nur ansehen',
+// Zuordnung Rolle/Status -> Uebersetzungsschluessel; die Texte stehen im
+// Namensraum `Team`.
+const ROLE_KEY: Record<string, string> = {
+  owner: 'roleOwner',
+  editor: 'roleEditor',
+  viewer: 'roleViewer',
 }
 
 function inviteStatus(inv: {
@@ -29,6 +32,7 @@ export default async function TeamPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+  const t = await getTranslations('Team')
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const myUserId = claimsData?.claims?.sub
@@ -74,9 +78,12 @@ export default async function TeamPage({
         <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
           ← Dashboard
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-zinc-950">Team</h1>
+        <h1 className="mt-1 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          {active.organizationName} · deine Rolle: {ROLE_LABEL[active.role] ?? active.role}
+          {t('yourRole', {
+            org: active.organizationName,
+            role: ROLE_KEY[active.role] ? t(ROLE_KEY[active.role]) : active.role,
+          })}
         </p>
 
         {error && (
@@ -100,7 +107,7 @@ export default async function TeamPage({
                   {m.user_id === myUserId ? 'Du' : `Mitglied ${m.user_id.slice(0, 8)}`}
                 </span>
                 <span className="text-xs text-zinc-500">
-                  {ROLE_LABEL[m.role] ?? m.role}
+                  {ROLE_KEY[m.role] ? t(ROLE_KEY[m.role]) : m.role}
                 </span>
               </li>
             ))}
@@ -111,12 +118,10 @@ export default async function TeamPage({
           <>
             <section className="mt-10">
               <h2 className="text-base font-semibold text-zinc-950">
-                Kollegen einladen
+                {t('inviteHeading')}
               </h2>
               <p className="mt-1 text-sm text-zinc-600">
-                Erzeuge einen Link und schick ihn selbst weiter — per Mail, Teams oder wie es dir
-                passt. Wer ihn öffnet und sich anmeldet, wird Mitglied von{' '}
-                {active.organizationName} und sieht alle VSMs dieser Firma.
+                {t('inviteBody', { org: active.organizationName })}
               </p>
               <div className="mt-4">
                 <InviteCreator />
@@ -129,7 +134,7 @@ export default async function TeamPage({
               </h2>
               {!invitations || invitations.length === 0 ? (
                 <p className="mt-3 rounded-surface border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500">
-                  Noch keine Einladung erstellt.
+                  {t('noInvites')}
                 </p>
               ) : (
                 <ul className="mt-3 divide-y divide-zinc-200 rounded-surface border border-zinc-200">
@@ -140,7 +145,7 @@ export default async function TeamPage({
                       <li key={inv.id} className="flex items-center justify-between gap-3 px-5 py-3">
                         <div className="min-w-0">
                           <div className="text-sm text-zinc-800">
-                            {ROLE_LABEL[inv.role] ?? inv.role} ·{' '}
+                            {ROLE_KEY[inv.role] ? t(ROLE_KEY[inv.role]) : inv.role} ·{' '}
                             <span className={status.tone}>{status.label}</span>
                           </div>
                           <div className="text-xs text-zinc-500">
@@ -154,7 +159,7 @@ export default async function TeamPage({
                               type="submit"
                               className={buttonDangerSm}
                             >
-                              Zurückziehen
+                              {t('revoke')}
                             </button>
                           </form>
                         )}
@@ -167,7 +172,7 @@ export default async function TeamPage({
           </>
         ) : (
           <p className="mt-10 rounded-surface border border-dashed border-zinc-300 p-6 text-sm text-zinc-500">
-            Nur Inhaber können Mitglieder einladen oder entfernen.
+            {t('ownersOnly')}
           </p>
         )}
       </div>

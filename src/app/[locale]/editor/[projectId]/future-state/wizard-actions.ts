@@ -1,5 +1,6 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -69,7 +70,7 @@ export async function submitPacemaker(projectId: string, scenarioId: string, for
   const processId = formData.get('processId') as string
   const supabase = await createClient()
   const { data: proc, error } = await supabase.from('processes').select('*').eq('id', processId).single()
-  if (error || !proc) throw new Error(error?.message ?? 'Prozess nicht gefunden.')
+  if (error || !proc) throw new Error(error?.message ?? await tErr('processNotFound'))
 
   await updateProcess(projectId, processId, {
     name: proc.name,
@@ -96,4 +97,12 @@ export async function submitPitch(projectId: string, scenarioId: string, formDat
 export async function submitKaizenNote(projectId: string, scenarioId: string, processId: string, formData: FormData) {
   await updateKaizenNote(projectId, processId, formData.get('kaizenNote') as string | null)
   backToQuestion(projectId, scenarioId, 8)
+}
+
+// Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und
+// muessen deshalb der Sprache folgen. getTranslations() liest sie hier aus
+// dem Cookie, das die Middleware gesetzt hat.
+async function tErr(key: string): Promise<string> {
+  const t = await getTranslations('Errors')
+  return t(key)
 }

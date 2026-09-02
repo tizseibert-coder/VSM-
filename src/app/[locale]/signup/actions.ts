@@ -1,5 +1,6 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { safeNextPath } from '@/lib/nav/safeNextPath'
@@ -10,7 +11,7 @@ export async function signup(formData: FormData) {
   const orgName = (formData.get('orgName') as string | null)?.trim()
 
   if (!email || !password) {
-    redirect('/signup?error=' + encodeURIComponent('Bitte E-Mail und Passwort eingeben.'))
+    redirect('/signup?error=' + encodeURIComponent(await tErr('credentialsRequired')))
   }
   if (password.length < 8) {
     redirect('/signup?error=' + encodeURIComponent('Passwort muss mindestens 8 Zeichen haben.'))
@@ -37,4 +38,12 @@ export async function signup(formData: FormData) {
 
   // Zurueck zur Einladung, falls der Nutzer ueber einen Einladungslink kam.
   redirect(safeNextPath(formData.get('next') as string | null) ?? '/dashboard')
+}
+
+// Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und
+// muessen deshalb der Sprache folgen. getTranslations() liest sie hier aus
+// dem Cookie, das die Middleware gesetzt hat.
+async function tErr(key: string): Promise<string> {
+  const t = await getTranslations('Errors')
+  return t(key)
 }

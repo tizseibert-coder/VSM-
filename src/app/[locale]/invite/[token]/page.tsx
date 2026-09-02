@@ -1,4 +1,5 @@
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { acceptInvite } from '../actions'
 
@@ -6,15 +7,15 @@ import { acceptInvite } from '../actions'
 // Unterschied zwischen "zurueckgezogen" und "abgelaufen" ist fuer den
 // Eingeladenen wichtig: im einen Fall soll er nachfragen, im anderen genuegt
 // ein neuer Link.
-const STATUS_TEXT: Record<string, string> = {
-  expired: 'Dieser Einladungslink ist abgelaufen. Bitte lass dir einen neuen schicken.',
-  revoked:
-    'Diese Einladung wurde zurückgezogen. Melde dich bei der Person, die sie dir geschickt hat.',
-  already_used: 'Dieser Einladungslink wurde bereits eingelöst. Jeder Link gilt nur einmal.',
-  invalid:
-    'Dieser Einladungslink ist ungültig. Möglicherweise ist er beim Kopieren unvollständig geblieben.',
-  not_authenticated: 'Bitte melde dich zuerst an.',
-  error: 'Die Einladung konnte nicht eingelöst werden. Bitte versuche es später erneut.',
+// Nur die Zuordnung Status -> Uebersetzungsschluessel; die Saetze stehen im
+// Namensraum `Invite`.
+const STATUS_KEY: Record<string, string> = {
+  expired: 'errExpired',
+  revoked: 'errRevoked',
+  already_used: 'errAccepted',
+  invalid: 'errInvalid',
+  not_authenticated: 'errSignIn',
+  error: 'errGeneric',
 }
 
 export default async function InvitePage({
@@ -25,6 +26,7 @@ export default async function InvitePage({
   searchParams: Promise<{ status?: string }>
 }) {
   const { token } = await params
+  const t = await getTranslations('Invite')
   const { status } = await searchParams
 
   const supabase = await createClient()
@@ -42,12 +44,12 @@ export default async function InvitePage({
           VSM Builder
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-zinc-950">
-          Einladung ins Team
+          {t('title')}
         </h1>
 
-        {status && STATUS_TEXT[status] && (
+        {status && STATUS_KEY[status] && (
           <p className="mt-4 rounded-control bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {STATUS_TEXT[status]}
+            {t(STATUS_KEY[status])}
           </p>
         )}
 
@@ -65,12 +67,12 @@ export default async function InvitePage({
                 type="submit"
                 className="w-full rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
               >
-                Einladung annehmen
+                {t('accept')}
               </button>
             </form>
             <p className="mt-4 text-center text-sm">
               <Link href="/dashboard" className="text-zinc-600 underline">
-                Abbrechen
+                {t('cancel')}
               </Link>
             </p>
           </>
@@ -85,13 +87,13 @@ export default async function InvitePage({
                 href={`/login?next=${encodeURIComponent(returnTo)}`}
                 className="rounded-control bg-brand-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-brand-700"
               >
-                Anmelden
+                {t('signIn')}
               </Link>
               <Link
                 href={`/signup?next=${encodeURIComponent(returnTo)}`}
                 className="rounded-control border border-zinc-300 px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-100"
               >
-                Konto erstellen
+                {t('signUp')}
               </Link>
             </div>
           </>
