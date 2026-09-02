@@ -1,13 +1,23 @@
 import { describe, expect, it } from 'vitest'
+import de from '../../../messages/de.json'
+import en from '../../../messages/en.json'
 import { CLASSIFICATION, classificationMarker, isClassificationValue } from './classification'
 
 describe('classification', () => {
-  it('gives every entry a non-empty label and a short marker', () => {
+  it('gives every entry a short marker and a label key that both languages know', () => {
     for (const key of Object.keys(CLASSIFICATION) as (keyof typeof CLASSIFICATION)[]) {
       const entry = CLASSIFICATION[key]
-      expect(entry.label.trim().length).toBeGreaterThan(0)
       expect(entry.marker.trim().length).toBeGreaterThan(0)
       expect(entry.marker.length).toBeLessThanOrEqual(5)
+
+      // Die ausgeschriebene Beschriftung liegt seit der Mehrsprachigkeit in
+      // den Sprachdateien — der Test haelt Code und Uebersetzung zusammen,
+      // damit ein umbenannter Schluessel nicht still ins Leere zeigt.
+      for (const [locale, messages] of Object.entries({ de, en })) {
+        const label = (messages.Classification as Record<string, string>)[entry.labelKey]
+        expect(label, `${locale}: Classification.${entry.labelKey} fehlt`).toBeDefined()
+        expect(label.trim().length).toBeGreaterThan(0)
+      }
     }
   })
 })

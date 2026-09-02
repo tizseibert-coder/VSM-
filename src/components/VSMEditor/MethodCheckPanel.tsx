@@ -1,4 +1,7 @@
-import { formatFindingCount, rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
+'use client'
+
+import { useTranslations } from 'next-intl'
+import { rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
 
 export type { MethodFinding }
 
@@ -7,9 +10,11 @@ const SEVERITY_DOT: Record<MethodFinding['severity'], string> = {
   warning: 'bg-amber-500',
 }
 
-const SEVERITY_LABEL: Record<MethodFinding['severity'], string> = {
-  critical: 'Kennzahl betroffen',
-  warning: 'Methodisch unsauber',
+// Nur die Zuordnung Schwere -> Uebersetzungsschluessel; der Text steht im
+// Namensraum `MethodCheck`.
+const SEVERITY_KEY: Record<MethodFinding['severity'], string> = {
+  critical: 'severityCritical',
+  warning: 'severityWarning',
 }
 
 /**
@@ -30,6 +35,7 @@ const SEVERITY_LABEL: Record<MethodFinding['severity'], string> = {
  * laufen frueher oder spaeter auseinander.
  */
 export function MethodCheckPanel({ findings }: { findings: MethodFinding[] }) {
+  const t = useTranslations('MethodCheck')
   if (findings.length === 0) return null
 
   const ranked = rankFindings(findings)
@@ -44,10 +50,10 @@ export function MethodCheckPanel({ findings }: { findings: MethodFinding[] }) {
             criticalCount > 0 ? SEVERITY_DOT.critical : SEVERITY_DOT.warning
           }`}
         />
-        <span className="font-medium text-zinc-950">Methodikprüfung</span>
-        <span className="text-zinc-600">{formatFindingCount(ranked.length)}</span>
-        <span className="ml-auto text-xs text-zinc-600 group-open:hidden">Anzeigen</span>
-        <span className="ml-auto hidden text-xs text-zinc-600 group-open:inline">Zuklappen</span>
+        <span className="font-medium text-zinc-950">{t('title')}</span>
+        <span className="text-zinc-600">{t('hintCount', { count: ranked.length })}</span>
+        <span className="ml-auto text-xs text-zinc-600 group-open:hidden">{t('show')}</span>
+        <span className="ml-auto hidden text-xs text-zinc-600 group-open:inline">{t('collapse')}</span>
       </summary>
       <ol className="border-t border-zinc-200">
         {ranked.map((finding) => (
@@ -61,7 +67,7 @@ export function MethodCheckPanel({ findings }: { findings: MethodFinding[] }) {
             />
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                {SEVERITY_LABEL[finding.severity]}
+                {t(SEVERITY_KEY[finding.severity])}
               </p>
               <p className="mt-0.5 text-sm font-medium text-zinc-950">{finding.title}</p>
               <p className="mt-1 text-sm text-zinc-600">{finding.detail}</p>

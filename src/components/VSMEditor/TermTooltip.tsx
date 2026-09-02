@@ -7,12 +7,14 @@
 // enough that a plain absolutely-positioned panel is all this needs.
 
 import { useId, useState, type ReactNode } from 'react'
-import { getGlossaryEntry, type GlossaryKey } from '@/lib/vsm/glossary'
+import { useTranslations } from 'next-intl'
+import { type GlossaryKey } from '@/lib/vsm/glossary'
 
 export function TermTooltip({ term, children }: { term: GlossaryKey; children: ReactNode }) {
+  const t = useTranslations('Glossary')
   const [open, setOpen] = useState(false)
   const tooltipId = useId()
-  const entry = getGlossaryEntry(term)
+  const entry = { term: t(`${term}.term`), definition: t(`${term}.definition`) }
 
   return (
     <span className="relative inline-flex items-center gap-1">
@@ -26,7 +28,7 @@ export function TermTooltip({ term, children }: { term: GlossaryKey; children: R
       <button
         type="button"
         aria-describedby={open ? tooltipId : undefined}
-        aria-label={`Erklärung: ${entry.term}`}
+        aria-label={t('tooltipAria', { term: entry.term })}
         onClick={() => setOpen((prev) => !prev)}
         onBlur={() => setOpen(false)}
         className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-control border border-zinc-400 text-xs leading-none text-zinc-500 before:absolute before:inset-[-15px] before:content-[''] hover:border-brand-600 hover:text-brand-600"

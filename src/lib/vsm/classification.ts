@@ -7,16 +7,23 @@
 export type ClassificationValue = 'va' | 'nva' | 'necessary_nva'
 
 export interface ClassificationEntry {
-  /** Full label for the edit-panel dropdown. */
-  label: string
-  /** Short tag shown on the process box — kept to a few characters so it fits. */
+  /**
+   * Kurzzeichen auf der Prozessbox — bleibt unuebersetzt: VA, NVA und nNVA
+   * sind im Englischen wie im Deutschen dieselben Lean-Kuerzel, und auf der
+   * Box waere fuer mehr als ein paar Zeichen ohnehin kein Platz.
+   */
   marker: string
+  /**
+   * Schluessel der ausgeschriebenen Beschriftung im Namensraum
+   * `Classification` — der Text selbst steht in messages/{de,en}.json.
+   */
+  labelKey: string
 }
 
 export const CLASSIFICATION: Record<ClassificationValue, ClassificationEntry> = {
-  va: { label: 'Wertschöpfend (VA)', marker: 'VA' },
-  nva: { label: 'Nicht wertschöpfend (NVA)', marker: 'NVA' },
-  necessary_nva: { label: 'Notwendig, nicht wertschöpfend', marker: 'nNVA' },
+  va: { marker: 'VA', labelKey: 'va' },
+  nva: { marker: 'NVA', labelKey: 'nva' },
+  necessary_nva: { marker: 'nNVA', labelKey: 'necessaryNva' },
 }
 
 /** Type guard: is this a value the app actually recognizes (vs. null/legacy/garbage)? */

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { deleteScenario } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 
 // Extracted from ScenarioMetaPanel (which stays a plain Server Component)
@@ -16,6 +17,7 @@ export default function DeleteScenarioButton({
   projectId: string
   scenarioId: string
 }) {
+  const t = useTranslations('Scenario')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
@@ -35,7 +37,7 @@ export default function DeleteScenarioButton({
             : 'rounded-control border border-red-300 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50'
         }
       >
-        {confirmDelete ? 'Wirklich löschen?' : 'Szenario löschen'}
+        {confirmDelete ? t('confirmDelete') : t('deleteScenario')}
       </button>
     </form>
   )

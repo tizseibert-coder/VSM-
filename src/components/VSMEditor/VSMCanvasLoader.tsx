@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useTranslations } from 'next-intl'
 import type { ComponentProps } from 'react'
 import type VSMCanvasType from './VSMCanvas'
 
@@ -14,6 +15,7 @@ import type VSMCanvasType from './VSMCanvas'
  * ein und deutet die Form an, die folgt: Prozesskette und Zeitleiter.
  */
 function CanvasSkeleton() {
+  const t = useTranslations('CanvasLoader')
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
       <div className="rounded-surface border border-zinc-200 bg-white p-6">
@@ -29,7 +31,7 @@ function CanvasSkeleton() {
           <div className="mt-10 h-8 rounded-control bg-zinc-100" />
         </div>
         <p className="mt-6 text-center text-sm text-zinc-600" role="status">
-          Diagramm wird geladen…
+          {t('loading')}
         </p>
       </div>
     </div>

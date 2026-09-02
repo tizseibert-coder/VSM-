@@ -3,13 +3,19 @@
 // maps would have drifted apart, and "Gut" meaning one colour here and another
 // there is exactly the sort of detail that quietly erodes trust in the numbers.
 
+'use client'
+
+import { useTranslations } from 'next-intl'
 import type { BenchmarkTier } from '@/lib/vsm/benchmark'
 
-const TIER_LABEL: Record<BenchmarkTier, string> = {
-  top: 'Spitzenwert',
-  good: 'Gut',
-  average: 'Durchschnitt',
-  below: 'Verbesserungsbedarf',
+// Nur die Zuordnung Stufe -> Uebersetzungsschluessel bleibt hier; der Text
+// selbst steht im Namensraum `Tier`. Die Farben bleiben ebenfalls im Code,
+// weil sie Darstellung sind und keine Uebersetzung.
+const TIER_KEY: Record<BenchmarkTier, string> = {
+  top: 'top',
+  good: 'good',
+  average: 'average',
+  below: 'needsImprovement',
 }
 
 const TIER_CLASS: Record<BenchmarkTier, string> = {
@@ -20,9 +26,10 @@ const TIER_CLASS: Record<BenchmarkTier, string> = {
 }
 
 export function TierChip({ tier }: { tier: BenchmarkTier }) {
+  const t = useTranslations('Tier')
   return (
     <span className={`rounded-control px-2 py-0.5 text-xs font-medium ${TIER_CLASS[tier]}`}>
-      {TIER_LABEL[tier]}
+      {t(TIER_KEY[tier])}
     </span>
   )
 }

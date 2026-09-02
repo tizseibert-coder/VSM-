@@ -25,10 +25,10 @@ const SEVERITY_ORDER: Record<MethodFinding['severity'], number> = {
   warning: 1,
 }
 
-/** "1 Hinweis" / "3 Hinweise" — die Zaehlung steht im Panel und im PDF. */
-export function formatFindingCount(count: number): string {
-  return count === 1 ? '1 Hinweis' : `${count} Hinweise`
-}
+// Die Zaehlung ("1 Hinweis" / "3 Hinweise") stand frueher als eigene
+// Funktion hier. Seit der Mehrsprachigkeit uebernimmt das die
+// ICU-Pluralregel in MethodCheck.hintCount — jede Sprache bringt ihre
+// eigenen Pluralformen mit, und die sind nicht ueberall zwei.
 
 /**
  * Nach Schwere sortiert, innerhalb einer Stufe in der Reihenfolge der

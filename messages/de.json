@@ -208,5 +208,299 @@
     "label": "Passwort",
     "show": "Passwort anzeigen",
     "hide": "Passwort verbergen"
+  },
+  "Glossary": {
+    "tooltipAria": "Erklärung: {term}",
+    "leadTime": {
+      "term": "Durchlaufzeit",
+      "definition": "Die Zeit, die ein Werkstück vom ersten bis zum letzten Prozessschritt braucht — inklusive aller Warte- und Pufferzeiten dazwischen, nicht nur der reinen Bearbeitung."
+    },
+    "cycleTimeSum": {
+      "term": "Bearbeitungszeit",
+      "definition": "Die Summe der reinen Zykluszeiten aller Prozesse in der Kette — ohne die Wartezeit im Bestand dazwischen."
+    },
+    "pce": {
+      "term": "Wertschöpfungsanteil",
+      "definition": "Bearbeitungszeit geteilt durch Durchlaufzeit, in Prozent. Zeigt, wie viel von der gesamten Durchlaufzeit tatsächlich wertschöpfend ist statt Warten im Bestand (auch \"Process Cycle Efficiency\" genannt). Die Einstufung folgt Orientierungswerten aus der Lean-Literatur für die Stückfertigung — unter rund 5 % ist der unverbesserte Normalfall, ab etwa 25 % beginnt durchgängiger Fluss. Faustwerte, keine Norm."
+    },
+    "taktTime": {
+      "term": "Taktzeit",
+      "definition": "Verfügbare Produktionszeit geteilt durch den Kundenbedarf. Das Tempo, in dem ein Stück fertig werden muss, damit die Nachfrage gedeckt wird — kein Bearbeitungswert, sondern eine Vorgabe."
+    },
+    "availableMinutesPerDay": {
+      "term": "Verfügbare Produktionszeit",
+      "definition": "Wie viele Minuten pro Tag tatsächlich produziert wird (z. B. eine 8h-Schicht = 480 min, zwei Schichten = 960 min, abzüglich Pausen). Der andere Faktor in der Taktzeit-Formel neben dem Kundenbedarf."
+    },
+    "exitRate": {
+      "term": "Ist-Ausbringung (Exitrate)",
+      "definition": "Wie viele Stück pro Tag den Wertstrom tatsächlich verlassen. Bestimmt vom langsamsten Prozess (Engpass/Time Trap) nach Abzug seiner OEE-Verluste: verfügbare Produktionszeit ÷ Engpass-Zykluszeit. Nicht zu verwechseln mit dem Kundenbedarf, der die Taktzeit vorgibt — die Ausbringung ist gemessen, der Takt ist gefordert. Zusammen mit dem WIP ergibt sie die Durchlaufzeit: PLT = WIP ÷ Ausbringung."
+    },
+    "balanceChart": {
+      "term": "Austaktungsdiagramm (Yamazumi)",
+      "definition": "Ein Balken je Station, dessen Höhe die Belegung inklusive OEE-Verluste zeigt, dazu die Taktzeit als waagrechte Linie. Anders als die Zeitleiste unter dem Wertstrom ist die Achse hier die Station und nicht die Reihenfolge — damit lässt sich ablesen, welche Station den Takt reisst und wohin Arbeitsinhalt verschoben werden könnte."
+    },
+    "capacityCoverage": {
+      "term": "Kapazitätsdeckung",
+      "definition": "Ist-Ausbringung geteilt durch Kundenbedarf. Unter 100 % kann die Linie den Bedarf nicht decken: der Bestand wächst dann laufend an, und die Durchlaufzeit ist keine stabile Grösse mehr, sondern steigt mit jedem Tag."
+    },
+    "processCycleTime": {
+      "term": "Zykluszeit (C/T)",
+      "definition": "Die Zeit, die ein einzelner Prozessschritt braucht, um ein Werkstück zu bearbeiten."
+    },
+    "changeoverTime": {
+      "term": "Rüstzeit (C/O)",
+      "definition": "Die Zeit, um eine Maschine oder einen Prozess von einem Produkt bzw. einer Variante auf die nächste umzustellen."
+    },
+    "oee": {
+      "term": "OEE",
+      "definition": "Gesamtanlageneffektivität: das Produkt aus Verfügbarkeit, Leistung und Qualität. Zeigt, wie viel der theoretisch möglichen Zeit tatsächlich wertschöpfend genutzt wird."
+    },
+    "operatorCount": {
+      "term": "Bediener-Anzahl",
+      "definition": "Wie viele Personen nötig sind, um diesen Prozessschritt zu betreiben."
+    },
+    "pacemaker": {
+      "term": "Schrittmacher-Prozess",
+      "definition": "Der eine Prozess in der Kette, der den Takt für die gesamte Produktion vorgibt — meist der letzte vor dem Versand. Nur hier plant die Produktionssteuerung, alle vorgelagerten Prozesse ziehen per Pull nach."
+    },
+    "wip": {
+      "term": "WIP (Work in Process)",
+      "definition": "Bestand an unfertigen Werkstücken zwischen zwei Prozessschritten. Bestimmt zusammen mit dem Tagesbedarf, wie lange ein Stück an dieser Stelle wartet."
+    },
+    "bufferType": {
+      "term": "Lager-Typ",
+      "definition": "Wie der Bestand zwischen zwei Prozessen gesteuert wird: Standard (unkontrolliert), Supermarkt (Pull — Nachschub nur bei Entnahme), FIFO-Bahn (feste Reihenfolge, begrenzte Kapazität) oder Continuous Flow (kein Puffer, Stück fließt direkt weiter)."
+    },
+    "flowStyle": {
+      "term": "Pfeil-Typ",
+      "definition": "Wie der Materialfluss dargestellt wird: Push (Standard-Weiterschieben), Pull (Entnahme aus einem Supermarkt), oder Shipment (Versand zu/von Lieferant und Kunde). \"Automatisch\" leitet es aus dem Lager-Typ ab."
+    },
+    "kanbanType": {
+      "term": "Kanban-Typ",
+      "definition": "Nur bei einem Supermarkt relevant: Produktions-Kanban löst Nachproduktion beim Lieferprozess aus, Transport-Kanban löst nur den Transport eines bereits produzierten Teils aus."
+    },
+    "supermarket": {
+      "term": "Supermarkt",
+      "definition": "Ein kontrollierter Pufferbestand, aus dem der nachgelagerte Prozess per Kanban genau das entnimmt, was er braucht — der vorgelagerte Prozess produziert nur nach, was entnommen wurde."
+    },
+    "fifo": {
+      "term": "FIFO-Bahn",
+      "definition": "Eine First-In-First-Out-Verbindung zwischen zwei Prozessen ohne freie Entnahme — die Bearbeitungsreihenfolge bleibt zwingend erhalten, meist mit begrenzter Kapazität."
+    },
+    "onePieceFlow": {
+      "term": "One-Piece-Flow (Continuous Flow)",
+      "definition": "Werkstücke fließen einzeln und ohne Zwischenpuffer direkt von einem Prozess zum nächsten — kein Warten, kein Bestand zwischen den Schritten."
+    },
+    "bottleneck": {
+      "term": "Engpass",
+      "definition": "Ein Prozess, dessen effektive Zykluszeit (Zykluszeit ÷ OEE) die Taktzeit überschreitet — er kann die Kundennachfrage im aktuellen Zustand nicht bedienen."
+    },
+    "heijunka": {
+      "term": "Heijunka (Produktionsnivellierung)",
+      "definition": "Der Produktionsmix und das Produktionsvolumen werden gleichmäßig über die Zeit verteilt statt in großen Losen — hängt am Schrittmacher, weil dort die Produktion tatsächlich eingeplant wird."
+    },
+    "pitch": {
+      "term": "Pitch (Steuerungs-Zeitraster)",
+      "definition": "Ein fester Zeitabschnitt (Vielfaches der Taktzeit), in dem der Schrittmacher jeweils eine gleichbleibende Menge produziert und weitergibt — macht die Produktionssteuerung in handhabbaren Portionen statt stückweise."
+    },
+    "kaizenBlitz": {
+      "term": "Kaizen-Blitz",
+      "definition": "Ein am Prozess markierter, konkreter Verbesserungspunkt, der nötig ist, um vom Ist- zum Soll-Zustand zu kommen — kein allgemeiner Verbesserungswunsch, sondern eine gezielte Notiz an genau dieser Stelle."
+    }
+  },
+  "Editor": {
+    "kpiLeadTime": "Durchlaufzeit",
+    "kpiPce": "Wertschöpfungsanteil",
+    "kpiTaktTime": "Taktzeit",
+    "kpiExitRate": "Ist-Ausbringung",
+    "kpiCycleTimeSum": "Bearbeitungszeit",
+    "unitDays": "Tage",
+    "unitMin": "min",
+    "unitPercent": "%",
+    "unitPiecesPerDay": "Stk./Tag",
+    "annualDemandLabel": "Jahresbedarf Kunde (Stück/Jahr)",
+    "annualDemandPlaceholder": "z. B. 50000",
+    "availableMinutesLabel": "Verfügbare Produktionszeit (Min/Tag)",
+    "availableMinutesPlaceholder": "z. B. 480",
+    "exportPdf": "PDF exportieren",
+    "exportingPdf": "Exportiere…",
+    "fullscreen": "Vollbild",
+    "exitFullscreen": "Vollbild verlassen",
+    "presentationMode": "Präsentationsmodus",
+    "zoomHint": "Strg/Cmd + Mausrad zum Zoomen",
+    "zoomOut": "Verkleinern",
+    "zoomIn": "Vergrößern",
+    "fitView": "Gesamtansicht einpassen",
+    "fitViewShifted": "Ansicht ist verschoben — zurück zur Gesamtansicht",
+    "tabsAria": "Auswertungen",
+    "tabBalance": "Austaktung",
+    "tabBenchmark": "Branchenvergleich",
+    "noProcessesYet": "Noch keine Prozesse. Leg unten den ersten an.",
+    "processNameLabel": "Prozessname",
+    "processNamePlaceholder": "z. B. Drehen",
+    "cycleTimeLabel": "Zykluszeit (min)",
+    "cycleTimePlaceholder": "z. B. 3.5",
+    "addProcess": "+ Hinzufügen",
+    "importCsv": "CSV importieren",
+    "csvColumns": "Spalten: name, cycle_time, oee, wip",
+    "errorNameAndCycleTime": "Name und Zykluszeit (Minuten) sind erforderlich.",
+    "errorAdding": "Fehler beim Hinzufügen.",
+    "errorSaving": "Fehler beim Speichern.",
+    "errorReorder": "Reihenfolge konnte nicht geändert werden.",
+    "errorLane": "Spur konnte nicht geändert werden.",
+    "errorConnect": "Verbindung konnte nicht angelegt werden.",
+    "errorDisconnect": "Verbindung konnte nicht getrennt werden.",
+    "errorFields": "Bitte alle Felder gültig ausfüllen.",
+    "errorDelete": "Fehler beim Löschen.",
+    "errorNumber": "Bitte eine gültige Zahl eingeben.",
+    "errorNotEmpty": "Darf nicht leer sein.",
+    "editProcess": "Prozess bearbeiten",
+    "position": "Position",
+    "moveEarlier": "Früher in der Reihenfolge",
+    "moveLater": "Später in der Reihenfolge",
+    "laneUp": "Spur höher",
+    "laneUpTitle": "Spur höher (zurück zur Hauptlinie)",
+    "laneDown": "Spur tiefer",
+    "laneDownTitle": "Spur tiefer — z. B. für parallele Prozesse",
+    "changeoverLabel": "Rüstzeit C/O (min)",
+    "oeeLabel": "OEE (%)",
+    "operatorsLabel": "Bediener",
+    "wipBefore": "WIP davor",
+    "wipAfter": "WIP danach",
+    "connections": "Verbindungen",
+    "predecessors": "Vorgänger",
+    "successors": "Nachfolger",
+    "none": "Keine",
+    "pacemakerProcess": "Schrittmacher-Prozess",
+    "deleteProcess": "Prozess löschen",
+    "confirmDelete": "Wirklich löschen?",
+    "wipLabel": "Lagerbestand (WIP)",
+    "bufferTypeLabel": "Lager-Typ",
+    "bufferStandard": "Standard (unkontrolliert)",
+    "bufferSupermarket": "Supermarkt (Pull)",
+    "bufferFifo": "FIFO-Bahn",
+    "bufferContinuous": "Continuous Flow (One-Piece)",
+    "bufferSafetyStock": "Sicherheitsbestand",
+    "flowStyleLabel": "Pfeil-Typ",
+    "flowAuto": "Automatisch",
+    "flowPush": "Push",
+    "flowPull": "Pull",
+    "flowShipment": "Shipment",
+    "kanbanTypeLabel": "Kanban-Typ",
+    "kanbanProduction": "Produktions-Kanban",
+    "kanbanWithdrawal": "Transport-Kanban",
+    "save": "Speichern",
+    "close": "Schließen",
+    "effectiveCycleTime": "eff. Zykluszeit: {value} min (fliesst in Bearbeitungszeit/Kapazitäts-Check ein — die Zykluszeit selbst bleibt unverändert)",
+    "pacemakerHint": " (bekommt den Auftrag direkt von der Produktionssteuerung)",
+    "anchorErp": "ERP / Produktionssteuerung",
+    "leadTimeFormula": "{wip} Stk WIP ÷ {rate} Stk/Tag Ausbringung",
+    "taktTimeFormula": "{minutes} min/Tag ÷ {demand} Stk/Tag Kundenbedarf",
+    "exitRateFormula": "{minutes} min/Tag ÷ {bottleneck} min Engpass",
+    "fitViewLabel": "Einpassen",
+    "disconnect": "✕ trennen",
+    "disconnectFrom": "Verbindung von {name} trennen",
+    "disconnectTo": "Verbindung zu {name} trennen",
+    "choosePredecessor": "+ Vorgänger wählen…",
+    "chooseSuccessor": "+ Nachfolger wählen…",
+    "classificationLabel": "Wertschöpfungs-Klassifizierung",
+    "classificationNone": "— nicht klassifiziert",
+    "unitPieces": "Stück"
+  },
+  "Canvas": {
+    "bottleneck": "⚠ Engpass",
+    "supplier": "Lieferant",
+    "customer": "Kunde",
+    "leadTimeAbbr": "PLT",
+    "valueAddedAbbr": "VA",
+    "daysUnit": "Tage",
+    "minUnit": "min",
+    "heijunka": "Heijunka",
+    "pitchCaption": "Pitch: {minutes} min",
+    "safetyStockAbbr": "SS",
+    "piecesUnit": "Stk"
+  },
+  "MethodCheck": {
+    "title": "Methodikprüfung",
+    "show": "Anzeigen",
+    "collapse": "Zuklappen",
+    "severityCritical": "Kennzahl betroffen",
+    "severityWarning": "Methodisch unsauber",
+    "hintCount": "{count, plural, one {# Hinweis} other {# Hinweise}}",
+    "noPacemakerTitle": "Kein Schrittmacher-Prozess festgelegt",
+    "capacityShortfallTitle": "Die Linie deckt nur {percent} % des Kundenbedarfs",
+    "capacityDetail": "Der Engpass lässt {exit} Stk./Tag durch, gefordert sind {demand} Stk./Tag. Der Bestand wächst dadurch laufend an; die Durchlaufzeit oben ist keine stabile Grösse, solange das so bleibt.",
+    "noPacemakerDetail": "Die Produktionssteuerung sendet den Auftrag aktuell an alle Prozesse. Lege im Prozess-Panel einen Schrittmacher fest, um das korrekt darzustellen.",
+    "pushTitle": "{count}× Push vor dem Schrittmacher statt Supermarkt oder FIFO",
+    "pushDetail": "Methodisch braucht alles vor dem Schrittmacher ein Pull-System (Supermarkt oder FIFO) — sonst baut sich davor unkontrolliert Bestand auf."
+  },
+  "Balance": {
+    "title": "Austaktungsdiagramm",
+    "subtitle": "Belegung je Station inkl. OEE-Verlusten, gemessen an der Taktzeit",
+    "bottleneck": "Engpass",
+    "taktLabel": "Takt {value} min",
+    "legendInTakt": "Arbeit im Takt",
+    "legendOverTakt": "Arbeit über Takt",
+    "legendOeeLoss": "OEE-Verlust",
+    "noCapacity": "keine Kapazität",
+    "zeroAxis": "0 min",
+    "minStationsPrefix": "Arbeitsinhalt {work} min ÷ Takt {takt} min =",
+    "minStationsStrong": "mindestens {count} taktkonforme Stationen",
+    "minStationsSuffix": "— aktuell sind es {actual}.",
+    "minStationsWarning": " Solange die Arbeit auf weniger Stationen verteilt ist, kann die Linie den Kundenbedarf rechnerisch nicht decken."
+  },
+  "Benchmark": {
+    "title": "Branchenvergleich",
+    "sampleDataWarning": "Beispieldaten — keine echten Branchenwerte",
+    "avgCycleTime": "Ø Zykluszeit",
+    "avgOee": "Ø OEE",
+    "higherIsBetter": "höher ist besser",
+    "lowerIsBetter": "kleiner ist besser",
+    "noReference": "Kein Vergleichswert für diese Auswahl.",
+    "unitMin": "min"
+  },
+  "Tier": {
+    "top": "Spitzenwert",
+    "good": "Gut",
+    "average": "Durchschnitt",
+    "needsImprovement": "Verbesserungsbedarf"
+  },
+  "Classification": {
+    "va": "Wertschöpfend (VA)",
+    "nva": "Nicht wertschöpfend (NVA)",
+    "necessaryNva": "Notwendig, nicht wertschöpfend"
+  },
+  "Scenario": {
+    "currentState": "Ist-Zustand",
+    "nameLabel": "Name",
+    "investmentLabel": "Investition (CHF)",
+    "paybackLabel": "Payback (Monate)",
+    "riskLabel": "Risiko",
+    "riskNone": "–",
+    "riskLow": "Niedrig",
+    "riskMedium": "Mittel",
+    "riskHigh": "Hoch",
+    "save": "Speichern",
+    "newScenario": "+ Neues Szenario",
+    "newIteration": "+ Neue Iteration",
+    "typeLabel": "Typ",
+    "typeTaken": " (vergeben)",
+    "scenarioNamePlaceholder": "z. B. Future State — Pull-System",
+    "create": "Anlegen",
+    "cancel": "Abbrechen",
+    "copyFromScenario": "Kopiert dieses Szenario als Startpunkt für die nächste Iteration — danach unabhängig editierbar.",
+    "copyFromCurrent": "Kopiert den aktuellen Ist-Zustand als Startpunkt — danach unabhängig editierbar.",
+    "deleteScenario": "Szenario löschen",
+    "confirmDelete": "Wirklich löschen?"
+  },
+  "Pdf": {
+    "documentTitle": "Wertstromanalyse",
+    "currentState": "Ist-Zustand",
+    "futureState": "Future State: {name}",
+    "footer": "Erstellt mit VSM Builder am {date}",
+    "methodCheckHeading": "METHODIKPRÜFUNG"
+  },
+  "CanvasLoader": {
+    "loading": "Diagramm wird geladen…"
   }
 }

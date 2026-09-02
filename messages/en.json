@@ -208,5 +208,299 @@
     "label": "Password",
     "show": "Show password",
     "hide": "Hide password"
+  },
+  "Glossary": {
+    "tooltipAria": "Definition: {term}",
+    "leadTime": {
+      "term": "Lead time",
+      "definition": "The time a part takes from the first to the last process step — including all waiting and buffer time in between, not just the processing itself."
+    },
+    "cycleTimeSum": {
+      "term": "Value-added time",
+      "definition": "The sum of the pure cycle times of every process in the chain — excluding the waiting time sitting in inventory between them."
+    },
+    "pce": {
+      "term": "Process cycle efficiency",
+      "definition": "Value-added time divided by lead time, as a percentage. Shows how much of the total lead time is actually value-adding rather than waiting in inventory. The rating follows rule-of-thumb figures from the lean literature for discrete manufacturing — below roughly 5 % is the unimproved norm, continuous flow starts around 25 %. Guide values, not a standard."
+    },
+    "taktTime": {
+      "term": "Takt time",
+      "definition": "Available production time divided by customer demand. The pace at which one part must be finished for demand to be met — not a measured processing value, but a target."
+    },
+    "availableMinutesPerDay": {
+      "term": "Available production time",
+      "definition": "How many minutes per day are actually produced (e.g. one 8-hour shift = 480 min, two shifts = 960 min, less breaks). The other factor in the takt time formula alongside customer demand."
+    },
+    "exitRate": {
+      "term": "Actual output (exit rate)",
+      "definition": "How many parts per day actually leave the value stream. Set by the slowest process (bottleneck / time trap) after its OEE losses: available production time ÷ bottleneck cycle time. Not to be confused with customer demand, which sets takt time — output is measured, takt is required. Together with WIP it gives the lead time: PLT = WIP ÷ output."
+    },
+    "balanceChart": {
+      "term": "Balance chart (Yamazumi)",
+      "definition": "One bar per station whose height shows its load including OEE losses, with takt time as a horizontal line. Unlike the timeline below the value stream, the axis here is the station rather than the sequence — which is what makes it readable which station breaks takt and where work content could be moved."
+    },
+    "capacityCoverage": {
+      "term": "Capacity coverage",
+      "definition": "Actual output divided by customer demand. Below 100 % the line cannot meet demand: inventory then grows continuously, and lead time is no longer a stable figure but rises with every day."
+    },
+    "processCycleTime": {
+      "term": "Cycle time (C/T)",
+      "definition": "The time a single process step takes to work on one part."
+    },
+    "changeoverTime": {
+      "term": "Changeover time (C/O)",
+      "definition": "The time to switch a machine or process from one product or variant to the next."
+    },
+    "oee": {
+      "term": "OEE",
+      "definition": "Overall equipment effectiveness: the product of availability, performance and quality. Shows how much of the theoretically possible time is actually used in a value-adding way."
+    },
+    "operatorCount": {
+      "term": "Operator count",
+      "definition": "How many people are needed to run this process step."
+    },
+    "pacemaker": {
+      "term": "Pacemaker process",
+      "definition": "The one process in the chain that sets the pace for the whole production — usually the last one before shipping. Production control schedules only here; every upstream process replenishes by pull."
+    },
+    "wip": {
+      "term": "WIP (work in process)",
+      "definition": "Inventory of unfinished parts between two process steps. Together with daily demand it determines how long a part waits at this point."
+    },
+    "bufferType": {
+      "term": "Inventory type",
+      "definition": "How inventory between two processes is controlled: standard (uncontrolled), supermarket (pull — replenished only on withdrawal), FIFO lane (fixed sequence, limited capacity) or continuous flow (no buffer, the part moves straight on)."
+    },
+    "flowStyle": {
+      "term": "Arrow type",
+      "definition": "How material flow is drawn: push (standard forwarding), pull (withdrawal from a supermarket), or shipment (delivery to/from supplier and customer). \"Automatic\" derives it from the inventory type."
+    },
+    "kanbanType": {
+      "term": "Kanban type",
+      "definition": "Only relevant with a supermarket: a production kanban triggers replenishment at the supplying process, a withdrawal kanban only triggers the transport of an already produced part."
+    },
+    "supermarket": {
+      "term": "Supermarket",
+      "definition": "A controlled buffer stock from which the downstream process withdraws exactly what it needs via kanban — the upstream process only replaces what was withdrawn."
+    },
+    "fifo": {
+      "term": "FIFO lane",
+      "definition": "A first-in-first-out connection between two processes with no free withdrawal — the processing sequence is strictly preserved, usually with limited capacity."
+    },
+    "onePieceFlow": {
+      "term": "One-piece flow (continuous flow)",
+      "definition": "Parts flow one at a time and without an intermediate buffer directly from one process to the next — no waiting, no inventory between the steps."
+    },
+    "bottleneck": {
+      "term": "Bottleneck",
+      "definition": "A process whose effective cycle time (cycle time ÷ OEE) exceeds takt time — in its current state it cannot serve customer demand."
+    },
+    "heijunka": {
+      "term": "Heijunka (production levelling)",
+      "definition": "Production mix and volume are spread evenly over time instead of running in large batches — it hangs off the pacemaker, because that is where production is actually scheduled."
+    },
+    "pitch": {
+      "term": "Pitch (control time increment)",
+      "definition": "A fixed time increment (a multiple of takt time) in which the pacemaker produces and releases a consistent quantity — it makes production control work in manageable portions rather than piece by piece."
+    },
+    "kaizenBlitz": {
+      "term": "Kaizen burst",
+      "definition": "A concrete improvement point marked at a process, needed to get from the current to the future state — not a general improvement wish, but a targeted note at exactly this spot."
+    }
+  },
+  "Editor": {
+    "kpiLeadTime": "Lead time",
+    "kpiPce": "Process cycle efficiency",
+    "kpiTaktTime": "Takt time",
+    "kpiExitRate": "Actual output",
+    "kpiCycleTimeSum": "Value-added time",
+    "unitDays": "days",
+    "unitMin": "min",
+    "unitPercent": "%",
+    "unitPiecesPerDay": "pcs/day",
+    "annualDemandLabel": "Annual customer demand (pcs/year)",
+    "annualDemandPlaceholder": "e.g. 50000",
+    "availableMinutesLabel": "Available production time (min/day)",
+    "availableMinutesPlaceholder": "e.g. 480",
+    "exportPdf": "Export PDF",
+    "exportingPdf": "Exporting…",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
+    "presentationMode": "Presentation mode",
+    "zoomHint": "Ctrl/Cmd + scroll wheel to zoom",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "fitView": "Fit to view",
+    "fitViewShifted": "View has been moved — back to the full map",
+    "tabsAria": "Analyses",
+    "tabBalance": "Balance chart",
+    "tabBenchmark": "Industry comparison",
+    "noProcessesYet": "No processes yet. Add the first one below.",
+    "processNameLabel": "Process name",
+    "processNamePlaceholder": "e.g. Turning",
+    "cycleTimeLabel": "Cycle time (min)",
+    "cycleTimePlaceholder": "e.g. 3.5",
+    "addProcess": "+ Add",
+    "importCsv": "Import CSV",
+    "csvColumns": "Columns: name, cycle_time, oee, wip",
+    "errorNameAndCycleTime": "Name and cycle time (minutes) are required.",
+    "errorAdding": "Could not add.",
+    "errorSaving": "Could not save.",
+    "errorReorder": "The order could not be changed.",
+    "errorLane": "The lane could not be changed.",
+    "errorConnect": "The connection could not be created.",
+    "errorDisconnect": "The connection could not be removed.",
+    "errorFields": "Please fill in all fields correctly.",
+    "errorDelete": "Could not delete.",
+    "errorNumber": "Please enter a valid number.",
+    "errorNotEmpty": "Must not be empty.",
+    "editProcess": "Edit process",
+    "position": "Position",
+    "moveEarlier": "Earlier in the sequence",
+    "moveLater": "Later in the sequence",
+    "laneUp": "Lane up",
+    "laneUpTitle": "Lane up (back to the main line)",
+    "laneDown": "Lane down",
+    "laneDownTitle": "Lane down — e.g. for parallel processes",
+    "changeoverLabel": "Changeover C/O (min)",
+    "oeeLabel": "OEE (%)",
+    "operatorsLabel": "Operators",
+    "wipBefore": "WIP before",
+    "wipAfter": "WIP after",
+    "connections": "Connections",
+    "predecessors": "Predecessors",
+    "successors": "Successors",
+    "none": "None",
+    "pacemakerProcess": "Pacemaker process",
+    "deleteProcess": "Delete process",
+    "confirmDelete": "Really delete?",
+    "wipLabel": "Inventory (WIP)",
+    "bufferTypeLabel": "Inventory type",
+    "bufferStandard": "Standard (uncontrolled)",
+    "bufferSupermarket": "Supermarket (pull)",
+    "bufferFifo": "FIFO lane",
+    "bufferContinuous": "Continuous flow (one-piece)",
+    "bufferSafetyStock": "Safety stock",
+    "flowStyleLabel": "Arrow type",
+    "flowAuto": "Automatic",
+    "flowPush": "Push",
+    "flowPull": "Pull",
+    "flowShipment": "Shipment",
+    "kanbanTypeLabel": "Kanban type",
+    "kanbanProduction": "Production kanban",
+    "kanbanWithdrawal": "Withdrawal kanban",
+    "save": "Save",
+    "close": "Close",
+    "effectiveCycleTime": "eff. cycle time: {value} min (feeds into value-added time and the capacity check — the cycle time itself is unchanged)",
+    "pacemakerHint": " (receives the schedule directly from production control)",
+    "anchorErp": "ERP / production control",
+    "leadTimeFormula": "{wip} pcs WIP ÷ {rate} pcs/day output",
+    "taktTimeFormula": "{minutes} min/day ÷ {demand} pcs/day customer demand",
+    "exitRateFormula": "{minutes} min/day ÷ {bottleneck} min bottleneck",
+    "fitViewLabel": "Fit",
+    "disconnect": "✕ disconnect",
+    "disconnectFrom": "Disconnect from {name}",
+    "disconnectTo": "Disconnect to {name}",
+    "choosePredecessor": "+ Choose predecessor…",
+    "chooseSuccessor": "+ Choose successor…",
+    "classificationLabel": "Value-added classification",
+    "classificationNone": "— not classified",
+    "unitPieces": "pcs"
+  },
+  "Canvas": {
+    "bottleneck": "⚠ Bottleneck",
+    "supplier": "Supplier",
+    "customer": "Customer",
+    "leadTimeAbbr": "PLT",
+    "valueAddedAbbr": "VA",
+    "daysUnit": "days",
+    "minUnit": "min",
+    "heijunka": "Heijunka",
+    "pitchCaption": "Pitch: {minutes} min",
+    "safetyStockAbbr": "SS",
+    "piecesUnit": "pcs"
+  },
+  "MethodCheck": {
+    "title": "Method check",
+    "show": "Show",
+    "collapse": "Collapse",
+    "severityCritical": "Metric affected",
+    "severityWarning": "Methodologically unsound",
+    "hintCount": "{count, plural, one {# note} other {# notes}}",
+    "noPacemakerTitle": "No pacemaker process set",
+    "capacityShortfallTitle": "The line covers only {percent} % of customer demand",
+    "capacityDetail": "The bottleneck lets {exit} pcs/day through, {demand} pcs/day are required. Inventory therefore grows continuously; the lead time above is not a stable figure as long as that holds.",
+    "noPacemakerDetail": "Production control currently sends the schedule to every process. Set a pacemaker in the process panel to represent this correctly.",
+    "pushTitle": "{count}× push upstream of the pacemaker instead of supermarket or FIFO",
+    "pushDetail": "Methodologically, everything upstream of the pacemaker needs a pull system (supermarket or FIFO) — otherwise inventory builds up in front of it uncontrolled."
+  },
+  "Balance": {
+    "title": "Balance chart",
+    "subtitle": "Load per station including OEE losses, measured against takt time",
+    "bottleneck": "Bottleneck",
+    "taktLabel": "Takt {value} min",
+    "legendInTakt": "Work within takt",
+    "legendOverTakt": "Work above takt",
+    "legendOeeLoss": "OEE loss",
+    "noCapacity": "no capacity",
+    "zeroAxis": "0 min",
+    "minStationsPrefix": "Work content {work} min ÷ takt {takt} min =",
+    "minStationsStrong": "at least {count} takt-compliant stations",
+    "minStationsSuffix": "— currently there are {actual}.",
+    "minStationsWarning": " As long as the work is spread across fewer stations, the line cannot meet customer demand arithmetically."
+  },
+  "Benchmark": {
+    "title": "Industry comparison",
+    "sampleDataWarning": "Sample data — not real industry figures",
+    "avgCycleTime": "Avg. cycle time",
+    "avgOee": "Avg. OEE",
+    "higherIsBetter": "higher is better",
+    "lowerIsBetter": "lower is better",
+    "noReference": "No reference value for this selection.",
+    "unitMin": "min"
+  },
+  "Tier": {
+    "top": "Top quartile",
+    "good": "Good",
+    "average": "Average",
+    "needsImprovement": "Needs improvement"
+  },
+  "Classification": {
+    "va": "Value-adding (VA)",
+    "nva": "Non-value-adding (NVA)",
+    "necessaryNva": "Necessary, non-value-adding"
+  },
+  "Scenario": {
+    "currentState": "Current state",
+    "nameLabel": "Name",
+    "investmentLabel": "Investment (CHF)",
+    "paybackLabel": "Payback (months)",
+    "riskLabel": "Risk",
+    "riskNone": "–",
+    "riskLow": "Low",
+    "riskMedium": "Medium",
+    "riskHigh": "High",
+    "save": "Save",
+    "newScenario": "+ New scenario",
+    "newIteration": "+ New iteration",
+    "typeLabel": "Type",
+    "typeTaken": " (taken)",
+    "scenarioNamePlaceholder": "e.g. Future state — pull system",
+    "create": "Create",
+    "cancel": "Cancel",
+    "copyFromScenario": "Copies this scenario as the starting point for the next iteration — independently editable afterwards.",
+    "copyFromCurrent": "Copies the current state as the starting point — independently editable afterwards.",
+    "deleteScenario": "Delete scenario",
+    "confirmDelete": "Really delete?"
+  },
+  "Pdf": {
+    "documentTitle": "Value stream map",
+    "currentState": "Current state",
+    "futureState": "Future state: {name}",
+    "footer": "Created with VSM Builder on {date}",
+    "methodCheckHeading": "METHOD CHECK"
+  },
+  "CanvasLoader": {
+    "loading": "Loading the map…"
   }
 }

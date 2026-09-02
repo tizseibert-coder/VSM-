@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import type { Tables } from '@/types/database'
 import { updateScenarioMeta } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 import DeleteScenarioButton from './DeleteScenarioButton'
@@ -10,7 +11,7 @@ type Scenario = Tables<'scenarios'>
 // (investment cost, payback, risk) — the WIP-reduction/lead-time numbers
 // themselves are now computed live from the copied buffers, shown on the
 // /compare page, so there's no separate manual "estimated %" field anymore.
-export default function ScenarioMetaPanel({
+export default async function ScenarioMetaPanel({
   projectId,
   scenario,
   usedTypes,
@@ -20,12 +21,13 @@ export default function ScenarioMetaPanel({
   /** Alle Szenario-Typen des Projekts — Vorbelegung im Iterations-Dropdown. */
   usedTypes: (string | null)[]
 }) {
+  const t = await getTranslations('Scenario')
   return (
     <div className="mt-3 flex flex-wrap items-end gap-3 rounded-surface border border-zinc-200 p-4">
       <form action={updateScenarioMeta.bind(null, projectId, scenario.id)} className="flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="sm-name" className="block text-xs font-medium text-zinc-600">
-            Name
+            {t('nameLabel')}
           </label>
           <input
             id="sm-name"
@@ -36,7 +38,7 @@ export default function ScenarioMetaPanel({
         </div>
         <div>
           <label htmlFor="sm-investment" className="block text-xs font-medium text-zinc-600">
-            Investition (CHF)
+            {t('investmentLabel')}
           </label>
           <input
             id="sm-investment"
@@ -49,7 +51,7 @@ export default function ScenarioMetaPanel({
         </div>
         <div>
           <label htmlFor="sm-payback" className="block text-xs font-medium text-zinc-600">
-            Payback (Monate)
+            {t('paybackLabel')}
           </label>
           <input
             id="sm-payback"
@@ -63,7 +65,7 @@ export default function ScenarioMetaPanel({
         </div>
         <div>
           <label htmlFor="sm-risk" className="block text-xs font-medium text-zinc-600">
-            Risiko
+            {t('riskLabel')}
           </label>
           <select
             id="sm-risk"
@@ -71,24 +73,24 @@ export default function ScenarioMetaPanel({
             defaultValue={scenario.risk_level ?? ''}
             className="mt-1 w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           >
-            <option value="">–</option>
-            <option value="low">Niedrig</option>
-            <option value="medium">Mittel</option>
-            <option value="high">Hoch</option>
+            <option value="">{t('riskNone')}</option>
+            <option value="low">{t('riskLow')}</option>
+            <option value="medium">{t('riskMedium')}</option>
+            <option value="high">{t('riskHigh')}</option>
           </select>
         </div>
         <button
           type="submit"
           className={buttonPrimary}
         >
-          Speichern
+          {t('save')}
         </button>
       </form>
 
       <NewScenarioDisclosure
         projectId={projectId}
         sourceScenarioId={scenario.id}
-        label="+ Neue Iteration"
+        label={t('newIteration')}
         usedTypes={usedTypes}
       />
       <DeleteScenarioButton projectId={projectId} scenarioId={scenario.id} />

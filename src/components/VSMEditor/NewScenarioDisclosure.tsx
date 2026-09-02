@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { createScenario } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 import { buttonPrimary } from '@/components/ui/buttons'
 
@@ -37,9 +38,10 @@ export default function NewScenarioDisclosure({
   label?: string
   usedTypes?: (string | null)[]
 }) {
+  const t = useTranslations('Scenario')
   const [isOpen, setIsOpen] = useState(false)
-  const buttonLabel = label ?? '+ Neues Szenario'
-  const nextFreeType = SCENARIO_TYPES.find((t) => !usedTypes.includes(t)) ?? SCENARIO_TYPES[0]
+  const buttonLabel = label ?? t('newScenario')
+  const nextFreeType = SCENARIO_TYPES.find((type) => !usedTypes.includes(type)) ?? SCENARIO_TYPES[0]
 
   if (!isOpen) {
     return (
@@ -68,47 +70,47 @@ export default function NewScenarioDisclosure({
       >
         {sourceScenarioId && <input type="hidden" name="sourceScenarioId" value={sourceScenarioId} />}
         <label className="text-xs font-medium text-zinc-600">
-          Typ
+          {t('typeLabel')}
           <select
             name="type"
             defaultValue={nextFreeType}
             className="mt-1 w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           >
-            {SCENARIO_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-                {usedTypes.includes(t) ? ' (vergeben)' : ''}
+            {SCENARIO_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+                {usedTypes.includes(type) ? t('typeTaken') : ''}
               </option>
             ))}
           </select>
         </label>
         <label className="text-xs font-medium text-zinc-600">
-          Name
+          {t('nameLabel')}
           <input
             name="name"
             required
-            placeholder="z. B. Future State — Pull-System"
+            placeholder={t('scenarioNamePlaceholder')}
             className="mt-1 w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>
         <p className="text-xs text-zinc-500">
           {sourceScenarioId
-            ? 'Kopiert dieses Szenario als Startpunkt für die nächste Iteration — danach unabhängig editierbar.'
-            : 'Kopiert den aktuellen Ist-Zustand als Startpunkt — danach unabhängig editierbar.'}
+            ? t('copyFromScenario')
+            : t('copyFromCurrent')}
         </p>
         <div className="mt-1 flex items-center gap-2">
           <button
             type="submit"
             className={buttonPrimary}
           >
-            Anlegen
+            {t('create')}
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
             className="rounded-control px-4 py-1.5 text-sm font-medium text-zinc-500 hover:bg-zinc-100"
           >
-            Abbrechen
+            {t('cancel')}
           </button>
         </div>
       </form>

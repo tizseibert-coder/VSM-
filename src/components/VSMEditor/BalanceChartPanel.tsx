@@ -14,6 +14,7 @@
 // soon as it approached full height — the tall bars were clipped.
 
 import { buildBalanceChart, type BalanceProcessInput } from '@/lib/vsm/balance'
+import { useTranslations } from 'next-intl'
 import { TermTooltip } from './TermTooltip'
 
 const PLOT_HEIGHT_PX = 200
@@ -25,6 +26,7 @@ export function BalanceChartPanel({
   processes: BalanceProcessInput[]
   taktTimeMinutes: number | null
 }) {
+  const t = useTranslations('Balance')
   const chart = buildBalanceChart(processes, taktTimeMinutes)
 
   if (chart.bars.length === 0) {
@@ -42,10 +44,10 @@ export function BalanceChartPanel({
     <section className="rounded-surface border border-zinc-200 bg-white p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-zinc-950">
-          <TermTooltip term="balanceChart">Austaktungsdiagramm</TermTooltip>
+          <TermTooltip term="balanceChart">{t('title')}</TermTooltip>
         </h2>
         <p className="text-xs text-zinc-500">
-          Belegung je Station inkl. OEE-Verlusten, gemessen an der Taktzeit
+          {t('subtitle')}
         </p>
       </div>
 
@@ -57,7 +59,7 @@ export function BalanceChartPanel({
           aria-hidden="true"
         >
           <span>{axisMax.toFixed(1)}</span>
-          <span>0 min</span>
+          <span>{t('zeroAxis')}</span>
         </div>
 
         <div className="min-w-0 flex-1">
@@ -70,7 +72,7 @@ export function BalanceChartPanel({
                 style={{ bottom: `${taktLinePercent}%` }}
               >
                 <span className="absolute -top-6 right-0 rounded-control bg-brand-600 px-1.5 py-0.5 text-xs font-medium text-white">
-                  Takt {chart.taktTimeMinutes?.toFixed(1)} min
+                  {t('taktLabel', { value: chart.taktTimeMinutes?.toFixed(1) ?? '' })}
                 </span>
               </div>
             )}
@@ -115,7 +117,7 @@ export function BalanceChartPanel({
                   {bar.name}
                 </p>
                 <p className="text-xs tabular-nums text-zinc-500">
-                  {Number.isFinite(bar.totalMinutes) ? `${bar.totalMinutes.toFixed(2)} min` : 'keine Kapazität'}
+                  {Number.isFinite(bar.totalMinutes) ? `${bar.totalMinutes.toFixed(2)} min` : t('noCapacity')}
                   {bar.taktRatio !== null && Number.isFinite(bar.taktRatio) && (
                     <span className={bar.isOverTakt ? ' text-red-600' : ''}>
                       {' '}
@@ -124,7 +126,7 @@ export function BalanceChartPanel({
                   )}
                 </p>
                 {bar.isBottleneck && (
-                  <p className="text-xs font-medium text-zinc-950">Engpass</p>
+                  <p className="text-xs font-medium text-zinc-950">{t('bottleneck')}</p>
                 )}
               </li>
             ))}
@@ -134,26 +136,27 @@ export function BalanceChartPanel({
 
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-zinc-500">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-600" /> Arbeit im Takt
+          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-600" /> {t('legendInTakt')}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-red-600" /> Arbeit über Takt
+          <span className="h-2.5 w-2.5 rounded-sm bg-red-600" /> {t('legendOverTakt')}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm bg-zinc-300" /> OEE-Verlust
+          <span className="h-2.5 w-2.5 rounded-sm bg-zinc-300" /> {t('legendOeeLoss')}
         </span>
       </div>
 
       {chart.minimumStations !== null && (
         <p className="mt-4 rounded-control bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-          Arbeitsinhalt {chart.totalWorkContentMinutes.toFixed(1)} min ÷ Takt{' '}
-          {chart.taktTimeMinutes?.toFixed(1)} min ={' '}
+          {t('minStationsPrefix', {
+            work: chart.totalWorkContentMinutes.toFixed(1),
+            takt: chart.taktTimeMinutes?.toFixed(1) ?? '',
+          })}{' '}
           <strong className="font-semibold text-zinc-950">
-            mindestens {chart.minimumStations} taktkonforme Stationen
+            {t('minStationsStrong', { count: chart.minimumStations })}
           </strong>{' '}
-          — aktuell sind es {chart.bars.length}.
-          {chart.minimumStations > chart.bars.length &&
-            ' Solange die Arbeit auf weniger Stationen verteilt ist, kann die Linie den Kundenbedarf rechnerisch nicht decken.'}
+          {t('minStationsSuffix', { actual: chart.bars.length })}
+          {chart.minimumStations > chart.bars.length && t('minStationsWarning')}
         </p>
       )}
     </section>

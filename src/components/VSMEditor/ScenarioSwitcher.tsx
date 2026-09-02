@@ -1,4 +1,5 @@
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
 import type { Tables } from '@/types/database'
 import NewScenarioDisclosure from './NewScenarioDisclosure'
 
@@ -9,7 +10,7 @@ const TYPE_LABEL: Record<string, string> = { A: 'A', B: 'B', C: 'C' }
 // Server Component: no client state needed, the "+ Neues Szenario" form is a
 // plain <details> disclosure so it works without JS (same low-JS approach as
 // the dashboard page's forms).
-export default function ScenarioSwitcher({
+export default async function ScenarioSwitcher({
   projectId,
   scenarios,
   activeScenarioId,
@@ -18,6 +19,7 @@ export default function ScenarioSwitcher({
   scenarios: Scenario[]
   activeScenarioId: string | null
 }) {
+  const t = await getTranslations('Scenario')
   const tabClass = (isActive: boolean) =>
     `rounded-control px-4 py-1.5 text-sm font-medium ${
       isActive
@@ -28,7 +30,7 @@ export default function ScenarioSwitcher({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Link href={`/editor/${projectId}`} className={tabClass(activeScenarioId === null)}>
-        Ist-Zustand
+        {t('currentState')}
       </Link>
       {scenarios.map((scenario) => (
         <Link

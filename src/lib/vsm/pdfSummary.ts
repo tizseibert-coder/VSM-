@@ -3,6 +3,11 @@
 // from the actual jsPDF/Konva glue (in VSMCanvas.tsx) because that part is
 // side-effecting (touches the DOM/Blob/download) and not meaningfully
 // unit-testable — this piece, the actual content, is pure and is.
+//
+// Seit der Mehrsprachigkeit kommen die Beschriftungen als Parameter herein,
+// statt hier als deutsche Zeichenketten zu stehen. Die Funktionen bleiben
+// damit rein und testbar; die Sprache kennt nur der Aufrufer, der ohnehin im
+// React-Baum haengt und uebersetzen kann.
 
 export interface PdfKpiInput {
   totalLeadTimeDays: number | null
@@ -11,13 +16,38 @@ export interface PdfKpiInput {
   taktTimeMinutes: number | null
 }
 
-/** One line per KPI, in the same order as the on-screen KPI bar. '–' for values that aren't computable yet (no takt/throughput set), matching the KPI bar's own placeholder. */
-export function buildKpiSummaryLines(kpis: PdfKpiInput): string[] {
+/** Beschriftungen und Einheiten fuer den Kennzahlenblock. */
+export interface PdfKpiLabels {
+  cycleTimeSum: string
+  leadTime: string
+  pce: string
+  taktTime: string
+  unitMin: string
+  unitDays: string
+  unitPercent: string
+}
+
+/**
+ * One line per KPI, in the same order as the on-screen KPI bar. '–' for
+ * values that aren't computable yet (no takt/throughput set), matching the
+ * KPI bar's own placeholder.
+ */
+export function buildKpiSummaryLines(kpis: PdfKpiInput, labels: PdfKpiLabels): string[] {
   return [
-    `Bearbeitungszeit: ${kpis.totalCycleTimeMinutes.toFixed(1)} min`,
-    `Durchlaufzeit: ${kpis.totalLeadTimeDays !== null && kpis.totalLeadTimeDays > 0 ? `${kpis.totalLeadTimeDays.toFixed(1)} Tage` : '–'}`,
-    `Wertschöpfungsanteil: ${kpis.valueAddedRatioPercent !== null ? `${kpis.valueAddedRatioPercent.toFixed(2)} %` : '–'}`,
-    `Taktzeit: ${kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} min` : '–'}`,
+    `${labels.cycleTimeSum}: ${kpis.totalCycleTimeMinutes.toFixed(1)} ${labels.unitMin}`,
+    `${labels.leadTime}: ${
+      kpis.totalLeadTimeDays !== null && kpis.totalLeadTimeDays > 0
+        ? `${kpis.totalLeadTimeDays.toFixed(1)} ${labels.unitDays}`
+        : '–'
+    }`,
+    `${labels.pce}: ${
+      kpis.valueAddedRatioPercent !== null
+        ? `${kpis.valueAddedRatioPercent.toFixed(2)} ${labels.unitPercent}`
+        : '–'
+    }`,
+    `${labels.taktTime}: ${
+      kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} ${labels.unitMin}` : '–'
+    }`,
   ]
 }
 
@@ -29,16 +59,11 @@ export function buildKpiSummaryLines(kpis: PdfKpiInput): string[] {
  * Diagramm selbst sagen, um welche Art Dokument es geht, und das Datum steht
  * in der Fusszeile. Bei einem Projekt namens "Beispiel: Wertstromanalyse
  * Dreherei" stand das Wort dadurch zweimal in derselben Zeile.
+ *
+ * `fallback` greift nur, wenn das Projekt gar keinen Namen traegt.
  */
-export function buildPdfTitle(projectName: string): string {
-  return projectName.trim() || 'Wertstromanalyse'
-}
-
-/** dd.mm.yyyy — die im DACH-Raum erwartete Schreibweise. */
-function formatDate(now: Date): string {
-  const dd = String(now.getDate()).padStart(2, '0')
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
-  return `${dd}.${mm}.${now.getFullYear()}`
+export function buildPdfTitle(projectName: string, fallback: string): string {
+  return projectName.trim() || fallback
 }
 
 /**
@@ -46,14 +71,12 @@ function formatDate(now: Date): string {
  *
  * Ein Ausdruck ohne diese Angabe ist im Lenkungsgremium wertlos: Niemand kann
  * unterscheiden, ob er die Messung oder einen Verbesserungsvorschlag in der
- * Hand hält — und genau darauf beruht die Entscheidung, die dort fällt.
+ * Hand haelt — und genau darauf beruht die Entscheidung, die dort faellt.
  */
-export function buildPdfSubtitle(scenarioName: string | null): string {
+export function buildPdfSubtitle(
+  scenarioName: string | null,
+  labels: { currentState: string; futureState: (name: string) => string }
+): string {
   const trimmed = scenarioName?.trim()
-  return trimmed ? `Future State: ${trimmed}` : 'Ist-Zustand'
-}
-
-/** Fusszeile: sagt, woraus das Blatt stammt und wann es gezogen wurde. */
-export function buildPdfFooterLine(now: Date = new Date()): string {
-  return `Erstellt mit VSM Builder am ${formatDate(now)}`
+  return trimmed ? labels.futureState(trimmed) : labels.currentState
 }
