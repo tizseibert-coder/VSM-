@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import VSMCanvasLoader from '@/components/VSMEditor/VSMCanvasLoader'
 import ScenarioSwitcher from '@/components/VSMEditor/ScenarioSwitcher'
@@ -15,6 +16,9 @@ export default async function EditorPage({
 }) {
   const { projectId } = await params
   const { scenario: scenarioParam, error } = await searchParams
+  const t = await getTranslations('Editor')
+  const tNav = await getTranslations('Nav')
+  const tWizard = await getTranslations('Wizard')
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -57,7 +61,7 @@ export default async function EditorPage({
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-6">
         <div>
           <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
-            ← Dashboard
+            {tNav('backToDashboard')}
           </Link>
           <span className="mx-1.5 text-xs text-zinc-600">·</span>
           <span className="text-xs font-semibold uppercase tracking-widest text-brand-600">
@@ -71,14 +75,14 @@ export default async function EditorPage({
               href={`/editor/${projectId}/future-state?scenario=${activeScenario.id}`}
               className={buttonSecondary}
             >
-              Future-State-Wizard
+              {tWizard('title')}
             </Link>
           )}
           <Link
             href={`/editor/${projectId}/compare`}
             className={buttonSecondary}
           >
-            Szenarien vergleichen
+            {t('compareScenarios')}
           </Link>
         </div>
       </header>

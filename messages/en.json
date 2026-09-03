@@ -14,7 +14,8 @@
   "Nav": {
     "demo": "Demo",
     "login": "Sign in",
-    "signup": "Get started free"
+    "signup": "Get started free",
+    "backToDashboard": "← Dashboard"
   },
   "Home": {
     "heroTitle": "Value stream mapping that calculates.",
@@ -419,7 +420,13 @@
     "pieceValuePlaceholder": "e.g. 50",
     "currencyLabel": "Currency",
     "kpiTiedUpCapital": "Tied-up capital",
-    "tiedUpCapitalFormula": "{wip} pcs × {value} each"
+    "tiedUpCapitalFormula": "{wip} pcs × {value} each",
+    "compareScenarios": "Compare scenarios",
+    "editAnchor": "Edit {title}",
+    "anchorLabelField": "Label",
+    "laneNumber": "Lane {lane}",
+    "unknownProcess": "(unknown)",
+    "errorCsvImport": "CSV import failed."
   },
   "Canvas": {
     "bottleneck": "⚠ Bottleneck",
@@ -599,7 +606,8 @@
     "linkCreatedSuffix": ". Copy it now — it will not be shown again.",
     "copy": "Copy",
     "copied": "Copied",
-    "yourRole": "{org} · your role: {role}"
+    "yourRole": "{org} · your role: {role}",
+    "inviteDates": "Created {created} · valid until {expires}"
   },
   "Invite": {
     "title": "Team invitation",
@@ -658,7 +666,7 @@
     "q2SafetyStock": "Safety stock",
     "q2Stock": "Inventory (pcs)",
     "noInternalConnections": "No internal connections between processes yet.",
-    "q3Hint": "Just the yes/no decision: “does this connection flow straight on without an intermediate buffer?”",
+    "q3Hint": "Just the yes/no decision: “does this connection flow straight on without an intermediate buffer?” — for supermarket, FIFO or push on the remaining connections see question 4.",
     "supplier": "Supplier",
     "customer": "Customer",
     "q3ContinuousFlow": "Continuous flow",
@@ -675,7 +683,13 @@
     "q6NeedsPacemaker": "Answer question 5 (pacemaker) first — heijunka hangs off the pacemaker methodologically.",
     "q6HeijunkaActive": "Heijunka box active",
     "q7Pitch": "Pitch (min)",
-    "q8NotePlaceholder": "e.g. halve changeover time"
+    "q8NotePlaceholder": "e.g. halve changeover time",
+    "q2Handover": "Handover to the customer.",
+    "q2HandoverAfter": "Handover to the customer (after {name}).",
+    "q5ChooseProcess": "— pick a process —",
+    "q6PacemakerIs": "Pacemaker: {name}",
+    "previousQuestion": "← Question {id}",
+    "nextQuestion": "Question {id} →"
   },
   "Errors": {
     "projectNameEmpty": "The project name must not be empty.",

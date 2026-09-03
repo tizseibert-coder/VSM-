@@ -115,7 +115,7 @@ function BenchmarkRow({
   if (value === null || !reference || reference.p25 === null || reference.median === null || reference.p75 === null) {
     return (
       <div className="rounded-surface border border-dashed border-zinc-300 p-3 text-sm text-zinc-500">
-        {label}: keine Daten für diese Auswahl.
+        {label}: {t('noReference')}
       </div>
     )
   }

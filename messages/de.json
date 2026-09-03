@@ -14,7 +14,8 @@
   "Nav": {
     "demo": "Demo",
     "login": "Anmelden",
-    "signup": "Kostenlos starten"
+    "signup": "Kostenlos starten",
+    "backToDashboard": "← Dashboard"
   },
   "Home": {
     "heroTitle": "Wertstromanalyse, die rechnet.",
@@ -419,7 +420,13 @@
     "pieceValuePlaceholder": "z. B. 50",
     "currencyLabel": "Währung",
     "kpiTiedUpCapital": "Gebundenes Kapital",
-    "tiedUpCapitalFormula": "{wip} Stk × {value} je Stück"
+    "tiedUpCapitalFormula": "{wip} Stk × {value} je Stück",
+    "compareScenarios": "Szenarien vergleichen",
+    "editAnchor": "{title} bearbeiten",
+    "anchorLabelField": "Bezeichnung",
+    "laneNumber": "Spur {lane}",
+    "unknownProcess": "(unbekannt)",
+    "errorCsvImport": "CSV-Import fehlgeschlagen."
   },
   "Canvas": {
     "bottleneck": "⚠ Engpass",
@@ -599,7 +606,8 @@
     "linkCreatedSuffix": "einlösen. Kopiere ihn jetzt — er wird nicht noch einmal angezeigt.",
     "copy": "Kopieren",
     "copied": "Kopiert",
-    "yourRole": "{org} · deine Rolle: {role}"
+    "yourRole": "{org} · deine Rolle: {role}",
+    "inviteDates": "Erstellt {created} · gültig bis {expires}"
   },
   "Invite": {
     "title": "Einladung ins Team",
@@ -658,7 +666,7 @@
     "q2SafetyStock": "Sicherheitsbestand",
     "q2Stock": "Bestand (Stück)",
     "noInternalConnections": "Noch keine internen Verbindungen zwischen Prozessen vorhanden.",
-    "q3Hint": "Nur die Ja/Nein-Entscheidung „läuft diese Verbindung ohne Zwischenpuffer direkt weiter?“",
+    "q3Hint": "Nur die Ja/Nein-Entscheidung „läuft diese Verbindung ohne Zwischenpuffer direkt weiter?“ — für Supermarkt, FIFO oder Push bei den verbleibenden Verbindungen siehe Frage 4.",
     "supplier": "Lieferant",
     "customer": "Kunde",
     "q3ContinuousFlow": "Continuous Flow",
@@ -675,7 +683,13 @@
     "q6NeedsPacemaker": "Erst Frage 5 (Schrittmacher) beantworten — Heijunka hängt methodisch am Schrittmacher.",
     "q6HeijunkaActive": "Heijunka-Box aktiv",
     "q7Pitch": "Pitch (min)",
-    "q8NotePlaceholder": "z. B. Rüstzeit halbieren"
+    "q8NotePlaceholder": "z. B. Rüstzeit halbieren",
+    "q2Handover": "Übergabe an den Kunden.",
+    "q2HandoverAfter": "Übergabe an den Kunden (nach {name}).",
+    "q5ChooseProcess": "— Prozess wählen —",
+    "q6PacemakerIs": "Schrittmacher: {name}",
+    "previousQuestion": "← Frage {id}",
+    "nextQuestion": "Frage {id} →"
   },
   "Errors": {
     "projectNameEmpty": "Projektname darf nicht leer sein.",

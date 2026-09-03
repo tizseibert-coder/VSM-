@@ -1299,7 +1299,7 @@ export default function VSMCanvas({
           await importProcessesCsv(project.id, scenarioId, text)
           router.refresh()
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'CSV-Import fehlgeschlagen.')
+          setError(err instanceof Error ? err.message : t('errorCsvImport'))
         }
       })
     }
@@ -2401,7 +2401,7 @@ function ProcessEditPanel({
 
   function processLabel(id: string | null): string {
     if (id === null) return '—'
-    return allProcesses.find((p) => p.id === id)?.name ?? '(unbekannt)'
+    return allProcesses.find((p) => p.id === id)?.name ?? t('unknownProcess')
   }
 
   // Candidates for a new predecessor: any other process not already a
@@ -2647,7 +2647,7 @@ function ProcessEditPanel({
             disabled={process.lane <= 0}
             className={secondaryButtonClass}
             aria-label={t('laneUpTitle')}
-            title="Spur höher"
+            title={t('laneUp')}
           >
             ↑
           </button>
@@ -2662,7 +2662,7 @@ function ProcessEditPanel({
           </button>
         </div>
         {process.lane > 0 && (
-          <span className="text-xs text-zinc-500">Spur {process.lane + 1}</span>
+          <span className="text-xs text-zinc-500">{t('laneNumber', { lane: process.lane + 1 })}</span>
         )}
       </div>
 
@@ -3122,10 +3122,10 @@ function AnchorEditPanel({
       onSubmit={handleSave}
       className={`${editPanelShell} flex flex-wrap items-end gap-3`}
     >
-      <h2 className="text-sm font-semibold text-zinc-950">{title} bearbeiten</h2>
+      <h2 className="text-sm font-semibold text-zinc-950">{t('editAnchor', { title })}</h2>
       <div>
         <label htmlFor="anchor-label" className="block text-xs font-medium text-zinc-600">
-          Bezeichnung
+          {t('anchorLabelField')}
         </label>
         <input
           id="anchor-label"
