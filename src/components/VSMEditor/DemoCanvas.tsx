@@ -1,33 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DEMO_BUFFERS, DEMO_PROCESSES, DEMO_PROJECT } from '@/lib/vsm/demoProject'
-import type { DemoState } from '@/lib/vsm/demoStore'
-import { DemoModeProvider } from './DemoModeContext'
+import type { VsmState } from '@/lib/vsm/vsmStore'
+import { VsmMutationProvider } from './VsmMutationContext'
 import VSMCanvasLoader from './VSMCanvasLoader'
 
 /**
  * Haelt den Zustand der Demo im Browser.
  *
- * Im Normalbetrieb kommt dieser Zustand vom Server: Der Editor bekommt
- * initialProcesses als Prop, schickt jede Aenderung als Server-Action raus
- * und bekommt ueber router.refresh() neue Props. Hier uebernimmt useState
- * dieselbe Rolle — der Editor merkt den Unterschied nicht, er sieht in beiden
- * Faellen nur Props.
+ * Der Editor arbeitet in beiden Betriebsarten auf einem Zustand, den er selbst
+ * haelt und aus seinen Props nachfuehrt (siehe VSMCanvas). Im Normalbetrieb
+ * kommen diese Props vom Server; hier kommen sie aus diesem useState, und der
+ * Zustand ueberlebt damit auch ein Aus- und Wiedereinklappen des Canvas.
  *
  * Nichts wird gespeichert. Ein Neuladen der Seite setzt die Demo zurueck, und
  * das ist beabsichtigt: Ohne Konto gibt es keinen Ort, an dem die Aenderungen
- * jemandem gehoeren wuerden.
+ * jemandem gehoeren wuerden. `isDemo` sagt dem Editor genau das — er laesst
+ * dann die Server-Actions weg, die es hier nicht gibt.
  */
 export default function DemoCanvas() {
-  const [state, setState] = useState<DemoState>({
+  const [state, setState] = useState<VsmState>({
     project: DEMO_PROJECT,
     processes: DEMO_PROCESSES,
     buffers: DEMO_BUFFERS,
   })
 
+  // setState ist stabil, der Wert aendert sich also nie — ohne useMemo waere
+  // es bei jedem Zeichnen ein neues Objekt und jeder Verbraucher des Context
+  // wuerde umsonst neu zeichnen.
+  const mutation = useMemo(() => ({ mutate: setState, isDemo: true }), [])
+
   return (
-    <DemoModeProvider value={setState}>
+    <VsmMutationProvider value={mutation}>
       <VSMCanvasLoader
         project={state.project}
         scenarioId={null}
@@ -35,6 +40,6 @@ export default function DemoCanvas() {
         initialProcesses={state.processes}
         initialBuffers={state.buffers}
       />
-    </DemoModeProvider>
+    </VsmMutationProvider>
   )
 }
