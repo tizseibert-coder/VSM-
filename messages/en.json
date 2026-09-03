@@ -328,6 +328,7 @@
     "exitFullscreen": "Exit full screen",
     "presentationMode": "Presentation mode",
     "zoomHint": "Ctrl/Cmd + scroll wheel to zoom",
+    "panHint": "Swipe to pan — turn the phone sideways and the whole stream fits. Tap to dismiss.",
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
     "fitView": "Fit to view",

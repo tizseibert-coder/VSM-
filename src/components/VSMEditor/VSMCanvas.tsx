@@ -300,6 +300,12 @@ export default function VSMCanvas({
   // Strg/Cmd ueber der Zeichenflaeche scrollt (siehe handleWheel), und dann
   // nur fuer zwei Sekunden.
   const [showZoomHint, setShowZoomHint] = useState(false)
+  // [Bedienbarkeitsprüfung 2026-09-03, B3] Der Zoom-Hinweis daneben gilt fuer
+  // Maus und Trackpad. Am Telefon fehlte jeder Hinweis darauf, dass die Kette
+  // ueber den Rand hinausgeht und sich schieben laesst — der Zoom-Hinweis
+  // erscheint beim Mausrad, das es dort nicht gibt. Dieser hier steht, bis er
+  // weggetippt oder die Ansicht zum ersten Mal bewegt wird.
+  const [panHintDismissed, setPanHintDismissed] = useState(false)
   const zoomHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   // Nur im Vollbild gebraucht: dort bestimmt der Bildschirm die Höhe, sonst
@@ -319,6 +325,21 @@ export default function VSMCanvas({
   const stageContainerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
+
+  // [Bedienbarkeitsprüfung 2026-09-03, B1/B2] Am Telefon liegt das
+  // Bearbeitungsfeld als Blatt ueber dem unteren Rand (siehe editPanelShell).
+  // Damit daneben ueberhaupt etwas zu sehen ist, holt jede Auswahl die
+  // Zeichenflaeche an den oberen Rand — vorher bearbeitete man eine Box, die
+  // eine Bildschirmhoehe weiter oben stand. Ab lg passiert nichts: Dort stehen
+  // Diagramm und Feld ohnehin gemeinsam im Bild.
+  useEffect(() => {
+    if (!selection || typeof window === 'undefined') return
+    if (window.innerWidth >= 1024) return
+    const container = stageContainerRef.current
+    if (!container) return
+    const jumpsInstead = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    container.scrollIntoView({ behavior: jumpsInstead ? 'auto' : 'smooth', block: 'start' })
+  }, [selection])
 
   // Der Zustand, aus dem tatsaechlich gezeichnet wird.
   //
@@ -644,12 +665,27 @@ export default function VSMCanvas({
   // darunter bleibt zwangsläufig Platz — das Diagramm kann die Höhe gar nicht
   // füllen, ohne seitlich herauszulaufen. Oben angeschlagen sah das aus wie ein
   // halb geladenes Bild; zentriert sieht es aus wie ein Blatt.
+  // [Bedienbarkeitsprüfung 2026-09-03, B3] Passt die Kette nicht ins Fenster,
+  // ist Zentrieren die falsche Wahl: Am Telefon blieben bei 60 % Mindestmassstab
+  // 38 % der Kette uebrig — und zwar die *Mitte*, ohne Lieferant und ohne Kunde.
+  // Wer ein VSM zum ersten Mal sieht, haelt das fuer einen Ladefehler. Ein
+  // Wertstrom wird von links gelesen, also faengt er auch links an; der Rest
+  // wird geschoben. Passt alles hinein, bleibt es mittig wie bisher.
+  const scaledCanvasWidth = canvasWidth * autoFitScale
+  const overflowsHorizontally = scaledCanvasWidth > viewportWidth + 1
   const autoFitPos: Point = {
-    x: (viewportWidth - canvasWidth * autoFitScale) / 2,
+    x: overflowsHorizontally ? 8 : (viewportWidth - scaledCanvasWidth) / 2,
     y: Math.max(16, (stageHeight - canvasHeight * autoFitScale) / 2),
   }
   const stageScale = camera?.scale ?? autoFitScale
   const stagePos = camera?.pos ?? autoFitPos
+
+  // Nur solange die Ansicht noch unberuehrt ist: Wer einmal geschoben oder
+  // gezoomt hat (dann steht `camera`), hat die Antwort schon gefunden. Und
+  // nicht, waehrend unten das Bearbeitungsblatt liegt — dann ist die
+  // Aufmerksamkeit bei der Box, nicht bei der Navigation.
+  const showPanHint =
+    !camera && !selection && overflowsHorizontally && viewportWidth < 500 && !panHintDismissed
 
   function handleFitToView() {
     setCamera(null) // back to automatic — also resumes auto-shrinking as the diagram grows
@@ -1382,7 +1418,7 @@ export default function VSMCanvas({
                 showZoomHint ? 'opacity-100' : 'opacity-0'
               }`}
             >
-              Strg/Cmd + Mausrad zum Zoomen
+              {t('zoomHint')}
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
@@ -1537,6 +1573,15 @@ export default function VSMCanvas({
           >
             {t('fitViewLabel')}
           </button>
+          {showPanHint && (
+            <button
+              type="button"
+              onClick={() => setPanHintDismissed(true)}
+              className="absolute inset-x-3 bottom-3 z-10 rounded-control bg-zinc-900/85 px-3 py-2 text-left text-xs font-medium leading-snug text-white shadow-sm backdrop-blur"
+            >
+              {t('panHint')}
+            </button>
+          )}
           <Stage
             ref={stageRef}
             width={viewportWidth}
@@ -2031,6 +2076,31 @@ function bufferIdentity(buffers: Buffer[], fromProcessId: string | null, toProce
   }
 }
 
+/**
+ * Die Huelle der drei Bearbeitungsfelder.
+ *
+ * [Bedienbarkeitsprüfung 2026-09-03, B1/B2] Im Seitenfluss stand das Feld
+ * unter der Zeichenflaeche — am Telefon begann es 202 px unterhalb des
+ * Sichtfelds. Wer eine Prozessbox antippte, sah nur einen Rahmen aufleuchten
+ * und hielt das Werkzeug fuer kaputt; und wer die Reihenfolge ueber ←/→
+ * aenderte, hatte vom Diagramm noch 59 seiner 320 px im Bild, also gerade den
+ * ERP-Kasten. Beides derselbe Grund: Bedienfeld und Diagramm passen
+ * untereinander nicht auf einen Telefonbildschirm.
+ *
+ * Bis `lg` liegt das Feld deshalb als Blatt ueber dem unteren Rand und nimmt
+ * hoechstens 55 % der Hoehe ein. Darueber bleibt Platz fuer die
+ * Zeichenflaeche, die bei jeder Auswahl an den oberen Rand geholt wird (siehe
+ * useEffect in VSMCanvas). Ab `lg` ist alles wie zuvor: ein Kasten im
+ * Seitenfluss, denn dort war nie etwas kaputt.
+ *
+ * z-50 statt z-40: Im Vollbild liegt die Zeichenflaeche selbst auf z-50 und
+ * verdeckte das Feld bisher vollstaendig. Da das Blatt spaeter im Baum steht,
+ * gewinnt es bei gleichem Wert — Bearbeiten im Vollbild geht damit ueberhaupt
+ * erst.
+ */
+const editPanelShell =
+  'fixed inset-x-0 bottom-0 z-50 max-h-[55vh] overflow-y-auto rounded-t-surface border border-brand-600 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl lg:static lg:mt-4 lg:max-h-none lg:overflow-visible lg:rounded-surface lg:pb-4 lg:shadow-none'
+
 // Die Werkzeugleiste im Editor ist die Reihe, die ein Moderator im Workshop
 // am Trackpad trifft — deshalb durchgaengig die grosse Groesse (44 px). Die
 // Formen selbst kommen aus components/ui/buttons, damit es keine zweite
@@ -2386,7 +2456,7 @@ function ProcessEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 rounded-surface border border-brand-600 bg-white p-4"
+      className={editPanelShell}
     >
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-zinc-950">{t('editProcess')}</h2>
@@ -2759,7 +2829,7 @@ function BufferEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-surface border border-brand-600 bg-white p-4"
+      className={`${editPanelShell} flex flex-wrap items-end gap-3`}
     >
       <h2 className="text-sm font-semibold text-zinc-950">
         <TermTooltip term="wip">{t('wipLabel')}</TermTooltip>
@@ -2905,7 +2975,7 @@ function AnchorEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-surface border border-brand-600 bg-white p-4"
+      className={`${editPanelShell} flex flex-wrap items-end gap-3`}
     >
       <h2 className="text-sm font-semibold text-zinc-950">{title} bearbeiten</h2>
       <div>

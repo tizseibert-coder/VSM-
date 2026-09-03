@@ -328,6 +328,7 @@
     "exitFullscreen": "Vollbild verlassen",
     "presentationMode": "Präsentationsmodus",
     "zoomHint": "Strg/Cmd + Mausrad zum Zoomen",
+    "panHint": "Zum Verschieben wischen — quer gedreht passt die ganze Kette ins Bild. Tippen zum Ausblenden.",
     "zoomOut": "Verkleinern",
     "zoomIn": "Vergrößern",
     "fitView": "Gesamtansicht einpassen",
