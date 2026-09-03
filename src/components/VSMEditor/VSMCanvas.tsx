@@ -31,8 +31,13 @@ import { MethodCheckPanel } from './MethodCheckPanel'
 import { useLocale, useTranslations } from 'next-intl'
 import { rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
 import { buttonPrimaryLg, buttonSecondaryLg, inputSm } from '@/components/ui/buttons'
-import { useDemoMutate } from './DemoModeContext'
-import { demoOperations } from '@/lib/vsm/demoStore'
+import {
+  VsmMutationProvider,
+  useVsmMutation,
+  useVsmMutationRequired,
+  type VsmMutation,
+} from './VsmMutationContext'
+import { isOptimisticId, vsmOperations, type VsmState } from '@/lib/vsm/vsmStore'
 import { TierChip } from './TierChip'
 import type { BenchmarkTier } from '@/lib/vsm/benchmark'
 import { ratePce, rateCapacityCoverage } from '@/lib/vsm/kpiRating'
@@ -216,7 +221,7 @@ interface Props {
 }
 
 export default function VSMCanvas({
-  project,
+  project: initialProject,
   scenarioId,
   scenarioName = null,
   initialProcesses,
@@ -230,7 +235,6 @@ export default function VSMCanvas({
   const tPdf = useTranslations('Pdf')
   const hasBenchmark = benchmarkReferences.length > 0
   const router = useRouter()
-  const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection>(null)
@@ -263,10 +267,10 @@ export default function VSMCanvas({
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   const [throughputInput, setThroughputInput] = useState(
-    project.annual_throughput?.toString() ?? ''
+    initialProject.annual_throughput?.toString() ?? ''
   )
   const [availableMinutesInput, setAvailableMinutesInput] = useState(
-    String(project.available_minutes_per_day)
+    String(initialProject.available_minutes_per_day)
   )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -316,8 +320,74 @@ export default function VSMCanvas({
   const stageRef = useRef<Konva.Stage>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
 
-  const processes = initialProcesses
-  const buffers = initialBuffers
+  // Der Zustand, aus dem tatsaechlich gezeichnet wird.
+  //
+  // Hier stand bis vor Kurzem `const processes = initialProcesses` — die
+  // Zeichenflaeche hatte also nichts als die Server-Props. Jeder Klick lief
+  // damit den vollen Weg, bevor sich etwas bewegte: Supabase schreiben
+  // (Frankfurt), revalidatePath, router.refresh(), und der Server las Projekt,
+  // Szenarien, Prozesse, Puffer und benchmark_reference komplett neu. Eine
+  // Prozessbox einen Platz weiter zu schieben dauerte damit so lange, dass man
+  // den Knopf fuer kaputt hielt.
+  //
+  // Jetzt aendert `mutate` diesen Zustand sofort, und die Server-Action laeuft
+  // daneben. Die Uebergaenge dafuer stehen in vsmStore.ts — dieselben, aus
+  // denen die Demo besteht, damit es nur eine getestete Fassung gibt.
+  const [state, setState] = useState<VsmState>(() => ({
+    project: initialProject,
+    processes: initialProcesses,
+    buffers: initialBuffers,
+  }))
+  // Woraus dieser Zustand zuletzt uebernommen wurde. Verglichen wird die
+  // Identitaet der drei Props, nicht ihr Inhalt: Ein neuer Server-Durchlauf
+  // liefert neue Objekte, ein blosses Neuzeichnen im Browser nicht.
+  const [syncedFrom, setSyncedFrom] = useState<VsmState>({
+    project: initialProject,
+    processes: initialProcesses,
+    buffers: initialBuffers,
+  })
+  // Neue Server-Props sind die Wahrheit und ersetzen den eigenen Zustand:
+  // nach einem router.refresh(), nach einem Szenariowechsel, nach jedem
+  // Navigieren zurueck in den Editor. Bewusst waehrend des Renderns statt in
+  // einem useEffect — React verwirft das Ergebnis dieses Durchlaufs und
+  // zeichnet sofort mit dem neuen Zustand, so dass die alten Daten nie
+  // sichtbar werden (react.dev: "Adjusting state when a prop changes").
+  if (
+    syncedFrom.project !== initialProject ||
+    syncedFrom.processes !== initialProcesses ||
+    syncedFrom.buffers !== initialBuffers
+  ) {
+    const fromServer: VsmState = {
+      project: initialProject,
+      processes: initialProcesses,
+      buffers: initialBuffers,
+    }
+    setSyncedFrom(fromServer)
+    setState(fromServer)
+  }
+
+  // Im Normalbetrieb haelt der Canvas seinen Zustand selbst; in der Demo
+  // liegt er eine Ebene hoeher (DemoCanvas) und kommt von dort als Props
+  // zurueck. `mutate` ist in beiden Faellen derselbe Aufruf, `isDemo`
+  // entscheidet nur, ob danach noch geschrieben wird.
+  const outerMutation = useVsmMutation()
+  const mutation = useMemo<VsmMutation>(
+    () => outerMutation ?? { mutate: setState, isDemo: false },
+    [outerMutation]
+  )
+  const { mutate, isDemo } = mutation
+
+  const { project, processes, buffers } = state
+
+  /**
+   * Zeilen, die gerade erst angelegt wurden und deren echte Id noch vom
+   * Server kommt. Sie werden schon gezeichnet, sind aber fuer die halbe
+   * Sekunde bis zum router.refresh() nicht anwaehlbar: Jede Bearbeitung
+   * wuerde ihre Behelfs-Id in eine uuid-Spalte schicken und mit einem
+   * Datenbankfehler enden. In der Demo gibt es keine echten Ids, dort sind
+   * genau diese die richtigen.
+   */
+  const isAwaitingServerId = (id: string | null) => !isDemo && id !== null && isOptimisticId(id)
 
   // The pacemaker (Schrittmacher) is the one process that gets scheduled
   // directly from production control — everything else is pulled via
@@ -1020,38 +1090,52 @@ export default function VSMCanvas({
     }
 
     setError(null)
-      if (demoMutate) {
-        demoMutate((s) => demoOperations.addProcess(s, { name, cycleTime }))
-        setQuickAddName('')
-        setQuickAddCt('')
-        nameInputRef.current?.focus()
-        return
-      }
+    const typedCt = quickAddCt
+    mutate((s) => vsmOperations.addProcess(s, { name, cycleTime }))
+    setQuickAddName('')
+    setQuickAddCt('')
+    nameInputRef.current?.focus()
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await addProcess(project.id, scenarioId, { name, cycleTime })
-        setQuickAddName('')
-        setQuickAddCt('')
+        // Anlegen ist der Fall, der die Antwort des Servers wirklich braucht:
+        // Die Id des neuen Prozesses und die der neuen Pufferzeile vergibt die
+        // Datenbank, und alles Weitere (Bearbeiten, Loeschen, Verschieben)
+        // spricht sie an. Das Kaestchen steht zu diesem Zeitpunkt laengst da —
+        // refresh() tauscht im Hintergrund die echten Zeilen ein.
         router.refresh()
-        nameInputRef.current?.focus()
       } catch (err) {
         setError(err instanceof Error ? err.message : t('errorAdding'))
+        // Die Eingabe war schon geleert, damit der naechste Prozess sofort
+        // getippt werden kann. Ist das Anlegen fehlgeschlagen, waere sie sonst
+        // verloren — und der Kasten verschwindet gleich wieder.
+        setQuickAddName(name)
+        setQuickAddCt(typedCt)
+        router.refresh()
       }
     })
   }
 
+  // Aendert eine Aenderung nur Felder bestehender Zeilen, dann steht die
+  // Wahrheit nach dem Schreiben genau da, wo sie hier schon steht — ein
+  // router.refresh() im Erfolgsfall wuerde denselben Zustand noch einmal ueber
+  // die Leitung holen und dabei eine zwischenzeitlich getippte zweite
+  // Aenderung kurz zurueckwerfen. Deshalb hier nur noch im Fehlerfall: Dann
+  // gilt der eigene Zustand nicht mehr, und der Server sagt, was wirklich
+  // gespeichert ist.
   function handleThroughputBlur() {
     setError(null)
-      if (demoMutate) {
-        demoMutate((s) => demoOperations.updateAnnualThroughput(s, liveAnnualThroughput ?? null))
-        return
-      }
+    mutate((s) => vsmOperations.updateAnnualThroughput(s, liveAnnualThroughput ?? null))
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await updateAnnualThroughput(project.id, liveAnnualThroughput)
-        router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
       }
     })
   }
@@ -1059,16 +1143,15 @@ export default function VSMCanvas({
   function handleAvailableMinutesBlur() {
     if (liveAvailableMinutes === undefined) return // invalid/blank input — leave the stored value untouched
     setError(null)
-      if (demoMutate) {
-        demoMutate((s) => demoOperations.updateAvailableMinutes(s, liveAvailableMinutes))
-        return
-      }
+    mutate((s) => vsmOperations.updateAvailableMinutes(s, liveAvailableMinutes))
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await updateAvailableMinutes(project.id, liveAvailableMinutes)
-        router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
       }
     })
   }
@@ -1101,37 +1184,45 @@ export default function VSMCanvas({
     if (newOrder === chainOrder) return // already at that end, nothing to do
 
     setError(null)
-      if (demoMutate) {
-        demoMutate((s) => demoOperations.reorderProcesses(s, newOrder))
-        return
-      }
+    mutate((s) => vsmOperations.reorderProcesses(s, newOrder))
+    if (isDemo) return
+
+    // Die Kette umzuhaengen ist die Bewegung, auf die vorher am laengsten
+    // gewartet wurde — und die, die man mehrmals hintereinander klickt, um
+    // eine Box zwei Plaetze weiter zu schieben. Genau dafuer darf hier kein
+    // refresh() im Erfolgsfall stehen: Die Antwort auf den ersten Klick wuerde
+    // sonst den zweiten kurz zuruecknehmen.
     startTransition(async () => {
       try {
         await reorderProcesses(project.id, scenarioId, newOrder)
-        router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : t('errorReorder'))
+        router.refresh()
       }
     })
   }
 
   function handleChangeLane(processId: string, lane: number) {
     setError(null)
-      if (demoMutate) {
-        demoMutate((s) => demoOperations.updateProcessLane(s, processId, Math.max(0, lane)))
-        return
-      }
+    mutate((s) => vsmOperations.updateProcessLane(s, processId, Math.max(0, lane)))
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await updateProcessLane(project.id, processId, Math.max(0, lane))
-        router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : t('errorLane'))
+        router.refresh()
       }
     })
   }
 
-  return (
+  // Der Provider steht bewusst als eigene Klammer *um* diesen Baum, statt ihn
+  // zu umschliessen und dabei achthundert Zeilen JSX eine Ebene tiefer zu
+  // ruecken: Die Bearbeitungspanels weiter unten brauchen `mutate`, aber eine
+  // Einrueckung ueber die halbe Datei macht jede spaetere Aenderung daran
+  // unlesbar.
+  const canvas = (
     <div className="mx-auto max-w-6xl px-6 py-6">
       {/* [UX-Audit 2026-08-16, P2] Am Telefon standen Eingaben,
           Methodikpruefung und die fuenf Kennzahlenkacheln vor der
@@ -1573,22 +1664,26 @@ export default function VSMCanvas({
                     hitStrokeWidth={isContinuous ? 16 : undefined}
                     onClick={
                       isContinuous
-                        ? () =>
+                        ? () => {
+                            if (isAwaitingServerId(seg.fromId ?? null) || isAwaitingServerId(seg.toId ?? null)) return
                             setSelection((current) =>
                               current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
                                 ? null
                                 : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
                             )
+                          }
                         : undefined
                     }
                     onTap={
                       isContinuous
-                        ? () =>
+                        ? () => {
+                            if (isAwaitingServerId(seg.fromId ?? null) || isAwaitingServerId(seg.toId ?? null)) return
                             setSelection((current) =>
                               current?.kind === 'buffer' && current.from === seg.fromId && current.to === seg.toId
                                 ? null
                                 : { kind: 'buffer', from: seg.fromId ?? null, to: seg.toId ?? null }
                             )
+                          }
                         : undefined
                     }
                     onMouseEnter={
@@ -1627,13 +1722,14 @@ export default function VSMCanvas({
                     isSelected={selection?.kind === 'process' && selection.id === process.id}
                     isBottleneck={isBottleneck}
                     counterScale={1 / stageScale}
-                    onSelect={() =>
+                    onSelect={() => {
+                      if (isAwaitingServerId(process.id)) return
                       setSelection((current) =>
                         current?.kind === 'process' && current.id === process.id
                           ? null
                           : { kind: 'process', id: process.id }
                       )
-                    }
+                    }}
                   />
                 )
               })}
@@ -1659,13 +1755,14 @@ export default function VSMCanvas({
                     wipCount={buffer.wip_count}
                     bufferType={buffer.buffer_type ?? 'standard'}
                     isSelected={isSelected}
-                    onSelect={() =>
+                    onSelect={() => {
+                      if (isAwaitingServerId(fromId) || isAwaitingServerId(toId)) return
                       setSelection((current) =>
                         current?.kind === 'buffer' && current.from === fromId && current.to === toId
                           ? null
                           : { kind: 'buffer', from: fromId, to: toId }
                       )
-                    }
+                    }}
                   />
                 )
               })}
@@ -1767,6 +1864,7 @@ export default function VSMCanvas({
           onMoveInSequence={(direction) => handleMoveInSequence(selectedProcess.id, direction)}
           onChangeLane={(lane) => handleChangeLane(selectedProcess.id, lane)}
           onClose={() => setSelection(null)}
+          onError={setError}
         />
       )}
 
@@ -1782,6 +1880,7 @@ export default function VSMCanvas({
           currentFlowStyle={findBuffer(buffers, selection.from, selection.to)?.flow_style ?? ''}
           currentKanbanType={findBuffer(buffers, selection.from, selection.to)?.kanban_type ?? ''}
           onClose={() => setSelection(null)}
+          onError={setError}
         />
       )}
 
@@ -1798,6 +1897,7 @@ export default function VSMCanvas({
                 : project.erp_label
           }
           onClose={() => setSelection(null)}
+          onError={setError}
         />
       )}
 
@@ -1908,6 +2008,27 @@ export default function VSMCanvas({
       </div>
     </div>
   )
+
+  return <VsmMutationProvider value={mutation}>{canvas}</VsmMutationProvider>
+}
+
+/**
+ * Die unveraenderlichen Eigenschaften einer Pufferzeile als Eingabe fuer
+ * setBufferWip — dieselbe Form fuer die Server-Action und fuer vsmStore.
+ * Fehlt die Zeile noch, entstehen die Vorgabewerte wie bisher.
+ */
+function bufferIdentity(buffers: Buffer[], fromProcessId: string | null, toProcessId: string | null) {
+  const existing = findBuffer(buffers, fromProcessId, toProcessId)
+  return {
+    fromProcessId,
+    toProcessId,
+    // 'standard' ist der Wert, den die Server-Action ohne Angabe schreibt.
+    // Ihn hier auszusprechen haelt den eigenen Zustand Zeichen fuer Zeichen
+    // bei dem, was in der Datenbank landet.
+    bufferType: existing?.buffer_type ?? 'standard',
+    flowStyle: existing?.flow_style ?? null,
+    kanbanType: existing?.kanban_type ?? null,
+  }
 }
 
 // Die Werkzeugleiste im Editor ist die Reihe, die ein Moderator im Workshop
@@ -1997,6 +2118,7 @@ function ProcessEditPanel({
   onMoveInSequence,
   onChangeLane,
   onClose,
+  onError,
 }: {
   projectId: string
   scenarioId: string | null
@@ -2012,9 +2134,15 @@ function ProcessEditPanel({
   onMoveInSequence: (direction: 'earlier' | 'later') => void
   onChangeLane: (lane: number) => void
   onClose: () => void
+  /**
+   * Fehlschlag eines Schreibvorgangs, der erst nach dem Schliessen dieses
+   * Panels beantwortet wird. Das Panel ist dann nicht mehr da; ohne diesen
+   * Weg bliebe der Fehler ungesehen.
+   */
+  onError: (message: string) => void
 }) {
   const router = useRouter()
-  const demoMutate = useDemoMutate()
+  const { mutate, isDemo } = useVsmMutationRequired()
   const [, startTransition] = useTransition()
   const [name, setName] = useState(process.name)
   const [cycleTime, setCycleTime] = useState(String(process.cycle_time))
@@ -2081,17 +2209,16 @@ function ProcessEditPanel({
   function handleAddPredecessor() {
     if (!addPredecessorId) return
     setConnectionError(null)
-      if (demoMutate) {
-        demoMutate((s) =>
-          demoOperations.setBufferWip(s, {
-            fromProcessId: addPredecessorId,
-            toProcessId: process.id,
-            wipCount: 0,
-          })
-        )
-        setAddPredecessorId('')
-        return
-      }
+    mutate((s) =>
+      vsmOperations.setBufferWip(s, {
+        fromProcessId: addPredecessorId,
+        toProcessId: process.id,
+        wipCount: 0,
+      })
+    )
+    setAddPredecessorId('')
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -2099,10 +2226,14 @@ function ProcessEditPanel({
           toProcessId: process.id,
           wipCount: 0,
         })
-        setAddPredecessorId('')
+        // Eine neue Verbindung ist eine neue Zeile mit einer Id, die erst die
+        // Datenbank vergibt — und "Verbindung trennen" spricht genau diese Id
+        // an. Deshalb hier weiterhin ein refresh(), waehrend die Linie schon
+        // gezeichnet ist.
         router.refresh()
       } catch (err) {
         setConnectionError(err instanceof Error ? err.message : t('errorConnect'))
+        router.refresh()
       }
     })
   }
@@ -2110,17 +2241,16 @@ function ProcessEditPanel({
   function handleAddSuccessor() {
     if (!addSuccessorId) return
     setConnectionError(null)
-      if (demoMutate) {
-        demoMutate((s) =>
-          demoOperations.setBufferWip(s, {
-            fromProcessId: process.id,
-            toProcessId: addSuccessorId,
-            wipCount: 0,
-          })
-        )
-        setAddSuccessorId('')
-        return
-      }
+    mutate((s) =>
+      vsmOperations.setBufferWip(s, {
+        fromProcessId: process.id,
+        toProcessId: addSuccessorId,
+        wipCount: 0,
+      })
+    )
+    setAddSuccessorId('')
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -2128,26 +2258,30 @@ function ProcessEditPanel({
           toProcessId: addSuccessorId,
           wipCount: 0,
         })
-        setAddSuccessorId('')
+        // Neue Zeile, neue Id — siehe handleAddPredecessor.
         router.refresh()
       } catch (err) {
         setConnectionError(err instanceof Error ? err.message : t('errorConnect'))
+        router.refresh()
       }
     })
   }
 
   function handleDisconnect(bufferId: string) {
+    // Frisch angelegte Verbindung, deren echte Id noch unterwegs ist — siehe
+    // isAwaitingServerId im Canvas. Der Knopf ist solange abgeschaltet; diese
+    // Zeile ist der Riegel dahinter.
+    if (!isDemo && isOptimisticId(bufferId)) return
     setConnectionError(null)
-      if (demoMutate) {
-        demoMutate((s) => demoOperations.deleteBufferConnection(s, bufferId))
-        return
-      }
+    mutate((s) => vsmOperations.deleteBufferConnection(s, bufferId))
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await deleteBufferConnection(projectId, bufferId)
-        router.refresh()
       } catch (err) {
         setConnectionError(err instanceof Error ? err.message : t('errorDisconnect'))
+        router.refresh()
       }
     })
   }
@@ -2176,31 +2310,38 @@ function ProcessEditPanel({
 
     setError(null)
     setIsSaving(true)
-      if (demoMutate) {
-        demoMutate((s) => {
-          const withProcess = demoOperations.updateProcess(s, process.id, {
-            name: name.trim(),
-            cycle_time: ct,
-            oee: oeeNum,
-            operator_count: operatorCountNum,
-            changeover_time: changeoverTimeNum,
-            is_pacemaker: isPacemaker,
-            classification: classification || null,
-          })
-          const withBefore = demoOperations.setBufferWip(withProcess, {
-            fromProcessId: prevProcessId,
-            toProcessId: process.id,
-            wipCount: beforeNum,
-          })
-          return demoOperations.setBufferWip(withBefore, {
-            fromProcessId: process.id,
-            toProcessId: nextProcessId,
-            wipCount: afterNum,
-          })
-        })
-        onClose()
-        return
-      }
+
+    // Dieses Formular bearbeitet nur die beiden Bestandszahlen links und
+    // rechts. setBufferWip schreibt aber immer die ganze Zeile und setzt
+    // alles, was es nicht mitbekommt, auf den Ausgangswert zurueck — ein
+    // Supermarkt oder eine FIFO-Bahn waere nach dem Aendern einer Zykluszeit
+    // stillschweigend wieder "Standard". Deshalb reisen Art, Flussrichtung und
+    // Kanban-Art unveraendert mit.
+    const beforeBuffer = bufferIdentity(buffers, prevProcessId, process.id)
+    const afterBuffer = bufferIdentity(buffers, process.id, nextProcessId)
+
+    mutate((s) => {
+      const withProcess = vsmOperations.updateProcess(s, process.id, {
+        name: name.trim(),
+        cycle_time: ct,
+        oee: oeeNum,
+        operator_count: operatorCountNum,
+        changeover_time: changeoverTimeNum,
+        is_pacemaker: isPacemaker,
+        classification: classification || null,
+      })
+      const withBefore = vsmOperations.setBufferWip(withProcess, {
+        ...beforeBuffer,
+        wipCount: beforeNum,
+      })
+      return vsmOperations.setBufferWip(withBefore, {
+        ...afterBuffer,
+        wipCount: afterNum,
+      })
+    })
+    onClose()
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await updateProcess(projectId, process.id, {
@@ -2212,40 +2353,32 @@ function ProcessEditPanel({
           isPacemaker,
           classification: classification || null,
         })
-        await setBufferWip(projectId, scenarioId, {
-          fromProcessId: prevProcessId,
-          toProcessId: process.id,
-          wipCount: beforeNum,
-        })
-        await setBufferWip(projectId, scenarioId, {
-          fromProcessId: process.id,
-          toProcessId: nextProcessId,
-          wipCount: afterNum,
-        })
-        router.refresh()
-        onClose()
+        await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
+        await setBufferWip(projectId, scenarioId, { ...afterBuffer, wipCount: afterNum })
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('errorSaving'))
-        setIsSaving(false)
+        // Das Panel ist hier bereits geschlossen, seine eigene Fehlerzeile
+        // also nicht mehr sichtbar. Die Meldung gehoert deshalb in das Banner
+        // ueber der Zeichenflaeche, und refresh() holt zurueck, was wirklich
+        // gespeichert ist — sonst stuenden die nicht gespeicherten Werte
+        // weiter im Diagramm.
+        onError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
       }
     })
   }
 
   function handleDelete() {
     setIsSaving(true)
-      if (demoMutate) {
-        demoMutate((s) => demoOperations.deleteProcess(s, process.id))
-        onClose()
-        return
-      }
+    mutate((s) => vsmOperations.deleteProcess(s, process.id))
+    onClose()
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await deleteProcess(projectId, process.id)
-        router.refresh()
-        onClose()
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('errorDelete'))
-        setIsSaving(false)
+        onError(err instanceof Error ? err.message : t('errorDelete'))
+        router.refresh()
       }
     })
   }
@@ -2408,7 +2541,8 @@ function ProcessEditPanel({
                   <button
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
-                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline"
+                    disabled={!isDemo && isOptimisticId(edge.id)}
+                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline disabled:text-zinc-400 disabled:no-underline"
                     aria-label={t('disconnectFrom', { name: processLabel(edge.from_process_id) })}
                   >
                     {t('disconnect')}
@@ -2452,7 +2586,8 @@ function ProcessEditPanel({
                   <button
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
-                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline"
+                    disabled={!isDemo && isOptimisticId(edge.id)}
+                    className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline disabled:text-zinc-400 disabled:no-underline"
                     aria-label={t('disconnectTo', { name: processLabel(edge.to_process_id) })}
                   >
                     {t('disconnect')}
@@ -2556,6 +2691,7 @@ function BufferEditPanel({
   currentFlowStyle,
   currentKanbanType,
   onClose,
+  onError,
 }: {
   projectId: string
   scenarioId: string | null
@@ -2566,9 +2702,11 @@ function BufferEditPanel({
   currentFlowStyle: string
   currentKanbanType: string
   onClose: () => void
+  /** Siehe ProcessEditPanel: Das Panel ist zu, wenn der Server antwortet. */
+  onError: (message: string) => void
 }) {
   const router = useRouter()
-  const demoMutate = useDemoMutate()
+  const { mutate, isDemo } = useVsmMutationRequired()
   const [, startTransition] = useTransition()
   const t = useTranslations('Editor')
   const [value, setValue] = useState(String(currentWip))
@@ -2587,20 +2725,19 @@ function BufferEditPanel({
     }
     setError(null)
     setIsSaving(true)
-      if (demoMutate) {
-        demoMutate((s) =>
-          demoOperations.setBufferWip(s, {
-            fromProcessId,
-            toProcessId,
-            wipCount: n,
-            bufferType,
-            flowStyle: flowStyle || null,
-            kanbanType: kanbanType || null,
-          })
-        )
-        onClose()
-        return
-      }
+    mutate((s) =>
+      vsmOperations.setBufferWip(s, {
+        fromProcessId,
+        toProcessId,
+        wipCount: n,
+        bufferType,
+        flowStyle: flowStyle || null,
+        kanbanType: kanbanType || null,
+      })
+    )
+    onClose()
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await setBufferWip(projectId, scenarioId, {
@@ -2611,11 +2748,10 @@ function BufferEditPanel({
           flowStyle: flowStyle || null,
           kanbanType: kanbanType || null,
         })
-        router.refresh()
-        onClose()
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('errorSaving'))
-        setIsSaving(false)
+        // Panel schon zu — siehe ProcessEditPanel.handleSave.
+        onError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
       }
     })
   }
@@ -2708,14 +2844,17 @@ function AnchorEditPanel({
   anchor,
   currentLabel,
   onClose,
+  onError,
 }: {
   projectId: string
   anchor: 'supplier' | 'customer' | 'erp'
   currentLabel: string
   onClose: () => void
+  /** Siehe ProcessEditPanel: Das Panel ist zu, wenn der Server antwortet. */
+  onError: (message: string) => void
 }) {
   const router = useRouter()
-  const demoMutate = useDemoMutate()
+  const { mutate, isDemo } = useVsmMutationRequired()
   const [, startTransition] = useTransition()
   const t = useTranslations('Editor')
   const tCanvas = useTranslations('Canvas')
@@ -2738,17 +2877,16 @@ function AnchorEditPanel({
     }
     setError(null)
     setIsSaving(true)
-      if (demoMutate) {
-        demoMutate((s) =>
-          demoOperations.updateProjectLabels(s, {
-            ...(anchor === 'supplier' ? { supplier_name: value.trim() } : {}),
-            ...(anchor === 'customer' ? { customer_name: value.trim() } : {}),
-            ...(anchor === 'erp' ? { erp_label: value.trim() } : {}),
-          })
-        )
-        onClose()
-        return
-      }
+    mutate((s) =>
+      vsmOperations.updateProjectLabels(s, {
+        ...(anchor === 'supplier' ? { supplier_name: value.trim() } : {}),
+        ...(anchor === 'customer' ? { customer_name: value.trim() } : {}),
+        ...(anchor === 'erp' ? { erp_label: value.trim() } : {}),
+      })
+    )
+    onClose()
+    if (isDemo) return
+
     startTransition(async () => {
       try {
         await updateProjectLabels(projectId, {
@@ -2756,11 +2894,10 @@ function AnchorEditPanel({
           ...(anchor === 'customer' ? { customerName: value.trim() } : {}),
           ...(anchor === 'erp' ? { erpLabel: value.trim() } : {}),
         })
-        router.refresh()
-        onClose()
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('errorSaving'))
-        setIsSaving(false)
+        // Panel schon zu — siehe ProcessEditPanel.handleSave.
+        onError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
       }
     })
   }

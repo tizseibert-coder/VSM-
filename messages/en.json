@@ -630,6 +630,8 @@
     "questionOf": "Question {id} of 8",
     "saved": "✓ Saved.",
     "save": "Save",
+    "saving": "Saving …",
+    "savedButton": "Saved",
     "toOverview": "To the overview →",
     "q1AnnualDemand": "Annual demand (pcs/year)",
     "q1AvailableMinutes": "Available production time (min/day)",

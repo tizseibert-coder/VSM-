@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { deriveFutureStateQuestions, type FutureStateInput } from '@/lib/vsm/futureStateQuestions'
 import { TermTooltip } from '@/components/VSMEditor/TermTooltip'
+import { WizardSaveButton } from '@/components/wizard/WizardSaveButton'
 import { submitTaktTime, submitBuffer, submitPacemaker, submitHeijunka, submitPitch, submitKaizenNote } from '../wizard-actions'
 
 // Nur die Zuordnung Status -> Uebersetzungsschluessel; die Texte stehen im
@@ -22,8 +23,6 @@ const STATUS_CLASS: Record<string, string> = {
 
 const FIELD_CLASS =
   'mt-1 w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm'
-const SUBMIT_CLASS =
-  'rounded-control bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700'
 
 // Einzelne Frage des Future-State-Wizards. Zeigt beim Öffnen immer den
 // aktuell gesetzten Wert als Ausgangszustand (nie ein leeres Formular) —
@@ -151,9 +150,7 @@ export default async function FutureStateQuestionPage({
                   className={FIELD_CLASS}
                 />
               </label>
-              <button type="submit" className={SUBMIT_CLASS}>
-                {t('save')}
-              </button>
+              <WizardSaveButton />
             </form>
           )}
 
@@ -186,9 +183,7 @@ export default async function FutureStateQuestionPage({
                       className={FIELD_CLASS}
                     />
                   </label>
-                  <button type="submit" className={SUBMIT_CLASS}>
-                    {t('save')}
-                  </button>
+                  <WizardSaveButton />
                 </form>
               )
             })()}
@@ -228,9 +223,7 @@ export default async function FutureStateQuestionPage({
                         />
                         <TermTooltip term="onePieceFlow">{t('q3ContinuousFlow')}</TermTooltip>
                       </label>
-                      <button type="submit" className={SUBMIT_CLASS}>
-                        {t('save')}
-                      </button>
+                      <WizardSaveButton />
                     </form>
                   ))}
                 </div>
@@ -287,9 +280,7 @@ export default async function FutureStateQuestionPage({
                         <TermTooltip term="wip">WIP</TermTooltip>
                         <input name="wipCount" type="number" min={0} defaultValue={b.wip_count} className={FIELD_CLASS} />
                       </label>
-                      <button type="submit" className={SUBMIT_CLASS}>
-                        {t('save')}
-                      </button>
+                      <WizardSaveButton />
                     </form>
                   ))}
                 </div>
@@ -314,9 +305,7 @@ export default async function FutureStateQuestionPage({
                     ))}
                   </select>
                 </label>
-                <button type="submit" className={SUBMIT_CLASS}>
-                  {t('q5SetPacemaker')}
-                </button>
+                <WizardSaveButton label={t('q5SetPacemaker')} />
               </form>
             ))}
 
@@ -335,9 +324,7 @@ export default async function FutureStateQuestionPage({
                   <input type="checkbox" name="hasHeijunka" defaultChecked={pacemaker.has_heijunka} />
                   <TermTooltip term="heijunka">{t('q6HeijunkaActive')}</TermTooltip>
                 </label>
-                <button type="submit" className={SUBMIT_CLASS}>
-                  {t('save')}
-                </button>
+                <WizardSaveButton />
               </form>
             ))}
 
@@ -354,9 +341,7 @@ export default async function FutureStateQuestionPage({
                   className={FIELD_CLASS}
                 />
               </label>
-              <button type="submit" className={SUBMIT_CLASS}>
-                {t('save')}
-              </button>
+              <WizardSaveButton />
             </form>
           )}
 
@@ -381,9 +366,7 @@ export default async function FutureStateQuestionPage({
                         className={FIELD_CLASS}
                       />
                     </label>
-                    <button type="submit" className={`${SUBMIT_CLASS} self-start`}>
-                      {t('save')}
-                    </button>
+                    <WizardSaveButton className="self-start" />
                   </form>
                 ))}
               </div>
