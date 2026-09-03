@@ -306,6 +306,14 @@
     "kaizenBlitz": {
       "term": "Kaizen-Blitz",
       "definition": "Ein am Prozess markierter, konkreter Verbesserungspunkt, der nötig ist, um vom Ist- zum Soll-Zustand zu kommen — kein allgemeiner Verbesserungswunsch, sondern eine gezielte Notiz an genau dieser Stelle."
+    },
+    "pieceValue": {
+      "term": "Wert je Stück",
+      "definition": "Womit ein Stück im Bestand bewertet wird — üblicherweise die Herstellkosten bis zu dieser Stelle, nicht der Verkaufspreis. Nur dieser eine Faktor fehlt, um aus einer Stückzahl im Regal einen Geldbetrag zu machen."
+    },
+    "tiedUpCapital": {
+      "term": "Gebundenes Kapital",
+      "definition": "Bestand mal Wert je Stück: das Geld, das im Wertstrom liegt statt auf dem Konto. Halbiert ein Szenario den Bestand, wird die Hälfte davon wieder frei — das ist die Zahl, die eine Investition trägt."
     }
   },
   "Editor": {
@@ -406,7 +414,12 @@
     "chooseSuccessor": "+ Nachfolger wählen…",
     "classificationLabel": "Wertschöpfungs-Klassifizierung",
     "classificationNone": "— nicht klassifiziert",
-    "unitPieces": "Stück"
+    "unitPieces": "Stück",
+    "pieceValueLabel": "Wert je Stück",
+    "pieceValuePlaceholder": "z. B. 50",
+    "currencyLabel": "Währung",
+    "kpiTiedUpCapital": "Gebundenes Kapital",
+    "tiedUpCapitalFormula": "{wip} Stk × {value} je Stück"
   },
   "Canvas": {
     "bottleneck": "⚠ Engpass",
@@ -474,7 +487,7 @@
   "Scenario": {
     "currentState": "Ist-Zustand",
     "nameLabel": "Name",
-    "investmentLabel": "Investition (CHF)",
+    "investmentLabel": "Investition ({currency})",
     "paybackLabel": "Payback (Monate)",
     "riskLabel": "Risiko",
     "riskNone": "–",
@@ -613,7 +626,10 @@
     "investment": "Investition",
     "payback": "Payback",
     "risk": "Risiko",
-    "months": "{count} Monate"
+    "months": "{count} Monate",
+    "tiedUpCapital": "Gebundenes Kapital",
+    "releasedCapital": "Davon freigesetzt",
+    "capitalHint": "Trage im Editor einen Wert je Stück ein, dann steht hier, wie viel Geld im Bestand liegt."
   },
   "Wizard": {
     "backToEditor": "← Zurück zum Editor",
@@ -679,6 +695,7 @@
     "inviteRoleInvalid": "Ungültige Rolle.",
     "inviteCreate": "Einladung konnte nicht erstellt werden.",
     "inviteRevoke": "Einladung konnte nicht zurückgezogen werden.",
-    "credentialsRequired": "Bitte E-Mail und Passwort eingeben."
+    "credentialsRequired": "Bitte E-Mail und Passwort eingeben.",
+    "currencyUnsupported": "Diese Währung wird nicht unterstützt."
   }
 }

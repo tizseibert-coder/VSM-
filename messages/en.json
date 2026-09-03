@@ -306,6 +306,14 @@
     "kaizenBlitz": {
       "term": "Kaizen burst",
       "definition": "A concrete improvement point marked at a process, needed to get from the current to the future state — not a general improvement wish, but a targeted note at exactly this spot."
+    },
+    "pieceValue": {
+      "term": "Value per piece",
+      "definition": "What one piece of inventory is worth — usually the production cost up to this point, not the sales price. This single factor is all that is missing to turn a count on the shelf into an amount of money."
+    },
+    "tiedUpCapital": {
+      "term": "Tied-up capital",
+      "definition": "Inventory times value per piece: the money sitting in the value stream instead of in the bank. Halve the inventory in a scenario and half of it comes back — that is the figure an investment rests on."
     }
   },
   "Editor": {
@@ -406,7 +414,12 @@
     "chooseSuccessor": "+ Choose successor…",
     "classificationLabel": "Value-added classification",
     "classificationNone": "— not classified",
-    "unitPieces": "pcs"
+    "unitPieces": "pcs",
+    "pieceValueLabel": "Value per piece",
+    "pieceValuePlaceholder": "e.g. 50",
+    "currencyLabel": "Currency",
+    "kpiTiedUpCapital": "Tied-up capital",
+    "tiedUpCapitalFormula": "{wip} pcs × {value} each"
   },
   "Canvas": {
     "bottleneck": "⚠ Bottleneck",
@@ -474,7 +487,7 @@
   "Scenario": {
     "currentState": "Current state",
     "nameLabel": "Name",
-    "investmentLabel": "Investment (CHF)",
+    "investmentLabel": "Investment ({currency})",
     "paybackLabel": "Payback (months)",
     "riskLabel": "Risk",
     "riskNone": "–",
@@ -613,7 +626,10 @@
     "investment": "Investment",
     "payback": "Payback",
     "risk": "Risk",
-    "months": "{count} months"
+    "months": "{count} months",
+    "tiedUpCapital": "Tied-up capital",
+    "releasedCapital": "Of which released",
+    "capitalHint": "Enter a value per piece in the editor and this row shows how much money sits in inventory."
   },
   "Wizard": {
     "backToEditor": "← Back to the editor",
@@ -679,6 +695,7 @@
     "inviteRoleInvalid": "Invalid role.",
     "inviteCreate": "The invitation could not be created.",
     "inviteRevoke": "The invitation could not be revoked.",
-    "credentialsRequired": "Please enter email and password."
+    "credentialsRequired": "Please enter email and password.",
+    "currencyUnsupported": "That currency is not supported."
   }
 }

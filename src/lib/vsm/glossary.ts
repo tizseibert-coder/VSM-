@@ -26,6 +26,8 @@ export const GLOSSARY_KEYS = [
   'operatorCount',
   'pacemaker',
   'wip',
+  'pieceValue',
+  'tiedUpCapital',
   'bufferType',
   'flowStyle',
   'kanbanType',

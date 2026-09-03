@@ -15,11 +15,16 @@ export default async function ScenarioMetaPanel({
   projectId,
   scenario,
   usedTypes,
+  currency,
 }: {
   projectId: string
   scenario: Scenario
   /** Alle Szenario-Typen des Projekts — Vorbelegung im Iterations-Dropdown. */
   usedTypes: (string | null)[]
+  /** Waehrung des Projekts. Stand bis zur Migration 20260903180000 fest als
+   *  "CHF" in der Beschriftung — in einem Werkzeug, dessen Startseite mit Euro
+   *  wirbt. */
+  currency: string
 }) {
   const t = await getTranslations('Scenario')
   return (
@@ -38,7 +43,7 @@ export default async function ScenarioMetaPanel({
         </div>
         <div>
           <label htmlFor="sm-investment" className="block text-xs font-medium text-zinc-600">
-            {t('investmentLabel')}
+            {t('investmentLabel', { currency })}
           </label>
           <input
             id="sm-investment"

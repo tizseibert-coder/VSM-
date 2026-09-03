@@ -80,6 +80,15 @@ export interface KpiResult {
    * one — the formula caption under Durchlaufzeit reads it directly.
    */
   departureRatePerDay: number | null
+  /**
+   * Alles, was im Strom steht: zwischen den Stationen und an ihnen.
+   *
+   * Herausgereicht, weil es zwei Leser hat, die dieselbe Zahl zeigen muessen —
+   * die Formelzeile unter der Durchlaufzeit und das gebundene Kapital. Der
+   * Editor hat sie sich bisher selbst zusammengezaehlt, dabei aber nur die
+   * Puffer gezaehlt: Die Zeile las "9300 Stk WIP", gerechnet wurde mit mehr.
+   */
+  totalWipCount: number
 }
 
 /** Units/day a project needs to produce, derived from annual throughput. Null if unset/invalid. */
@@ -175,5 +184,6 @@ export function calculateKpis(input: KpiInput): KpiResult {
     bottleneckCycleTimeMinutes,
     capacityCoverage,
     departureRatePerDay,
+    totalWipCount,
   }
 }

@@ -95,6 +95,7 @@ export default async function EditorPage({
             projectId={projectId}
             scenario={activeScenario}
             usedTypes={(scenarios ?? []).map((s) => s.type)}
+            currency={project.currency}
           />
         )}
       </div>

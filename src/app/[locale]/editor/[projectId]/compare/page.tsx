@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
+import { formatCurrency, releasedCapital, tiedUpCapital } from '@/lib/vsm/capital'
 
 // Zuordnung Risikostufe -> Uebersetzungsschluessel im Namensraum `Scenario`.
 const RISK_KEY: Record<string, string> = { low: 'riskLow', medium: 'riskMedium', high: 'riskHigh' }
@@ -13,6 +14,7 @@ export default async function ComparePage({
   params: Promise<{ projectId: string }>
 }) {
   const { projectId } = await params
+  const locale = await getLocale()
   const t = await getTranslations('Compare')
   const tEd = await getTranslations('Editor')
   const tSc = await getTranslations('Scenario')
@@ -57,6 +59,13 @@ export default async function ComparePage({
 
   const rows = buildComparisonRows(states, project.annual_throughput)
 
+  // Der Bestand in Geld, je Zustand mit derselben Bewertung gerechnet — und
+  // die Differenz zum Ist-Zustand, denn genau die ist die Aussage: Was ein
+  // Szenario an Kapital freisetzt, das heute im Regal liegt.
+  const money = (value: number) => formatCurrency(value, project.currency, locale)
+  const capitalOf = (row: (typeof rows)[number]) => tiedUpCapital(row.totalWipCount, project.piece_value)
+  const currentCapital = rows.length > 0 ? capitalOf(rows[0]) : null
+
   const metricRows: { label: string; format: (r: (typeof rows)[number]) => string }[] = [
     { label: t('processes'), format: (r) => String(r.processCount) },
     {
@@ -81,6 +90,25 @@ export default async function ComparePage({
       label: tEd('kpiTaktTime'),
       format: (r) =>
         r.taktTimeMinutes !== null ? `${r.taktTimeMinutes.toFixed(1)} ${tEd('unitMin')}` : '–',
+    },
+    {
+      label: t('tiedUpCapital'),
+      format: (r) => {
+        const capital = capitalOf(r)
+        return capital !== null ? money(capital) : '–'
+      },
+    },
+    {
+      label: t('releasedCapital'),
+      format: (r) => {
+        // Im Ist-Zustand gibt es nichts freizusetzen — er ist der Massstab.
+        if (r.id === null) return '–'
+        const released = releasedCapital(currentCapital, capitalOf(r))
+        if (released === null) return '–'
+        // Das Vorzeichen ausgeschrieben: Ein Szenario, das Bestand aufbaut
+        // (Supermarkt vor dem Schrittmacher), soll das auch so zeigen.
+        return released > 0 ? `+ ${money(released)}` : released < 0 ? `− ${money(-released)}` : money(0)
+      },
     },
   ]
 
@@ -132,6 +160,10 @@ export default async function ComparePage({
           </table>
         </div>
 
+        {project.piece_value === null && (
+          <p className="mt-2 text-xs text-zinc-500">{t('capitalHint')}</p>
+        )}
+
         {(scenarios ?? []).length > 0 && (
           <div className="mt-6 overflow-x-auto rounded-surface border border-zinc-200">
             <table className="w-full min-w-[480px] border-collapse text-sm">
@@ -150,7 +182,10 @@ export default async function ComparePage({
                   <td className="p-3 text-zinc-500">{t('investment')}</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950">
-                      {s.investment_chf != null ? `CHF ${s.investment_chf.toLocaleString('de-CH')}` : '–'}
+                      {/* Die Spalte heisst investment_chf, weil sie so angelegt
+                          wurde; angezeigt wird sie in der Waehrung des Projekts
+                          (Migration 20260903180000). */}
+                      {s.investment_chf != null ? money(s.investment_chf) : '–'}
                     </td>
                   ))}
                 </tr>

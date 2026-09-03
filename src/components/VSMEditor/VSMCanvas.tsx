@@ -45,6 +45,7 @@ import { bufferGapIndices, findBuffer } from '@/lib/vsm/buffers'
 import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geometry'
 import { computeAutoFitScale, clampScale, MIN_READABLE_SCALE } from '@/lib/vsm/viewport'
 import { checkCapacity } from '@/lib/vsm/capacity'
+import { formatCurrency, tiedUpCapital, SUPPORTED_CURRENCIES } from '@/lib/vsm/capital'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
@@ -86,6 +87,8 @@ import {
   setBufferWip,
   deleteBufferConnection,
   updateProjectLabels,
+  updatePieceValue,
+  updateCurrency,
 } from '@/app/[locale]/editor/[projectId]/actions'
 
 type Project = Tables<'projects'>
@@ -271,6 +274,9 @@ export default function VSMCanvas({
   )
   const [availableMinutesInput, setAvailableMinutesInput] = useState(
     String(initialProject.available_minutes_per_day)
+  )
+  const [pieceValueInput, setPieceValueInput] = useState(
+    initialProject.piece_value?.toString() ?? ''
   )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -538,12 +544,28 @@ export default function VSMCanvas({
   // shown as a small formula caption under Durchlaufzeit/Taktzeit so a
   // surprising number (e.g. a very low Jahresbedarf making PLT look huge)
   // is visibly explained by its own inputs instead of looking like a bug.
-  const totalWipCount = useMemo(() => buffers.reduce((sum, b) => sum + b.wip_count, 0), [buffers])
+  // Dieselbe Zahl, mit der die Durchlaufzeit gerechnet wird — vorher zaehlte
+  // diese Zeile nur die Puffer und liess den Bestand *an* den Stationen weg,
+  // sodass die Formelzeile eine andere Menge nannte als die Rechnung darueber
+  // benutzte.
+  const totalWipCount = kpis.totalWipCount
   const effectiveAvailableMinutes = liveAvailableMinutes ?? SHIFT_MINUTES
   // Each caption names the divisor it actually used. Lead time divides by the
   // *departure* rate (the smaller of Ausbringung and Kundenbedarf), takt by the
   // customer demand — naming both prevents the confusion that produced the old
   // single "Exitrate" label for two different quantities.
+  // Der Bestand in Geld. Bleibt leer, solange kein Wert je Stueck hinterlegt
+  // ist — "0 €" waere die einzige Aussage, die sicher falsch ist.
+  const capital = tiedUpCapital(totalWipCount, project.piece_value)
+  const capitalLabel = capital !== null ? formatCurrency(capital, project.currency, locale) : KPI_EMPTY
+  const capitalFormula =
+    capital !== null && project.piece_value !== null
+      ? t('tiedUpCapitalFormula', {
+          wip: totalWipCount,
+          value: formatCurrency(project.piece_value, project.currency, locale),
+        })
+      : undefined
+
   const leadTimeFormula =
     kpis.departureRatePerDay !== null
       ? t('leadTimeFormula', {
@@ -637,8 +659,16 @@ export default function VSMCanvas({
         value: kpis.totalCycleTimeMinutes.toFixed(1),
         unit: t('unitMin'),
       },
+      // Der Betrag traegt seine Einheit schon im Text (465.000 €), deshalb
+      // hier keine zweite daneben. Am Telefon fuellt er ausserdem die sechste
+      // Zelle der Dreierreihe, die bisher leer blieb.
+      {
+        label: t('kpiTiedUpCapital'),
+        value: capitalLabel,
+        unit: '',
+      },
     ],
-    [kpis, t]
+    [kpis, t, capitalLabel]
   )
 
   // Die Höhe, in die eingepasst wird: im Seitenfluss die aus dem Inhalt
@@ -812,15 +842,27 @@ export default function VSMCanvas({
       // buildKpiSummaryLines; hier wird nur am ersten ": " in Beschriftung und
       // Wert getrennt. Beide Seiten sind fest formatiert (Begriff bzw. Zahl
       // mit Einheit), ein zweites ": " kann darin nicht vorkommen.
-      const kpiLines = buildKpiSummaryLines(kpis, {
-        cycleTimeSum: t('kpiCycleTimeSum'),
-        leadTime: t('kpiLeadTime'),
-        pce: t('kpiPce'),
-        taktTime: t('kpiTaktTime'),
-        unitMin: t('unitMin'),
-        unitDays: t('unitDays'),
-        unitPercent: t('unitPercent'),
-      })
+      const kpiLines = buildKpiSummaryLines(
+        {
+          ...kpis,
+          // Intl setzt zwischen Betrag und Waehrungszeichen ein geschuetztes
+          // Leerzeichen (U+00A0). Auf dem Bildschirm ist das richtig, im PDF
+          // haengt es von der Schrift ab, ob daraus ein Leerzeichen oder ein
+          // Kaestchen wird — auf dem Blatt, das ins Gremium geht, ist ein
+          // Kaestchen keine Option.
+          tiedUpCapital: capital !== null ? capitalLabel.replace(/\u00a0/g, ' ') : null,
+        },
+        {
+          cycleTimeSum: t('kpiCycleTimeSum'),
+          leadTime: t('kpiLeadTime'),
+          pce: t('kpiPce'),
+          taktTime: t('kpiTaktTime'),
+          tiedUpCapital: t('kpiTiedUpCapital'),
+          unitMin: t('unitMin'),
+          unitDays: t('unitDays'),
+          unitPercent: t('unitPercent'),
+        }
+      )
       const columnWidth = availableWidth / kpiLines.length
       const kpiY = imgY + imgHeight + 30
       kpiLines.forEach((line, i) => {
@@ -1192,6 +1234,42 @@ export default function VSMCanvas({
     })
   }
 
+  function handlePieceValueBlur() {
+    const trimmed = pieceValueInput.trim()
+    const parsed = trimmed === '' ? null : Number(trimmed)
+    // Leer heisst "nicht hinterlegt" und loescht den Wert; eine unbrauchbare
+    // Eingabe laesst den gespeicherten stehen, statt ihn zu verwerfen.
+    if (parsed !== null && (Number.isNaN(parsed) || parsed < 0)) return
+
+    setError(null)
+    mutate((s) => vsmOperations.updatePieceValue(s, parsed))
+    if (isDemo) return
+
+    startTransition(async () => {
+      try {
+        await updatePieceValue(project.id, parsed)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
+      }
+    })
+  }
+
+  function handleCurrencyChange(currency: string) {
+    setError(null)
+    mutate((s) => vsmOperations.updateCurrency(s, currency))
+    if (isDemo) return
+
+    startTransition(async () => {
+      try {
+        await updateCurrency(project.id, currency)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
+      }
+    })
+  }
+
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1304,6 +1382,39 @@ export default function VSMCanvas({
               className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
             />
           </div>
+          {/* Der eine fehlende Faktor: Ohne ihn bleibt der Bestand eine
+              Stueckzahl, mit ihm wird er zu Geld, das im Regal liegt. Steht
+              bewusst neben Jahresbedarf und Schichtzeit — es ist dieselbe Art
+              Angabe: eine Eigenschaft des Projekts, die die Kennzahlen
+              darueber speist. */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="piece-value" className="text-sm text-zinc-600">
+              <TermTooltip term="pieceValue">{t('pieceValueLabel')}</TermTooltip>
+            </label>
+            <input
+              id="piece-value"
+              type="number"
+              min={0}
+              step="0.01"
+              value={pieceValueInput}
+              onChange={(e) => setPieceValueInput(e.target.value)}
+              onBlur={handlePieceValueBlur}
+              placeholder={t('pieceValuePlaceholder')}
+              className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+            <select
+              aria-label={t('currencyLabel')}
+              value={project.currency}
+              onChange={(e) => handleCurrencyChange(e.target.value)}
+              className="rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            >
+              {SUPPORTED_CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {error && (
@@ -1329,7 +1440,13 @@ export default function VSMCanvas({
         <div className="order-2 grid grid-cols-3 gap-x-3 gap-y-3 py-3 lg:hidden">
           {fullscreenKpis.map((kpi) => (
             <div key={kpi.label} className="min-w-0">
-              <div className="truncate text-xs text-zinc-500">{kpi.label}</div>
+              {/* [Bedienbarkeitsprüfung 2026-09-03, B5] Vorher `truncate`:
+                  "Wertschöpfungsanteil" wurde zu "Wertschöpfungsa…" und
+                  "Gebundenes Kapital" zu "Gebundenes Kapi…" — der Name einer
+                  Kennzahl ist aber keine Nebensache, sondern das, was sie
+                  erklaert. Zwei Zeilen Platz mit fester Hoehe, damit die
+                  Zahlen darunter trotzdem auf einer Linie stehen. */}
+              <div className="min-h-[2.4em] text-xs leading-tight text-zinc-500">{kpi.label}</div>
               <div className="mt-0.5 flex items-baseline gap-1">
                 <span className="text-base font-semibold tabular-nums text-zinc-950">
                   {kpi.value}
@@ -1363,7 +1480,7 @@ export default function VSMCanvas({
         <div className="bg-zinc-50 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
           {/* Live KPI bar — ab lg; darunter zeigt die kompakte Telefon-
               Kennzahlenzeile weiter oben dieselben Werte (Befund P2). */}
-          <div className="hidden gap-3 lg:grid lg:grid-cols-5">
+          <div className="hidden gap-3 lg:grid lg:grid-cols-6">
             <KpiTile
               label={<TermTooltip term="cycleTimeSum">{t('kpiCycleTimeSum')}</TermTooltip>}
               value={kpis.totalCycleTimeMinutes.toFixed(1)}
@@ -1397,6 +1514,16 @@ export default function VSMCanvas({
               unit={t('unitPiecesPerDay')}
               formula={exitRateFormula}
               tier={rateCapacityCoverage(kpis.capacityCoverage)}
+            />
+            {/* Die einzige Kachel, die nicht in Minuten oder Stueck rechnet.
+                Sie steht am Ende der Reihe, weil sie aus dem Bestand folgt —
+                und sie ist die einzige, die jemand ohne Lean-Ausbildung sofort
+                versteht. Ohne hinterlegten Stueckwert bleibt sie leer und
+                erklaert sich ueber den Begriff daneben. */}
+            <KpiTile
+              label={<TermTooltip term="tiedUpCapital">{t('kpiTiedUpCapital')}</TermTooltip>}
+              value={capitalLabel}
+              formula={capitalFormula}
             />
           </div>
 

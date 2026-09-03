@@ -37,6 +37,12 @@ export const DEMO_PROJECT: Project = {
   annual_throughput: 50000,
   available_minutes_per_day: 480,
   pitch_minutes: null,
+  // Der Materialwert einer Antriebswelle. Er ist der Grund, warum in der Demo
+  // neben "9 300 Stueck" auch "465.000 €" steht: Die Stueckzahl ueberzeugt die
+  // Fertigung, der Betrag ueberzeugt den, der ueber die Investition
+  // entscheidet — und beide sollen in derselben Demo zu sehen sein.
+  piece_value: 50,
+  currency: 'EUR',
   created_at: T0,
   updated_at: T0,
 }

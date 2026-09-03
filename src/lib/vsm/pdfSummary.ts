@@ -14,6 +14,13 @@ export interface PdfKpiInput {
   totalCycleTimeMinutes: number
   valueAddedRatioPercent: number | null
   taktTimeMinutes: number | null
+  /**
+   * Schon fertig formatiert (Betrag samt Waehrung) oder null, wenn kein Wert
+   * je Stueck hinterlegt ist. Die Formatierung haengt an Sprache und Waehrung
+   * des Projekts und gehoert deshalb nicht hierher, sondern dorthin, wo beides
+   * bekannt ist.
+   */
+  tiedUpCapital?: string | null
 }
 
 /** Beschriftungen und Einheiten fuer den Kennzahlenblock. */
@@ -22,6 +29,7 @@ export interface PdfKpiLabels {
   leadTime: string
   pce: string
   taktTime: string
+  tiedUpCapital: string
   unitMin: string
   unitDays: string
   unitPercent: string
@@ -48,6 +56,11 @@ export function buildKpiSummaryLines(kpis: PdfKpiInput, labels: PdfKpiLabels): s
     `${labels.taktTime}: ${
       kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} ${labels.unitMin}` : '–'
     }`,
+    // Die eine Zeile auf dem Blatt, die auch jemand liest, der mit Taktzeit
+    // nichts anfangen kann. Sie faellt weg statt "–" zu zeigen, wenn kein
+    // Stueckwert hinterlegt ist: ein leerer Geldbetrag im Gremium wirft mehr
+    // Fragen auf, als er beantwortet.
+    ...(kpis.tiedUpCapital ? [`${labels.tiedUpCapital}: ${kpis.tiedUpCapital}`] : []),
   ]
 }
 
