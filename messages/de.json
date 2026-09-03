@@ -630,6 +630,8 @@
     "questionOf": "Frage {id} von 8",
     "saved": "✓ Gespeichert.",
     "save": "Speichern",
+    "saving": "Speichern …",
+    "savedButton": "Gespeichert",
     "toOverview": "Zur Übersicht →",
     "q1AnnualDemand": "Jahresbedarf (Stück/Jahr)",
     "q1AvailableMinutes": "Verfügbare Produktionszeit (min/Tag)",
