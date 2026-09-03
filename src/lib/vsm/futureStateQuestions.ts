@@ -13,6 +13,7 @@
 // pull-before-pacemaker check). This file only adds the *question* framing
 // on top.
 
+import { roundTo } from './numberFormat'
 import { calculateKpis, type KpiBufferInput, type KpiProcessInput } from './calculations'
 import { deriveChainOrder, type ChainEdge } from './chainOrder'
 import { findPushBeforePacemaker, type FlowEdge } from './pacemakerConsistency'
@@ -93,8 +94,12 @@ function deriveQuestion1(input: FutureStateInput): FutureStateQuestion {
   }
 
   return question(1, 'answered', 'q1answered', {
-    takt: kpis.taktTimeMinutes.toFixed(1),
-    demand: kpis.demandRatePerDay.toFixed(1),
+    // Gerundet, nicht formatiert: Wie viele Stellen eine Taktzeit traegt,
+    // ist eine fachliche Entscheidung und gehoert hierher; wie die Zahl
+    // geschrieben wird, entscheidet die Sprache des Lesers und gehoert in die
+    // Seite (siehe formatValues in numberFormat.ts).
+    takt: roundTo(kpis.taktTimeMinutes, 1),
+    demand: roundTo(kpis.demandRatePerDay, 1),
   })
 }
 
@@ -220,7 +225,7 @@ function deriveQuestion7(input: FutureStateInput): FutureStateQuestion {
     const units = input.pitchMinutes / kpis.taktTimeMinutes
     return question(7, 'answered', 'q7answered', {
       pitch: input.pitchMinutes,
-      units: units.toFixed(1),
+      units: roundTo(units, 1),
     })
   }
   return question(7, 'open', 'q7open')

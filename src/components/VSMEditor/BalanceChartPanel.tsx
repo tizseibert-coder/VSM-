@@ -14,7 +14,8 @@
 // soon as it approached full height — the tall bars were clipped.
 
 import { buildBalanceChart, type BalanceProcessInput } from '@/lib/vsm/balance'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatDecimal } from '@/lib/vsm/numberFormat'
 import { TermTooltip } from './TermTooltip'
 
 const PLOT_HEIGHT_PX = 200
@@ -27,6 +28,8 @@ export function BalanceChartPanel({
   taktTimeMinutes: number | null
 }) {
   const t = useTranslations('Balance')
+  const locale = useLocale()
+  const num = (value: number, digits = 1) => formatDecimal(value, locale, digits)
   const chart = buildBalanceChart(processes, taktTimeMinutes)
 
   if (chart.bars.length === 0) {
@@ -58,7 +61,7 @@ export function BalanceChartPanel({
           style={{ height: PLOT_HEIGHT_PX }}
           aria-hidden="true"
         >
-          <span>{axisMax.toFixed(1)}</span>
+          <span>{num(axisMax)}</span>
           <span>{t('zeroAxis')}</span>
         </div>
 
@@ -72,7 +75,7 @@ export function BalanceChartPanel({
                 style={{ bottom: `${taktLinePercent}%` }}
               >
                 <span className="absolute -top-6 right-0 rounded-control bg-brand-600 px-1.5 py-0.5 text-xs font-medium text-white">
-                  {t('taktLabel', { value: chart.taktTimeMinutes?.toFixed(1) ?? '' })}
+                  {t('taktLabel', { value: chart.taktTimeMinutes !== null ? num(chart.taktTimeMinutes) : '' })}
                 </span>
               </div>
             )}
@@ -117,11 +120,11 @@ export function BalanceChartPanel({
                   {bar.name}
                 </p>
                 <p className="text-xs tabular-nums text-zinc-500">
-                  {Number.isFinite(bar.totalMinutes) ? `${bar.totalMinutes.toFixed(2)} min` : t('noCapacity')}
+                  {Number.isFinite(bar.totalMinutes) ? `${num(bar.totalMinutes, 2)} min` : t('noCapacity')}
                   {bar.taktRatio !== null && Number.isFinite(bar.taktRatio) && (
                     <span className={bar.isOverTakt ? ' text-red-600' : ''}>
                       {' '}
-                      · {(bar.taktRatio * 100).toFixed(0)} %
+                      · {num(bar.taktRatio * 100, 0)} %
                     </span>
                   )}
                 </p>
@@ -149,8 +152,8 @@ export function BalanceChartPanel({
       {chart.minimumStations !== null && (
         <p className="mt-4 rounded-control bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
           {t('minStationsPrefix', {
-            work: chart.totalWorkContentMinutes.toFixed(1),
-            takt: chart.taktTimeMinutes?.toFixed(1) ?? '',
+            work: num(chart.totalWorkContentMinutes),
+            takt: chart.taktTimeMinutes !== null ? num(chart.taktTimeMinutes) : '',
           })}{' '}
           <strong className="font-semibold text-zinc-950">
             {t('minStationsStrong', { count: chart.minimumStations })}

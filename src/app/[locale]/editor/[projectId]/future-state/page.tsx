@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { deriveFutureStateQuestions, type FutureStateInput } from '@/lib/vsm/futureStateQuestions'
+import { formatValues } from '@/lib/vsm/numberFormat'
 import NewScenarioDisclosure from '@/components/VSMEditor/NewScenarioDisclosure'
 import { buttonSecondary } from '@/components/ui/buttons'
 
@@ -34,6 +35,7 @@ export default async function FutureStateOverviewPage({
   searchParams: Promise<{ scenario?: string }>
 }) {
   const { projectId } = await params
+  const locale = await getLocale()
   const t = await getTranslations('Wizard')
   const tFs = await getTranslations('FutureState')
   const { scenario: scenarioParam } = await searchParams
@@ -141,7 +143,7 @@ export default async function FutureStateOverviewPage({
                   <p className="text-xs font-medium text-zinc-500">{t('questionLabel', { id: q.id })}</p>
                   <p className="mt-0.5 font-medium text-zinc-950">{tFs(`questions.${q.questionKey}`)}</p>
                   <p className="mt-1 text-sm text-zinc-600">
-                    {tFs(`summary.${q.summaryKey}`, q.summaryValues)}
+                    {tFs(`summary.${q.summaryKey}`, q.summaryValues && formatValues(q.summaryValues, locale))}
                   </p>
                 </div>
                 <span

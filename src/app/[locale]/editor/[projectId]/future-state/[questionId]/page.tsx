@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { deriveFutureStateQuestions, type FutureStateInput } from '@/lib/vsm/futureStateQuestions'
+import { formatValues } from '@/lib/vsm/numberFormat'
 import { TermTooltip } from '@/components/VSMEditor/TermTooltip'
 import { WizardSaveButton } from '@/components/wizard/WizardSaveButton'
 import { submitTaktTime, submitBuffer, submitPacemaker, submitHeijunka, submitPitch, submitKaizenNote } from '../wizard-actions'
@@ -35,6 +36,7 @@ export default async function FutureStateQuestionPage({
   searchParams: Promise<{ scenario?: string; saved?: string }>
 }) {
   const { projectId, questionId } = await params
+  const locale = await getLocale()
   const t = await getTranslations('Wizard')
   const tFs = await getTranslations('FutureState')
   const { scenario: scenarioParam, saved } = await searchParams
@@ -118,7 +120,10 @@ export default async function FutureStateQuestionPage({
           </span>
         </div>
         <p className="mt-2 text-sm text-zinc-600">
-          {tFs(`summary.${current.summaryKey}`, current.summaryValues)}
+          {tFs(
+            `summary.${current.summaryKey}`,
+            current.summaryValues && formatValues(current.summaryValues, locale)
+          )}
         </p>
 
         {saved === '1' && (

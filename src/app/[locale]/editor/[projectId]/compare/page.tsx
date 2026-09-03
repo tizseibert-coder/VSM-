@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
 import { formatCurrency, releasedCapital, tiedUpCapital } from '@/lib/vsm/capital'
+import { formatDecimal } from '@/lib/vsm/numberFormat'
 
 // Zuordnung Risikostufe -> Uebersetzungsschluessel im Namensraum `Scenario`.
 const RISK_KEY: Record<string, string> = { low: 'riskLow', medium: 'riskMedium', high: 'riskHigh' }
@@ -63,6 +64,7 @@ export default async function ComparePage({
   // die Differenz zum Ist-Zustand, denn genau die ist die Aussage: Was ein
   // Szenario an Kapital freisetzt, das heute im Regal liegt.
   const money = (value: number) => formatCurrency(value, project.currency, locale)
+  const num = (value: number, digits = 1) => formatDecimal(value, locale, digits)
   const capitalOf = (row: (typeof rows)[number]) => tiedUpCapital(row.totalWipCount, project.piece_value)
   const currentCapital = rows.length > 0 ? capitalOf(rows[0]) : null
 
@@ -70,26 +72,26 @@ export default async function ComparePage({
     { label: t('processes'), format: (r) => String(r.processCount) },
     {
       label: tEd('kpiCycleTimeSum'),
-      format: (r) => `${r.totalCycleTimeMinutes.toFixed(1)} ${tEd('unitMin')}`,
+      format: (r) => `${num(r.totalCycleTimeMinutes)} ${tEd('unitMin')}`,
     },
     {
       label: tEd('kpiLeadTime'),
       format: (r) =>
         r.totalLeadTimeDays !== null && r.totalLeadTimeDays > 0
-          ? `${r.totalLeadTimeDays.toFixed(1)} ${tEd('unitDays')}`
+          ? `${num(r.totalLeadTimeDays)} ${tEd('unitDays')}`
           : '–',
     },
     {
       label: tEd('kpiPce'),
       format: (r) =>
         r.valueAddedRatioPercent !== null
-          ? `${r.valueAddedRatioPercent.toFixed(2)} ${tEd('unitPercent')}`
+          ? `${num(r.valueAddedRatioPercent, 2)} ${tEd('unitPercent')}`
           : '–',
     },
     {
       label: tEd('kpiTaktTime'),
       format: (r) =>
-        r.taktTimeMinutes !== null ? `${r.taktTimeMinutes.toFixed(1)} ${tEd('unitMin')}` : '–',
+        r.taktTimeMinutes !== null ? `${num(r.taktTimeMinutes)} ${tEd('unitMin')}` : '–',
     },
     {
       label: t('tiedUpCapital'),

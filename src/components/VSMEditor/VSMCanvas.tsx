@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -46,6 +47,7 @@ import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geome
 import { computeAutoFitScale, clampScale, MIN_READABLE_SCALE } from '@/lib/vsm/viewport'
 import { checkCapacity } from '@/lib/vsm/capacity'
 import { formatCurrency, tiedUpCapital, SUPPORTED_CURRENCIES } from '@/lib/vsm/capital'
+import { formatCount, formatDecimal, formatPlain } from '@/lib/vsm/numberFormat'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
@@ -232,6 +234,19 @@ export default function VSMCanvas({
   benchmarkReferences = [],
 }: Props) {
   const locale = useLocale()
+  // [Bedienbarkeitsprüfung 2026-09-03, B9] Kurz, weil sie oft vorkommen: Jede
+  // Zahl, die hier angezeigt wird, geht durch eine der beiden — sonst steht
+  // "84.5 Tage" in einer deutschen Oberflaeche, waehrend die Startseite
+  // daneben "16,8" schreibt.
+  // useCallback, damit die beiden nicht bei jedem Zeichnen eine neue Identitaet
+  // bekommen: Sie stehen in den Abhaengigkeiten der useMemo-Bloecke fuer
+  // Methodikbefunde und Kennzahlenzeile, und ein neuer Verweis pro Durchlauf
+  // wuerde beide Berechnungen jedes Mal verwerfen.
+  const num = useCallback(
+    (value: number, digits = 1) => formatDecimal(value, locale, digits),
+    [locale]
+  )
+  const count = useCallback((value: number) => formatCount(value, locale), [locale])
   const t = useTranslations('Editor')
   const tCanvas = useTranslations('Canvas')
   const tMethod = useTranslations('MethodCheck')
@@ -510,11 +525,11 @@ export default function VSMCanvas({
         id: 'capacity-coverage',
         severity: 'critical',
         title: tMethod('capacityShortfallTitle', {
-          percent: (kpis.capacityCoverage * 100).toFixed(0),
+          percent: num(kpis.capacityCoverage * 100, 0),
         }),
         detail: tMethod('capacityDetail', {
-          exit: kpis.exitRatePerDay?.toFixed(1) ?? '',
-          demand: kpis.demandRatePerDay?.toFixed(1) ?? '',
+          exit: kpis.exitRatePerDay !== null ? num(kpis.exitRatePerDay) : '',
+          demand: kpis.demandRatePerDay !== null ? num(kpis.demandRatePerDay) : '',
         }),
       })
     }
@@ -538,7 +553,7 @@ export default function VSMCanvas({
     }
 
     return found
-  }, [kpis, pacemaker, processes.length, pushBeforePacemaker.length, tMethod])
+  }, [kpis, num, pacemaker, processes.length, pushBeforePacemaker.length, tMethod])
 
   // Live transparency for the "how is this actually calculated" question —
   // shown as a small formula caption under Durchlaufzeit/Taktzeit so a
@@ -561,7 +576,7 @@ export default function VSMCanvas({
   const capitalFormula =
     capital !== null && project.piece_value !== null
       ? t('tiedUpCapitalFormula', {
-          wip: totalWipCount,
+          wip: count(totalWipCount),
           value: formatCurrency(project.piece_value, project.currency, locale),
         })
       : undefined
@@ -569,22 +584,22 @@ export default function VSMCanvas({
   const leadTimeFormula =
     kpis.departureRatePerDay !== null
       ? t('leadTimeFormula', {
-          wip: totalWipCount,
-          rate: kpis.departureRatePerDay.toFixed(1),
+          wip: count(totalWipCount),
+          rate: num(kpis.departureRatePerDay),
         })
       : undefined
   const taktTimeFormula =
     kpis.demandRatePerDay !== null
       ? t('taktTimeFormula', {
-          minutes: effectiveAvailableMinutes,
-          demand: kpis.demandRatePerDay.toFixed(1),
+          minutes: count(effectiveAvailableMinutes),
+          demand: num(kpis.demandRatePerDay),
         })
       : undefined
   const exitRateFormula =
     kpis.bottleneckCycleTimeMinutes !== null && Number.isFinite(kpis.bottleneckCycleTimeMinutes)
       ? t('exitRateFormula', {
-          minutes: effectiveAvailableMinutes,
-          bottleneck: kpis.bottleneckCycleTimeMinutes.toFixed(2),
+          minutes: count(effectiveAvailableMinutes),
+          bottleneck: num(kpis.bottleneckCycleTimeMinutes, 2),
         })
       : undefined
 
@@ -633,30 +648,30 @@ export default function VSMCanvas({
     () => [
       {
         label: t('kpiLeadTime'),
-        value: kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY,
+        value: kpis.totalLeadTimeDays !== null ? num(kpis.totalLeadTimeDays) : KPI_EMPTY,
         unit: t('unitDays'),
       },
       {
         label: t('kpiPce'),
         value:
           kpis.valueAddedRatioPercent !== null
-            ? kpis.valueAddedRatioPercent.toFixed(2)
+            ? num(kpis.valueAddedRatioPercent, 2)
             : KPI_EMPTY,
         unit: '%',
       },
       {
         label: t('kpiTaktTime'),
-        value: kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY,
+        value: kpis.taktTimeMinutes !== null ? num(kpis.taktTimeMinutes) : KPI_EMPTY,
         unit: t('unitMin'),
       },
       {
         label: t('kpiExitRate'),
-        value: kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY,
+        value: kpis.exitRatePerDay !== null ? num(kpis.exitRatePerDay) : KPI_EMPTY,
         unit: t('unitPiecesPerDay'),
       },
       {
         label: t('kpiCycleTimeSum'),
-        value: kpis.totalCycleTimeMinutes.toFixed(1),
+        value: num(kpis.totalCycleTimeMinutes),
         unit: t('unitMin'),
       },
       // Der Betrag traegt seine Einheit schon im Text (465.000 €), deshalb
@@ -668,7 +683,7 @@ export default function VSMCanvas({
         unit: '',
       },
     ],
-    [kpis, t, capitalLabel]
+    [kpis, t, num, capitalLabel]
   )
 
   // Die Höhe, in die eingepasst wird: im Seitenfluss die aus dem Inhalt
@@ -861,7 +876,8 @@ export default function VSMCanvas({
           unitMin: t('unitMin'),
           unitDays: t('unitDays'),
           unitPercent: t('unitPercent'),
-        }
+        },
+        locale
       )
       const columnWidth = availableWidth / kpiLines.length
       const kpiY = imgY + imgHeight + 30
@@ -1116,9 +1132,9 @@ export default function VSMCanvas({
         y: ladderHighY,
         label:
           days !== null
-            ? `${days.toFixed(1)} ${tCanvas('daysUnit')}`
+            ? `${num(days)} ${tCanvas('daysUnit')}`
             : buffer
-              ? `${buffer.wip_count} ${tCanvas('piecesUnit')}`
+              ? `${count(buffer.wip_count)} ${tCanvas('piecesUnit')}`
               : '0',
         kind: 'wait',
       })
@@ -1483,12 +1499,12 @@ export default function VSMCanvas({
           <div className="hidden gap-3 lg:grid lg:grid-cols-6">
             <KpiTile
               label={<TermTooltip term="cycleTimeSum">{t('kpiCycleTimeSum')}</TermTooltip>}
-              value={kpis.totalCycleTimeMinutes.toFixed(1)}
+              value={num(kpis.totalCycleTimeMinutes)}
               unit={t('unitMin')}
             />
             <KpiTile
               label={<TermTooltip term="leadTime">{t('kpiLeadTime')}</TermTooltip>}
-              value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
+              value={kpis.totalLeadTimeDays !== null ? num(kpis.totalLeadTimeDays) : KPI_EMPTY}
               unit={t('unitDays')}
               formula={leadTimeFormula}
             />
@@ -1497,20 +1513,20 @@ export default function VSMCanvas({
               tier={ratePce(kpis.valueAddedRatioPercent)}
               value={
                 kpis.valueAddedRatioPercent !== null
-                  ? kpis.valueAddedRatioPercent.toFixed(2)
+                  ? num(kpis.valueAddedRatioPercent, 2)
                   : KPI_EMPTY
               }
               unit={t('unitPercent')}
             />
             <KpiTile
               label={<TermTooltip term="taktTime">{t('kpiTaktTime')}</TermTooltip>}
-              value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
+              value={kpis.taktTimeMinutes !== null ? num(kpis.taktTimeMinutes) : KPI_EMPTY}
               unit={t('unitMin')}
               formula={taktTimeFormula}
             />
             <KpiTile
               label={<TermTooltip term="exitRate">{t('kpiExitRate')}</TermTooltip>}
-              value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
+              value={kpis.exitRatePerDay !== null ? num(kpis.exitRatePerDay) : KPI_EMPTY}
               unit={t('unitPiecesPerDay')}
               formula={exitRateFormula}
               tier={rateCapacityCoverage(kpis.capacityCoverage)}
@@ -2340,6 +2356,7 @@ function ProcessEditPanel({
 }) {
   const router = useRouter()
   const { mutate, isDemo } = useVsmMutationRequired()
+  const locale = useLocale()
   const [, startTransition] = useTransition()
   const [name, setName] = useState(process.name)
   const [cycleTime, setCycleTime] = useState(String(process.cycle_time))
@@ -2691,8 +2708,9 @@ function ProcessEditPanel({
           />
           {liveEffectiveCycleTime !== null && (
             <p className="mt-1 text-xs text-zinc-500">
-              eff. Zykluszeit: {liveEffectiveCycleTime.toFixed(1)} min (fliesst in Bearbeitungszeit/Kapazitäts-Check
-              ein — die Zykluszeit selbst bleibt unverändert)
+              {t('effectiveCycleTime', {
+                value: formatDecimal(liveEffectiveCycleTime, locale),
+              })}
             </p>
           )}
         </div>
@@ -3148,6 +3166,10 @@ function ProcessBox({
   onSelect: () => void
 }) {
   const tCanvas = useTranslations('Canvas')
+  const locale = useLocale()
+  // Eingetippte Werte behalten ihre Genauigkeit, bekommen aber das
+  // Dezimalzeichen der Sprache: 0,75 statt 0.75 in der Prozessbox.
+  const plain = (value: number) => formatPlain(value, locale)
   const boxStroke = isSelected ? ACCENT : isBottleneck ? BOTTLENECK : INK
   return (
     <Group
@@ -3217,11 +3239,17 @@ function ProcessBox({
       />
       <Rect x={10} y={34} width={PROCESS_WIDTH - 20} height={1} fill="#d4d4d8" />
       <Text
-        text={`C/T: ${process.cycle_time} min${
+        text={`C/T: ${plain(process.cycle_time)} min${
           process.operator_count > 1
-            ? ` (eff. ${effectiveCycleTime({ cycleTime: process.cycle_time, operatorCount: process.operator_count }).toFixed(1)})`
+            ? ` (eff. ${formatDecimal(
+                effectiveCycleTime({
+                  cycleTime: process.cycle_time,
+                  operatorCount: process.operator_count,
+                }),
+                locale
+              )})`
             : ''
-        }\nC/O: ${process.changeover_time} min\nOEE: ${process.oee}%`}
+        }\nC/O: ${plain(process.changeover_time)} min\nOEE: ${plain(process.oee)}%`}
         width={PROCESS_WIDTH}
         align="center"
         y={39}
@@ -3698,6 +3726,7 @@ function LadderSummary({
   valueAddMinutes: number
 }) {
   const tCanvas = useTranslations('Canvas')
+  const locale = useLocale()
   const width = 84
   // Fixed screen-pixel height now that this box no longer scales with the
   // canvas — no longer tied to the ladder step height (yBottom - yTop),
@@ -3709,7 +3738,9 @@ function LadderSummary({
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
       <Text text={tCanvas('leadTimeAbbr')} x={0} y={5} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
-        text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} ${tCanvas('daysUnit')}` : '–'}
+        text={
+          leadTimeDays !== null ? `${formatDecimal(leadTimeDays, locale)} ${tCanvas('daysUnit')}` : '–'
+        }
         x={0}
         y={17}
         width={width}
@@ -3720,7 +3751,7 @@ function LadderSummary({
       />
       <Text text={tCanvas('valueAddedAbbr')} x={0} y={height - 30} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
-        text={`${valueAddMinutes.toFixed(1)} ${tCanvas('minUnit')}`}
+        text={`${formatDecimal(valueAddMinutes, locale)} ${tCanvas('minUnit')}`}
         x={0}
         y={height - 18}
         width={width}
