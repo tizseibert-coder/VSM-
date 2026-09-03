@@ -22,6 +22,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Metadata");
 
   return {
+    // Ohne diese Angabe loest Next relative Bildpfade gegen localhost auf —
+    // der Bau warnte genau davor, und im HTML stand tatsaechlich
+    // `og:image content="http://localhost:3000/..."`. Fuer ein Bild, dessen
+    // ganzer Zweck es ist, in Teams oder LinkedIn zu erscheinen, ist das der
+    // Unterschied zwischen Vorschaubild und grauer Kachel.
+    //
+    // `NEXT_PUBLIC_SITE_URL` ist dieselbe Variable, die auth/oauth-actions
+    // und team/actions fuer ihre Rueckkehr-Adressen benutzen — eine Quelle
+    // fuer die eigene Adresse, nicht drei. Der Rueckfall gilt nur lokal.
+    metadataBase: new URL(
+      process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+    ),
     // Die Vorlage haengt den Produktnamen an jede Unterseite an, damit ein
     // Browser-Tab oder ein geteilter Link erkennbar bleibt, wenn er neben
     // zwanzig anderen steht.

@@ -22,3 +22,22 @@ export const routing = defineRouting({
   defaultLocale: 'de',
   localePrefix: 'always',
 })
+
+// Zu `hreflang` steht hier bewusst nichts weiter: `alternateLinks` ist in
+// next-intl standardmaessig an, und die Middleware setzt die Angaben pro
+// Anfrage als HTTP-Header — nachgeprueft an /en/demo:
+//
+//   Link: <.../de/demo>; rel="alternate"; hreflang="de",
+//         <.../en/demo>; rel="alternate"; hreflang="en",
+//         <.../demo>;    rel="alternate"; hreflang="x-default"
+//
+// Das ist pfadgenau und schliesst x-default ein; Google wertet den
+// Link-Header dafuer aus.
+//
+// Dieselben Angaben zusaetzlich als <link> im Root-Layout waeren nicht nur
+// doppelt, sondern falsch: Das Layout kennt den Pfad der Seite nicht, jede
+// Unterseite wuerde also "/de" und "/en" als ihre Entsprechungen angeben —
+// /en/demo verwiese damit auf die deutsche *Startseite* statt auf /de/demo.
+// Wer sie im HTML haben will, muss sie pro Seite in deren
+// generateMetadata setzen, nicht zentral.
+
