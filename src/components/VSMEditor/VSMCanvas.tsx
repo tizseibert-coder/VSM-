@@ -20,6 +20,7 @@ import {
   Line,
   RegularPolygon,
   Circle,
+  Star,
 } from 'react-konva'
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
@@ -27,7 +28,8 @@ import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calc
 import { BalanceChartPanel } from './BalanceChartPanel'
 import BenchmarkPanel from './BenchmarkPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
-import { formatFindingCount, rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
+import { useLocale, useTranslations } from 'next-intl'
+import { rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
 import { buttonPrimaryLg, buttonSecondaryLg, inputSm } from '@/components/ui/buttons'
 import { useDemoMutate } from './DemoModeContext'
 import { demoOperations } from '@/lib/vsm/demoStore'
@@ -44,7 +46,6 @@ import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chain
 import { CLASSIFICATION, classificationMarker, type ClassificationValue } from '@/lib/vsm/classification'
 import {
   buildKpiSummaryLines,
-  buildPdfFooterLine,
   buildPdfSubtitle,
   buildPdfTitle,
 } from '@/lib/vsm/pdfSummary'
@@ -64,6 +65,9 @@ import {
   CLOUD_SIZE,
   ERP_WIDTH,
   ERP_HEIGHT,
+  heijunkaBoxPosition,
+  HEIJUNKA_WIDTH,
+  HEIJUNKA_HEIGHT,
 } from '@/lib/vsm/autoLayout'
 import {
   addProcess,
@@ -77,7 +81,7 @@ import {
   setBufferWip,
   deleteBufferConnection,
   updateProjectLabels,
-} from '@/app/editor/[projectId]/actions'
+} from '@/app/[locale]/editor/[projectId]/actions'
 
 type Project = Tables<'projects'>
 type Process = Tables<'processes'>
@@ -140,6 +144,15 @@ const CANVAS_TEXT = {
    *  Kanban-Art, Klassifikationsmarke. */
   tag: 8,
 } as const
+
+/**
+ * Zusaetzliche Trefferflaeche rund um jedes Bestandsdreieck (siehe
+ * BufferMarker), in Canvas-Einheiten je Seite. BUFFER_SIZE (50) allein
+ * ergibt am Zoom-Boden MIN_READABLE_SCALE (60 %) nur 30x30 px — unter den
+ * ueblichen 44 px fuer einen Finger. 12 Einheiten je Seite heben die
+ * effektive Groesse auf 74, also 44,4 px bei genau diesem Zoom.
+ */
+const BUFFER_HIT_PADDING = 12
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -167,10 +180,13 @@ const FULLSCREEN_KPI_BAR_HEIGHT = 92
 // Diagramm ganz zu sehen, und genau dabei verschwindet es hinter der Leiste.
 const STICKY_CHROME_HEIGHT = 320
 
-/** Die zwei Auswertungen unter dem Diagramm, in Lesereihenfolge. */
+/**
+ * Die zwei Auswertungen unter dem Diagramm, in Lesereihenfolge. Nur die
+ * Kennung steht hier; die Beschriftung kommt aus dem Editor-Namensraum.
+ */
 const ANALYSIS_TABS = [
-  { id: 'balance', label: 'Austaktung' },
-  { id: 'benchmark', label: 'Branchenvergleich' },
+  { id: 'balance', labelKey: 'tabBalance' },
+  { id: 'benchmark', labelKey: 'tabBenchmark' },
 ] as const
 
 type Selection =
@@ -207,6 +223,11 @@ export default function VSMCanvas({
   initialBuffers,
   benchmarkReferences = [],
 }: Props) {
+  const locale = useLocale()
+  const t = useTranslations('Editor')
+  const tCanvas = useTranslations('Canvas')
+  const tMethod = useTranslations('MethodCheck')
+  const tPdf = useTranslations('Pdf')
   const hasBenchmark = benchmarkReferences.length > 0
   const router = useRouter()
   const demoMutate = useDemoMutate()
@@ -268,6 +289,14 @@ export default function VSMCanvas({
   // 2026-08-31, Befund 06); wer den Benchmark lesen wollte, scrollte an der
   // Austaktung vorbei, und das Diagramm war laengst aus dem Bild.
   const [analysisTab, setAnalysisTab] = useState<'balance' | 'benchmark'>('balance')
+  // [UX-Audit 2026-08-16, P6] "Strg/Cmd + Mausrad zum Zoomen" stand bisher
+  // dauerhaft da — ein Dauerhinweis ist das Eingestaendnis, dass eine
+  // Interaktion nicht auffindbar ist, und kostet Aufmerksamkeit bei allen,
+  // die es laengst wissen. Er blendet sich jetzt nur ein, wenn jemand ohne
+  // Strg/Cmd ueber der Zeichenflaeche scrollt (siehe handleWheel), und dann
+  // nur fuer zwei Sekunden.
+  const [showZoomHint, setShowZoomHint] = useState(false)
+  const zoomHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   // Nur im Vollbild gebraucht: dort bestimmt der Bildschirm die Höhe, sonst
   // leitet sie sich aus der Diagrammhöhe ab (viewportHeight weiter unten).
@@ -383,15 +412,13 @@ export default function VSMCanvas({
       found.push({
         id: 'capacity-coverage',
         severity: 'critical',
-        title: `Die Linie deckt nur ${(kpis.capacityCoverage * 100).toFixed(0)} % des Kundenbedarfs`,
-        detail: (
-          <>
-            Der Engpass lässt {kpis.exitRatePerDay?.toFixed(1)} Stk./Tag durch, gefordert sind{' '}
-            {kpis.demandRatePerDay?.toFixed(1)} Stk./Tag. Der{' '}
-            <TermTooltip term="capacityCoverage">Bestand</TermTooltip> wächst dadurch laufend an;
-            die Durchlaufzeit oben ist keine stabile Grösse, solange das so bleibt.
-          </>
-        ),
+        title: tMethod('capacityShortfallTitle', {
+          percent: (kpis.capacityCoverage * 100).toFixed(0),
+        }),
+        detail: tMethod('capacityDetail', {
+          exit: kpis.exitRatePerDay?.toFixed(1) ?? '',
+          demand: kpis.demandRatePerDay?.toFixed(1) ?? '',
+        }),
       })
     }
 
@@ -399,15 +426,8 @@ export default function VSMCanvas({
       found.push({
         id: 'no-pacemaker',
         severity: 'warning',
-        title: 'Kein Schrittmacher-Prozess festgelegt',
-        detail: (
-          <>
-            Die Produktionssteuerung sendet den Auftrag aktuell an alle Prozesse. Lege im
-            Prozess-Panel einen{' '}
-            <TermTooltip term="pacemaker">Schrittmacher</TermTooltip> fest, um das korrekt
-            darzustellen.
-          </>
-        ),
+        title: tMethod('noPacemakerTitle'),
+        detail: tMethod('noPacemakerDetail'),
       })
     }
 
@@ -415,19 +435,13 @@ export default function VSMCanvas({
       found.push({
         id: 'push-before-pacemaker',
         severity: 'warning',
-        title: `${pushBeforePacemaker.length}× Push vor dem Schrittmacher statt Supermarkt oder FIFO`,
-        detail: (
-          <>
-            Methodisch braucht alles vor dem{' '}
-            <TermTooltip term="pacemaker">Schrittmacher</TermTooltip> ein Pull-System (Supermarkt
-            oder FIFO) — sonst baut sich davor unkontrolliert Bestand auf.
-          </>
-        ),
+        title: tMethod('pushTitle', { count: pushBeforePacemaker.length }),
+        detail: tMethod('pushDetail'),
       })
     }
 
     return found
-  }, [kpis, pacemaker, processes.length, pushBeforePacemaker.length])
+  }, [kpis, pacemaker, processes.length, pushBeforePacemaker.length, tMethod])
 
   // Live transparency for the "how is this actually calculated" question —
   // shown as a small formula caption under Durchlaufzeit/Taktzeit so a
@@ -441,15 +455,24 @@ export default function VSMCanvas({
   // single "Exitrate" label for two different quantities.
   const leadTimeFormula =
     kpis.departureRatePerDay !== null
-      ? `${totalWipCount} Stk WIP ÷ ${kpis.departureRatePerDay.toFixed(1)} Stk/Tag Ausbringung`
+      ? t('leadTimeFormula', {
+          wip: totalWipCount,
+          rate: kpis.departureRatePerDay.toFixed(1),
+        })
       : undefined
   const taktTimeFormula =
     kpis.demandRatePerDay !== null
-      ? `${effectiveAvailableMinutes} min/Tag ÷ ${kpis.demandRatePerDay.toFixed(1)} Stk/Tag Kundenbedarf`
+      ? t('taktTimeFormula', {
+          minutes: effectiveAvailableMinutes,
+          demand: kpis.demandRatePerDay.toFixed(1),
+        })
       : undefined
   const exitRateFormula =
     kpis.bottleneckCycleTimeMinutes !== null && Number.isFinite(kpis.bottleneckCycleTimeMinutes)
-      ? `${effectiveAvailableMinutes} min/Tag ÷ ${kpis.bottleneckCycleTimeMinutes.toFixed(2)} min Engpass`
+      ? t('exitRateFormula', {
+          minutes: effectiveAvailableMinutes,
+          bottleneck: kpis.bottleneckCycleTimeMinutes.toFixed(2),
+        })
       : undefined
 
   const supplierPos = supplierCloudPosition()
@@ -460,6 +483,7 @@ export default function VSMCanvas({
   const customerPos = customerCloudPosition(processes.length)
   const customerLeft: Point = { x: customerPos.x, y: customerPos.y + (CLOUD_SIZE * 0.75) / 2 }
   const erpPos = erpBoxPosition(processes.length)
+  const heijunkaPos = heijunkaBoxPosition(processes.length)
 
   // Sits below whichever lane is drawn lowest, so it never overlaps a
   // parallel row.
@@ -495,12 +519,12 @@ export default function VSMCanvas({
   const fullscreenKpis = useMemo(
     () => [
       {
-        label: 'Durchlaufzeit',
+        label: t('kpiLeadTime'),
         value: kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY,
-        unit: 'Tage',
+        unit: t('unitDays'),
       },
       {
-        label: 'Wertschöpfungsanteil',
+        label: t('kpiPce'),
         value:
           kpis.valueAddedRatioPercent !== null
             ? kpis.valueAddedRatioPercent.toFixed(2)
@@ -508,22 +532,22 @@ export default function VSMCanvas({
         unit: '%',
       },
       {
-        label: 'Taktzeit',
+        label: t('kpiTaktTime'),
         value: kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY,
-        unit: 'min',
+        unit: t('unitMin'),
       },
       {
-        label: 'Ist-Ausbringung',
+        label: t('kpiExitRate'),
         value: kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY,
-        unit: 'Stk./Tag',
+        unit: t('unitPiecesPerDay'),
       },
       {
-        label: 'Bearbeitungszeit',
+        label: t('kpiCycleTimeSum'),
         value: kpis.totalCycleTimeMinutes.toFixed(1),
-        unit: 'min',
+        unit: t('unitMin'),
       },
     ],
-    [kpis]
+    [kpis, t]
   )
 
   // Die Höhe, in die eingepasst wird: im Seitenfluss die aus dem Inhalt
@@ -638,11 +662,18 @@ export default function VSMCanvas({
 
       pdf.setFontSize(15)
       pdf.setTextColor(24, 24, 27) // INK
-      pdf.text(buildPdfTitle(project.name), margin, margin + 18)
+      pdf.text(buildPdfTitle(project.name, tPdf('documentTitle')), margin, margin + 18)
 
       pdf.setFontSize(9.5)
       pdf.setTextColor(82, 82, 91) // zinc-600
-      pdf.text(buildPdfSubtitle(scenarioName), margin, margin + 32)
+      pdf.text(
+        buildPdfSubtitle(scenarioName, {
+          currentState: tPdf('currentState'),
+          futureState: (name) => tPdf('futureState', { name }),
+        }),
+        margin,
+        margin + 32
+      )
 
       pdf.setDrawColor(212, 212, 216) // zinc-300
       pdf.setLineWidth(0.5)
@@ -675,7 +706,15 @@ export default function VSMCanvas({
       // buildKpiSummaryLines; hier wird nur am ersten ": " in Beschriftung und
       // Wert getrennt. Beide Seiten sind fest formatiert (Begriff bzw. Zahl
       // mit Einheit), ein zweites ": " kann darin nicht vorkommen.
-      const kpiLines = buildKpiSummaryLines(kpis)
+      const kpiLines = buildKpiSummaryLines(kpis, {
+        cycleTimeSum: t('kpiCycleTimeSum'),
+        leadTime: t('kpiLeadTime'),
+        pce: t('kpiPce'),
+        taktTime: t('kpiTaktTime'),
+        unitMin: t('unitMin'),
+        unitDays: t('unitDays'),
+        unitPercent: t('unitPercent'),
+      })
       const columnWidth = availableWidth / kpiLines.length
       const kpiY = imgY + imgHeight + 30
       kpiLines.forEach((line, i) => {
@@ -704,7 +743,7 @@ export default function VSMCanvas({
         pdf.setFontSize(8)
         pdf.setTextColor(82, 82, 91)
         pdf.text(
-          `METHODIKPRÜFUNG · ${formatFindingCount(rankedFindings.length)}`,
+          `${tPdf('methodCheckHeading')} · ${tMethod('hintCount', { count: rankedFindings.length })}`,
           margin,
           findingY
         )
@@ -738,7 +777,16 @@ export default function VSMCanvas({
       pdf.line(margin, footerY - 14, pageWidth - margin, footerY - 14)
       pdf.setFontSize(8)
       pdf.setTextColor(82, 82, 91)
-      pdf.text(buildPdfFooterLine(), margin, footerY)
+      // buildPdfFooterLine() stand frueher hier und formatierte dd.mm.yyyy
+      // fest. Sowohl das Datumsformat als auch der Satz haengen an der
+      // Sprache, deshalb beides ueber Intl bzw. den Pdf-Namensraum.
+      pdf.text(
+        tPdf('footer', {
+          date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date()),
+        }),
+        margin,
+        footerY
+      )
       pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
 
       pdf.save(`${project.name || 'vsm'}.pdf`)
@@ -771,6 +819,12 @@ export default function VSMCanvas({
     // Bühne in der alten Größe stehen.
   }, [isFullscreen])
 
+  useEffect(() => {
+    return () => {
+      if (zoomHintTimeoutRef.current) clearTimeout(zoomHintTimeoutRef.current)
+    }
+  }, [])
+
   // Seiten-Scroll sperren, solange Vollbild aktiv ist. Ohne das scrollt die
   // Seite hinter der Überlagerung weiter und man landet beim Verlassen an
   // einer anderen Stelle als vorher.
@@ -794,7 +848,12 @@ export default function VSMCanvas({
     // quick-add bar" into an accidental zoom. Match the Figma/Google-Maps
     // convention: only Strg/Cmd + wheel zooms; a bare wheel is left alone so
     // the browser scrolls the page normally.
-    if (!e.evt.ctrlKey && !e.evt.metaKey) return
+    if (!e.evt.ctrlKey && !e.evt.metaKey) {
+      setShowZoomHint(true)
+      if (zoomHintTimeoutRef.current) clearTimeout(zoomHintTimeoutRef.current)
+      zoomHintTimeoutRef.current = setTimeout(() => setShowZoomHint(false), 2000)
+      return
+    }
     e.evt.preventDefault()
     const stage = e.target.getStage()
     const pointer = stage?.getPointerPosition()
@@ -907,7 +966,12 @@ export default function VSMCanvas({
         x1: from.x,
         x2: to.x,
         y: ladderHighY,
-        label: days !== null ? `${days.toFixed(1)} Tage` : buffer ? `${buffer.wip_count} Stk` : '0',
+        label:
+          days !== null
+            ? `${days.toFixed(1)} ${tCanvas('daysUnit')}`
+            : buffer
+              ? `${buffer.wip_count} ${tCanvas('piecesUnit')}`
+              : '0',
         kind: 'wait',
       })
 
@@ -918,7 +982,7 @@ export default function VSMCanvas({
           x1: pos.x,
           x2: pos.x + PROCESS_WIDTH,
           y: ladderLowY,
-          label: `${process.cycle_time} min`,
+          label: `${process.cycle_time} ${tCanvas('minUnit')}`,
           kind: 'process',
         })
       }
@@ -951,7 +1015,7 @@ export default function VSMCanvas({
     const cycleTime = Number(quickAddCt)
 
     if (!name || Number.isNaN(cycleTime)) {
-      setError('Name und Zykluszeit (Minuten) sind erforderlich.')
+      setError(t('errorNameAndCycleTime'))
       return
     }
 
@@ -971,7 +1035,7 @@ export default function VSMCanvas({
         router.refresh()
         nameInputRef.current?.focus()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Fehler beim Hinzufügen.')
+        setError(err instanceof Error ? err.message : t('errorAdding'))
       }
     })
   }
@@ -987,7 +1051,7 @@ export default function VSMCanvas({
         await updateAnnualThroughput(project.id, liveAnnualThroughput)
         router.refresh()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+        setError(err instanceof Error ? err.message : t('errorSaving'))
       }
     })
   }
@@ -1004,7 +1068,7 @@ export default function VSMCanvas({
         await updateAvailableMinutes(project.id, liveAvailableMinutes)
         router.refresh()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+        setError(err instanceof Error ? err.message : t('errorSaving'))
       }
     })
   }
@@ -1046,7 +1110,7 @@ export default function VSMCanvas({
         await reorderProcesses(project.id, scenarioId, newOrder)
         router.refresh()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Reihenfolge konnte nicht geändert werden.')
+        setError(err instanceof Error ? err.message : t('errorReorder'))
       }
     })
   }
@@ -1062,72 +1126,103 @@ export default function VSMCanvas({
         await updateProcessLane(project.id, processId, Math.max(0, lane))
         router.refresh()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Spur konnte nicht geändert werden.')
+        setError(err instanceof Error ? err.message : t('errorLane'))
       }
     })
   }
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
-      {/* Customer demand + available production time — the two inputs that
-          drive lead time / takt live. PLT = WIP / Exitrate (Little's Law):
-          Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
-          deliberately changes PLT — that's the formula working correctly,
-          not a bug. */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <div className="flex items-center gap-2">
-          <label htmlFor="throughput" className="text-sm text-zinc-600">
-            Jahresbedarf Kunde (Stück/Jahr)
-          </label>
-          <input
-            id="throughput"
-            type="number"
-            min={0}
-            value={throughputInput}
-            onChange={(e) => setThroughputInput(e.target.value)}
-            onBlur={handleThroughputBlur}
-            placeholder="z. B. 50000"
-            className="w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
-          />
+      {/* [UX-Audit 2026-08-16, P2] Am Telefon standen Eingaben,
+          Methodikpruefung und die fuenf Kennzahlenkacheln vor der
+          Zeichenflaeche — 880 px Inhalt, bevor das Arbeitsobjekt ueberhaupt
+          sichtbar wird. Die Quellreihenfolge bleibt (Kontext vor Diagramm ist
+          die sinnvolle Lesereihenfolge fuer eine Vorleseansicht); `order`
+          dreht nur die *Anzeige* unter `lg` um. */}
+      <div className="flex flex-col">
+        <div className="order-3 lg:order-1">
+        {/* Customer demand + available production time — the two inputs that
+            drive lead time / takt live. PLT = WIP / Exitrate (Little's Law):
+            Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
+            deliberately changes PLT — that's the formula working correctly,
+            not a bug. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex items-center gap-2">
+            <label htmlFor="throughput" className="text-sm text-zinc-600">
+              {t('annualDemandLabel')}
+            </label>
+            <input
+              id="throughput"
+              type="number"
+              min={0}
+              value={throughputInput}
+              onChange={(e) => setThroughputInput(e.target.value)}
+              onBlur={handleThroughputBlur}
+              placeholder={t('annualDemandPlaceholder')}
+              className="w-32 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="available-minutes" className="text-sm text-zinc-600">
+              <TermTooltip term="availableMinutesPerDay">{t('availableMinutesLabel')}</TermTooltip>
+            </label>
+            <input
+              id="available-minutes"
+              type="number"
+              min={1}
+              value={availableMinutesInput}
+              onChange={(e) => setAvailableMinutesInput(e.target.value)}
+              onBlur={handleAvailableMinutesBlur}
+              placeholder={t('availableMinutesPlaceholder')}
+              className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="available-minutes" className="text-sm text-zinc-600">
-            <TermTooltip term="availableMinutesPerDay">Verfügbare Produktionszeit (Min/Tag)</TermTooltip>
-          </label>
-          <input
-            id="available-minutes"
-            type="number"
-            min={1}
-            value={availableMinutesInput}
-            onChange={(e) => setAvailableMinutesInput(e.target.value)}
-            onBlur={handleAvailableMinutesBlur}
-            placeholder="z. B. 480"
-            className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
-          />
+
+        {error && (
+          <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
+        {/* Die drei Befunde standen frueher als drei gleich grosse Banner
+            untereinander und unterschieden sich nur in Bernstein oder Rot — man
+            sah nicht, was zuerst zaehlt, und bei dreien rutschte die
+            Zeichenflaeche spuerbar nach unten. Die Rangfolge steckt jetzt in
+            `severity`: `critical` heisst, dass eine oben angezeigte Kennzahl
+            dadurch ihre Aussagekraft verliert. */}
+        <MethodCheckPanel findings={methodFindings} />
         </div>
-      </div>
 
-      {error && (
-        <p className="mt-3 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+        {/* [UX-Audit 2026-08-16, P2] Dieselben fuenf Werte wie in den Kacheln
+            oben, hier als reine Zahlen ohne Kachelrahmen — "die fuenf Kacheln
+            sind am Telefon reine Flaeche". Zwei Zeilen durch drei Spalten bei
+            fuenf Eintraegen. Nur unter `lg`: dort ersetzt sie die Kacheln,
+            die im Diagramm-Block selbst ab `lg` erst erscheinen. */}
+        <div className="order-2 grid grid-cols-3 gap-x-3 gap-y-3 py-3 lg:hidden">
+          {fullscreenKpis.map((kpi) => (
+            <div key={kpi.label} className="min-w-0">
+              <div className="truncate text-xs text-zinc-500">{kpi.label}</div>
+              <div className="mt-0.5 flex items-baseline gap-1">
+                <span className="text-base font-semibold tabular-nums text-zinc-950">
+                  {kpi.value}
+                </span>
+                {kpi.value !== KPI_EMPTY && (
+                  <span className="text-xs text-zinc-500">{kpi.unit}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
-      {/* Die drei Befunde standen frueher als drei gleich grosse Banner
-          untereinander und unterschieden sich nur in Bernstein oder Rot — man
-          sah nicht, was zuerst zaehlt, und bei dreien rutschte die
-          Zeichenflaeche spuerbar nach unten. Die Rangfolge steckt jetzt in
-          `severity`: `critical` heisst, dass eine oben angezeigte Kennzahl
-          dadurch ihre Aussagekraft verliert. */}
-      <MethodCheckPanel findings={methodFindings} />
-
-      {/* Kennzahlenleiste und Zeichenflaeche in einem Rahmen: Eine klebende
-          Leiste haelt nur, solange ihr umschliessender Block im Bild ist.
-          Ohne diesen Rahmen blieben die Kennzahlen auch dann noch oben
-          stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
-          Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
-          wenn das Diagramm den Bildschirm verlaesst. */}
-      <div>
+        <div className="order-1 lg:order-2">
+          {/* Kennzahlenleiste und Zeichenflaeche in einem Rahmen: Eine klebende
+              Leiste haelt nur, solange ihr umschliessender Block im Bild ist.
+              Ohne diesen Rahmen blieben die Kennzahlen auch dann noch oben
+              stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
+              Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
+              wenn das Diagramm den Bildschirm verlaesst. */}
+          <div>
         {/* [Design-Audit 2026-08-31, Befund 06] Die Kennzahlen standen ueber
             dem Diagramm und scrollten mit ihm weg: Wer eine Zykluszeit aenderte,
             sah nie gleichzeitig den Prozess und die Zahl, die sich dadurch
@@ -1139,39 +1234,40 @@ export default function VSMCanvas({
             Haelfte des Bildes, und dort scrollt man ohnehin ein Stueck nach dem
             anderen statt beides nebeneinander zu halten. */}
         <div className="bg-zinc-50 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
-          {/* Live KPI bar */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Live KPI bar — ab lg; darunter zeigt die kompakte Telefon-
+              Kennzahlenzeile weiter oben dieselben Werte (Befund P2). */}
+          <div className="hidden gap-3 lg:grid lg:grid-cols-5">
             <KpiTile
-              label={<TermTooltip term="cycleTimeSum">Bearbeitungszeit</TermTooltip>}
+              label={<TermTooltip term="cycleTimeSum">{t('kpiCycleTimeSum')}</TermTooltip>}
               value={kpis.totalCycleTimeMinutes.toFixed(1)}
-              unit="min"
+              unit={t('unitMin')}
             />
             <KpiTile
-              label={<TermTooltip term="leadTime">Durchlaufzeit</TermTooltip>}
+              label={<TermTooltip term="leadTime">{t('kpiLeadTime')}</TermTooltip>}
               value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
-              unit="Tage"
+              unit={t('unitDays')}
               formula={leadTimeFormula}
             />
             <KpiTile
-              label={<TermTooltip term="pce">Wertschöpfungsanteil</TermTooltip>}
+              label={<TermTooltip term="pce">{t('kpiPce')}</TermTooltip>}
               tier={ratePce(kpis.valueAddedRatioPercent)}
               value={
                 kpis.valueAddedRatioPercent !== null
                   ? kpis.valueAddedRatioPercent.toFixed(2)
                   : KPI_EMPTY
               }
-              unit="%"
+              unit={t('unitPercent')}
             />
             <KpiTile
-              label={<TermTooltip term="taktTime">Taktzeit</TermTooltip>}
+              label={<TermTooltip term="taktTime">{t('kpiTaktTime')}</TermTooltip>}
               value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
-              unit="min"
+              unit={t('unitMin')}
               formula={taktTimeFormula}
             />
             <KpiTile
-              label={<TermTooltip term="exitRate">Ist-Ausbringung</TermTooltip>}
+              label={<TermTooltip term="exitRate">{t('kpiExitRate')}</TermTooltip>}
               value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
-              unit="Stk./Tag"
+              unit={t('unitPiecesPerDay')}
               formula={exitRateFormula}
               tier={rateCapacityCoverage(kpis.capacityCoverage)}
             />
@@ -1190,7 +1286,11 @@ export default function VSMCanvas({
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 py-3">
             {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
                 nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
-            <p className="hidden text-xs text-zinc-500 sm:block">
+            <p
+              className={`hidden text-xs text-zinc-500 transition-opacity duration-300 sm:block ${
+                showZoomHint ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
               Strg/Cmd + Mausrad zum Zoomen
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -1200,7 +1300,7 @@ export default function VSMCanvas({
                 disabled={isExportingPdf || processes.length === 0}
                 className={primaryButtonClass}
               >
-                {isExportingPdf ? 'Exportiere…' : 'PDF exportieren'}
+                {isExportingPdf ? t('exportingPdf') : t('exportPdf')}
               </button>
               {/* Phase 7b: Präsentationsmodus — blendet CSV-Import und
                   Lieferant/Kunde/ERP-Label-Bearbeitung aus (Nebensächliches für
@@ -1208,7 +1308,7 @@ export default function VSMCanvas({
                   editierbar. */}
               {/* [UX-Audit 2026-08-16, P3] Einstieg in den Vollbildmodus. */}
               <button type="button" onClick={() => setIsFullscreen(true)} className={secondaryButtonClass}>
-                Vollbild
+                {t('fullscreen')}
               </button>
               {/* [Design-Audit 2026-08-31, Befund 08] Der aktive Zustand war hier
                   von Hand geschrieben (`px-4 py-3`, ohne Rahmen) und damit 2 px
@@ -1231,7 +1331,7 @@ export default function VSMCanvas({
                 <span aria-hidden className={presentationMode ? undefined : 'invisible'}>
                   ✓{' '}
                 </span>
-                Präsentationsmodus
+                {t('presentationMode')}
               </button>
               {/* UX-Audit Phase 7a finding #1 (touch targets): these three
                   buttons measured ~28-30px tall (py-1/text-sm); bumped to py-3
@@ -1242,7 +1342,7 @@ export default function VSMCanvas({
                   type="button"
                   onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
                   className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                  aria-label="Verkleinern"
+                  aria-label={t('zoomOut')}
                 >
                   −
                 </button>
@@ -1253,7 +1353,7 @@ export default function VSMCanvas({
                   type="button"
                   onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
                   className="rounded-control px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                  aria-label="Vergrößern"
+                  aria-label={t('zoomIn')}
                 >
                   +
                 </button>
@@ -1309,7 +1409,7 @@ export default function VSMCanvas({
                 type="button"
                 onClick={() => setCamera({ scale: clampScale(stageScale / 1.2), pos: stagePos })}
                 className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                aria-label="Verkleinern"
+                aria-label={t('zoomOut')}
               >
                 −
               </button>
@@ -1320,7 +1420,7 @@ export default function VSMCanvas({
                 type="button"
                 onClick={() => setCamera({ scale: clampScale(stageScale * 1.2), pos: stagePos })}
                 className="rounded-control px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                aria-label="Vergrößern"
+                aria-label={t('zoomIn')}
               >
                 +
               </button>
@@ -1330,21 +1430,21 @@ export default function VSMCanvas({
                 onClick={() => setIsFullscreen(false)}
                 className="rounded-control px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
               >
-                Schließen
+                {t('close')}
               </button>
             </div>
           )}
           <button
             type="button"
             onClick={handleFitToView}
-            aria-label={camera ? 'Ansicht ist verschoben — zurück zur Gesamtansicht' : 'Gesamtansicht einpassen'}
+            aria-label={camera ? t('fitViewShifted') : t('fitView')}
             className={
               camera
                 ? 'absolute right-3 top-3 z-10 rounded-control bg-brand-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-brand-700'
                 : 'absolute right-3 top-3 z-10 rounded-control border border-zinc-200 bg-white/80 px-3 py-2 text-xs font-medium text-zinc-500 shadow-sm backdrop-blur hover:bg-white hover:text-zinc-900'
             }
           >
-            Einpassen
+            {t('fitViewLabel')}
           </button>
           <Stage
             ref={stageRef}
@@ -1379,6 +1479,15 @@ export default function VSMCanvas({
                   setSelection((c) => (c?.kind === 'anchor' && c.anchor === 'erp' ? null : { kind: 'anchor', anchor: 'erp' }))
                 }
               />
+              {/* [Future-State-Wizard, Frage 6] Heijunka gehoert methodisch an
+                  den Steuerungspunkt, nicht an den Schrittmacher-Prozess
+                  selbst — deshalb neben dem ERP-Kasten statt am (beweglichen)
+                  Prozess. Nur sichtbar, wenn der Schrittmacher sie im Wizard
+                  gesetzt hat; ein Projekt ohne Schrittmacher hat auch keine
+                  Heijunka-Box. */}
+              {pacemaker?.has_heijunka && (
+                <HeijunkaBox x={heijunkaPos.x} y={heijunkaPos.y} pitchMinutes={project.pitch_minutes} />
+              )}
               <Arrow
                 points={zigzagPoints(
                   customerLeft,
@@ -1631,11 +1740,13 @@ export default function VSMCanvas({
             </div>
           )}
         </div>
+        </div>
+      </div>
       </div>
 
       {processes.length === 0 && (
         <p className="mt-2 text-sm text-zinc-500">
-          Noch keine Prozesse. Leg unten den ersten an.
+          {t('noProcessesYet')}
         </p>
       )}
 
@@ -1702,7 +1813,7 @@ export default function VSMCanvas({
           es die andere auch gibt. */}
       <div className="mt-6">
         {hasBenchmark && (
-          <div role="tablist" aria-label="Auswertungen" className="flex gap-6 border-b border-zinc-200">
+          <div role="tablist" aria-label={t('tabsAria')} className="flex gap-6 border-b border-zinc-200">
             {ANALYSIS_TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -1718,7 +1829,7 @@ export default function VSMCanvas({
                     : 'border-b-2 border-transparent pb-2.5 pt-1 text-sm font-medium text-zinc-600 hover:text-zinc-950'
                 }
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </button>
             ))}
           </div>
@@ -1750,27 +1861,27 @@ export default function VSMCanvas({
       {/* Toolbar: quick-add + CSV import, grouped in one bordered block */}
       <div className="mt-6 rounded-surface border border-zinc-200 p-4">
         <form onSubmit={handleQuickAddSubmit} className="flex flex-wrap items-end gap-3">
-          <Field label="Prozessname" htmlFor="qa-name">
+          <Field label={t('processNameLabel')} htmlFor="qa-name">
             <input
               id="qa-name"
               ref={nameInputRef}
               value={quickAddName}
               onChange={(e) => setQuickAddName(e.target.value)}
-              placeholder="z. B. Drehen"
+              placeholder={t('processNamePlaceholder')}
               className="w-40"
             />
           </Field>
-          <Field label={<TermTooltip term="processCycleTime">Zykluszeit (min)</TermTooltip>} htmlFor="qa-ct">
+          <Field label={<TermTooltip term="processCycleTime">{t('cycleTimeLabel')}</TermTooltip>} htmlFor="qa-ct">
             <input
               id="qa-ct"
               value={quickAddCt}
               onChange={(e) => setQuickAddCt(e.target.value)}
-              placeholder="z. B. 3.5"
+              placeholder={t('cycleTimePlaceholder')}
               className="w-28"
             />
           </Field>
           <button type="submit" className={primaryButtonClass}>
-            + Hinzufügen
+            {t('addProcess')}
           </button>
 
           {/* CSV-Bulk-Import ist eine Setup-/Admin-Aktion, kein Schritt in
@@ -1786,10 +1897,10 @@ export default function VSMCanvas({
                 className="hidden"
               />
               <button type="button" onClick={() => fileInputRef.current?.click()} className={secondaryButtonClass}>
-                CSV importieren
+                {t('importCsv')}
               </button>
               <p className="mt-1 text-xs text-zinc-500">
-                Spalten: name, cycle_time, oee, wip
+                {t('csvColumns')}
               </p>
             </div>
           )}
@@ -1910,6 +2021,8 @@ function ProcessEditPanel({
   const [oee, setOee] = useState(String(process.oee))
   const [operatorCount, setOperatorCount] = useState(String(process.operator_count))
   const [changeoverTime, setChangeoverTime] = useState(String(process.changeover_time))
+  const t = useTranslations('Editor')
+  const tClass = useTranslations('Classification')
   const [isPacemaker, setIsPacemaker] = useState(process.is_pacemaker)
   const [classification, setClassification] = useState(process.classification ?? '')
   // UX-Audit Phase 7a finding #6: deletion used to fire on the first click,
@@ -1989,7 +2102,7 @@ function ProcessEditPanel({
         setAddPredecessorId('')
         router.refresh()
       } catch (err) {
-        setConnectionError(err instanceof Error ? err.message : 'Verbindung konnte nicht angelegt werden.')
+        setConnectionError(err instanceof Error ? err.message : t('errorConnect'))
       }
     })
   }
@@ -2018,7 +2131,7 @@ function ProcessEditPanel({
         setAddSuccessorId('')
         router.refresh()
       } catch (err) {
-        setConnectionError(err instanceof Error ? err.message : 'Verbindung konnte nicht angelegt werden.')
+        setConnectionError(err instanceof Error ? err.message : t('errorConnect'))
       }
     })
   }
@@ -2034,7 +2147,7 @@ function ProcessEditPanel({
         await deleteBufferConnection(projectId, bufferId)
         router.refresh()
       } catch (err) {
-        setConnectionError(err instanceof Error ? err.message : 'Verbindung konnte nicht getrennt werden.')
+        setConnectionError(err instanceof Error ? err.message : t('errorDisconnect'))
       }
     })
   }
@@ -2057,7 +2170,7 @@ function ProcessEditPanel({
       Number.isNaN(beforeNum) ||
       Number.isNaN(afterNum)
     ) {
-      setError('Bitte alle Felder gültig ausfüllen.')
+      setError(t('errorFields'))
       return
     }
 
@@ -2112,7 +2225,7 @@ function ProcessEditPanel({
         router.refresh()
         onClose()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+        setError(err instanceof Error ? err.message : t('errorSaving'))
         setIsSaving(false)
       }
     })
@@ -2131,7 +2244,7 @@ function ProcessEditPanel({
         router.refresh()
         onClose()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Fehler beim Löschen.')
+        setError(err instanceof Error ? err.message : t('errorDelete'))
         setIsSaving(false)
       }
     })
@@ -2143,13 +2256,13 @@ function ProcessEditPanel({
       className="mt-4 rounded-surface border border-brand-600 bg-white p-4"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-950">Prozess bearbeiten</h2>
+        <h2 className="text-sm font-semibold text-zinc-950">{t('editProcess')}</h2>
         <button
           type="button"
           onClick={onClose}
           className="text-xs text-zinc-500 hover:underline"
         >
-          Schließen
+          {t('close')}
         </button>
       </div>
 
@@ -2157,15 +2270,15 @@ function ProcessEditPanel({
           neu; Spur (↑/↓) versetzt die Box auf eine parallele Reihe. Ersetzt
           das frühere freie Ziehen — dadurch keine Überschneidungen mehr. */}
       <div className="mt-3 flex flex-wrap items-center gap-3 rounded-control bg-zinc-50 px-3 py-2">
-        <span className="text-xs font-medium text-zinc-500">Position</span>
+        <span className="text-xs font-medium text-zinc-500">{t('position')}</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => onMoveInSequence('earlier')}
             disabled={!canMoveEarlier}
             className={secondaryButtonClass}
-            aria-label="Früher in der Reihenfolge"
-            title="Früher in der Reihenfolge"
+            aria-label={t('moveEarlier')}
+            title={t('moveEarlier')}
           >
             ←
           </button>
@@ -2174,8 +2287,8 @@ function ProcessEditPanel({
             onClick={() => onMoveInSequence('later')}
             disabled={!canMoveLater}
             className={secondaryButtonClass}
-            aria-label="Später in der Reihenfolge"
-            title="Später in der Reihenfolge"
+            aria-label={t('moveLater')}
+            title={t('moveLater')}
           >
             →
           </button>
@@ -2186,7 +2299,7 @@ function ProcessEditPanel({
             onClick={() => onChangeLane(process.lane - 1)}
             disabled={process.lane <= 0}
             className={secondaryButtonClass}
-            aria-label="Spur höher (zurück zur Hauptlinie)"
+            aria-label={t('laneUpTitle')}
             title="Spur höher"
           >
             ↑
@@ -2195,8 +2308,8 @@ function ProcessEditPanel({
             type="button"
             onClick={() => onChangeLane(process.lane + 1)}
             className={secondaryButtonClass}
-            aria-label="Spur tiefer (parallele Reihe)"
-            title="Spur tiefer — z. B. für parallele Prozesse"
+            aria-label={t('laneDownTitle')}
+            title={t('laneDownTitle')}
           >
             ↓
           </button>
@@ -2215,13 +2328,13 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-ct" className="block text-xs font-medium text-zinc-600">
-            <TermTooltip term="processCycleTime">Zykluszeit (min)</TermTooltip>
+            <TermTooltip term="processCycleTime">{t('cycleTimeLabel')}</TermTooltip>
           </label>
           <input id="ep-ct" value={cycleTime} onChange={(e) => setCycleTime(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
         <div>
           <label htmlFor="ep-co" className="block text-xs font-medium text-zinc-600">
-            <TermTooltip term="changeoverTime">Rüstzeit C/O (min)</TermTooltip>
+            <TermTooltip term="changeoverTime">{t('changeoverLabel')}</TermTooltip>
           </label>
           <input
             id="ep-co"
@@ -2232,13 +2345,13 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-oee" className="block text-xs font-medium text-zinc-600">
-            <TermTooltip term="oee">OEE (%)</TermTooltip>
+            <TermTooltip term="oee">{t('oeeLabel')}</TermTooltip>
           </label>
           <input id="ep-oee" value={oee} onChange={(e) => setOee(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
         <div>
           <label htmlFor="ep-operators" className="block text-xs font-medium text-zinc-600">
-            <TermTooltip term="operatorCount">Bediener</TermTooltip>
+            <TermTooltip term="operatorCount">{t('operatorsLabel')}</TermTooltip>
           </label>
           <input
             id="ep-operators"
@@ -2255,7 +2368,7 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-before" className="block text-xs font-medium text-zinc-600">
-            <TermTooltip term="wip">WIP davor</TermTooltip>
+            <TermTooltip term="wip">{t('wipBefore')}</TermTooltip>
           </label>
           <input
             id="ep-before"
@@ -2266,7 +2379,7 @@ function ProcessEditPanel({
         </div>
         <div>
           <label htmlFor="ep-after" className="block text-xs font-medium text-zinc-600">
-            <TermTooltip term="wip">WIP danach</TermTooltip>
+            <TermTooltip term="wip">{t('wipAfter')}</TermTooltip>
           </label>
           <input
             id="ep-after"
@@ -2283,11 +2396,11 @@ function ProcessEditPanel({
           mehr als einen Vorgänger (Zusammenführung) oder Nachfolger
           (Aufteilung) haben. */}
       <div className="mt-3 rounded-control bg-zinc-50 px-3 py-2">
-        <span className="text-xs font-medium text-zinc-500">Verbindungen</span>
+        <span className="text-xs font-medium text-zinc-500">{t('connections')}</span>
 
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <div className="text-xs text-zinc-600">Vorgänger</div>
+            <div className="text-xs text-zinc-600">{t('predecessors')}</div>
             <ul className="mt-1 space-y-1">
               {incomingEdges.map((edge) => (
                 <li key={edge.id} className="flex items-center justify-between gap-2 text-xs">
@@ -2296,13 +2409,13 @@ function ProcessEditPanel({
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
                     className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline"
-                    aria-label={`Verbindung von ${processLabel(edge.from_process_id)} trennen`}
+                    aria-label={t('disconnectFrom', { name: processLabel(edge.from_process_id) })}
                   >
-                    ✕ trennen
+                    {t('disconnect')}
                   </button>
                 </li>
               ))}
-              {incomingEdges.length === 0 && <li className="text-xs text-zinc-600">Keine</li>}
+              {incomingEdges.length === 0 && <li className="text-xs text-zinc-600">{t('none')}</li>}
             </ul>
             {predecessorCandidates.length > 0 && (
               <div className="mt-2 flex items-center gap-1">
@@ -2311,7 +2424,7 @@ function ProcessEditPanel({
                   onChange={(e) => setAddPredecessorId(e.target.value)}
                   className={`${inputClass} text-xs`}
                 >
-                  <option value="">+ Vorgänger wählen…</option>
+                  <option value="">{t('choosePredecessor')}</option>
                   {predecessorCandidates.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -2331,7 +2444,7 @@ function ProcessEditPanel({
           </div>
 
           <div>
-            <div className="text-xs text-zinc-600">Nachfolger</div>
+            <div className="text-xs text-zinc-600">{t('successors')}</div>
             <ul className="mt-1 space-y-1">
               {outgoingEdges.map((edge) => (
                 <li key={edge.id} className="flex items-center justify-between gap-2 text-xs">
@@ -2340,13 +2453,13 @@ function ProcessEditPanel({
                     type="button"
                     onClick={() => handleDisconnect(edge.id)}
                     className="-mx-1 -my-2 px-1 py-2 text-red-700 hover:underline"
-                    aria-label={`Verbindung zu ${processLabel(edge.to_process_id)} trennen`}
+                    aria-label={t('disconnectTo', { name: processLabel(edge.to_process_id) })}
                   >
-                    ✕ trennen
+                    {t('disconnect')}
                   </button>
                 </li>
               ))}
-              {outgoingEdges.length === 0 && <li className="text-xs text-zinc-600">Keine</li>}
+              {outgoingEdges.length === 0 && <li className="text-xs text-zinc-600">{t('none')}</li>}
             </ul>
             {successorCandidates.length > 0 && (
               <div className="mt-2 flex items-center gap-1">
@@ -2355,7 +2468,7 @@ function ProcessEditPanel({
                   onChange={(e) => setAddSuccessorId(e.target.value)}
                   className={`${inputClass} text-xs`}
                 >
-                  <option value="">+ Nachfolger wählen…</option>
+                  <option value="">{t('chooseSuccessor')}</option>
                   {successorCandidates.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -2382,7 +2495,7 @@ function ProcessEditPanel({
 
       <div className="mt-3">
         <label htmlFor="ep-classification" className="block text-xs font-medium text-zinc-600">
-          Wertschöpfungs-Klassifizierung
+          {t('classificationLabel')}
         </label>
         <select
           id="ep-classification"
@@ -2390,10 +2503,10 @@ function ProcessEditPanel({
           onChange={(e) => setClassification(e.target.value)}
           className={`mt-1 ${inputClass} w-56`}
         >
-          <option value="">— nicht klassifiziert</option>
+          <option value="">{t('classificationNone')}</option>
           {(Object.keys(CLASSIFICATION) as ClassificationValue[]).map((key) => (
             <option key={key} value={key}>
-              {CLASSIFICATION[key].label}
+              {tClass(CLASSIFICATION[key].labelKey)}
             </option>
           ))}
         </select>
@@ -2401,8 +2514,8 @@ function ProcessEditPanel({
 
       <label className="mt-3 flex items-center gap-2 text-xs font-medium text-zinc-600">
         <input type="checkbox" checked={isPacemaker} onChange={(e) => setIsPacemaker(e.target.checked)} />
-        <TermTooltip term="pacemaker">Schrittmacher-Prozess</TermTooltip> (bekommt den Auftrag direkt von der
-        Produktionssteuerung)
+        <TermTooltip term="pacemaker">{t('pacemakerProcess')}</TermTooltip>
+        {t('pacemakerHint')}
       </label>
 
       {error && (
@@ -2413,7 +2526,7 @@ function ProcessEditPanel({
 
       <div className="mt-4 flex items-center gap-2">
         <button type="submit" disabled={isSaving} className={primaryButtonClass}>
-          Speichern
+          {t('save')}
         </button>
         <button
           type="button"
@@ -2426,7 +2539,7 @@ function ProcessEditPanel({
               : 'rounded-control border border-red-300 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50'
           }
         >
-          {confirmDelete ? 'Wirklich löschen?' : 'Prozess löschen'}
+          {confirmDelete ? t('confirmDelete') : t('deleteProcess')}
         </button>
       </div>
     </form>
@@ -2457,6 +2570,7 @@ function BufferEditPanel({
   const router = useRouter()
   const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
+  const t = useTranslations('Editor')
   const [value, setValue] = useState(String(currentWip))
   const [bufferType, setBufferType] = useState(currentBufferType)
   const [flowStyle, setFlowStyle] = useState(currentFlowStyle)
@@ -2468,7 +2582,7 @@ function BufferEditPanel({
     e.preventDefault()
     const n = Number(value)
     if (Number.isNaN(n) || n < 0) {
-      setError('Bitte eine gültige Zahl eingeben.')
+      setError(t('errorNumber'))
       return
     }
     setError(null)
@@ -2500,7 +2614,7 @@ function BufferEditPanel({
         router.refresh()
         onClose()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+        setError(err instanceof Error ? err.message : t('errorSaving'))
         setIsSaving(false)
       }
     })
@@ -2512,17 +2626,17 @@ function BufferEditPanel({
       className="mt-4 flex flex-wrap items-end gap-3 rounded-surface border border-brand-600 bg-white p-4"
     >
       <h2 className="text-sm font-semibold text-zinc-950">
-        <TermTooltip term="wip">Lagerbestand (WIP)</TermTooltip>
+        <TermTooltip term="wip">{t('wipLabel')}</TermTooltip>
       </h2>
       <div>
         <label htmlFor="buf-wip" className="block text-xs font-medium text-zinc-600">
-          Stück
+          {t('unitPieces')}
         </label>
         <input id="buf-wip" value={value} onChange={(e) => setValue(e.target.value)} className={`mt-1 ${inputClass} w-28`} />
       </div>
       <div>
         <label htmlFor="buf-type" className="block text-xs font-medium text-zinc-600">
-          <TermTooltip term="bufferType">Lager-Typ</TermTooltip>
+          <TermTooltip term="bufferType">{t('bufferTypeLabel')}</TermTooltip>
         </label>
         <select
           id="buf-type"
@@ -2537,16 +2651,16 @@ function BufferEditPanel({
           }}
           className={`mt-1 ${inputClass} w-40`}
         >
-          <option value="standard">Standard (unkontrolliert)</option>
-          <option value="supermarket">Supermarkt (Pull)</option>
-          <option value="fifo">FIFO-Bahn</option>
-          <option value="continuous">Continuous Flow (One-Piece)</option>
-          <option value="safety_stock">Sicherheitsbestand</option>
+          <option value="standard">{t('bufferStandard')}</option>
+          <option value="supermarket">{t('bufferSupermarket')}</option>
+          <option value="fifo">{t('bufferFifo')}</option>
+          <option value="continuous">{t('bufferContinuous')}</option>
+          <option value="safety_stock">{t('bufferSafetyStock')}</option>
         </select>
       </div>
       <div>
         <label htmlFor="buf-flow" className="block text-xs font-medium text-zinc-600">
-          <TermTooltip term="flowStyle">Pfeil-Typ</TermTooltip>
+          <TermTooltip term="flowStyle">{t('flowStyleLabel')}</TermTooltip>
         </label>
         <select
           id="buf-flow"
@@ -2554,16 +2668,16 @@ function BufferEditPanel({
           onChange={(e) => setFlowStyle(e.target.value)}
           className={`mt-1 ${inputClass} w-40`}
         >
-          <option value="">Automatisch</option>
-          <option value="push">Push</option>
-          <option value="pull">Pull</option>
-          <option value="shipment">Shipment</option>
+          <option value="">{t('flowAuto')}</option>
+          <option value="push">{t('flowPush')}</option>
+          <option value="pull">{t('flowPull')}</option>
+          <option value="shipment">{t('flowShipment')}</option>
         </select>
       </div>
       {bufferType === 'supermarket' && (
         <div>
           <label htmlFor="buf-kanban" className="block text-xs font-medium text-zinc-600">
-            <TermTooltip term="kanbanType">Kanban-Typ</TermTooltip>
+            <TermTooltip term="kanbanType">{t('kanbanTypeLabel')}</TermTooltip>
           </label>
           <select
             id="buf-kanban"
@@ -2571,8 +2685,8 @@ function BufferEditPanel({
             onChange={(e) => setKanbanType(e.target.value)}
             className={`mt-1 ${inputClass} w-40`}
           >
-            <option value="">Produktions-Kanban</option>
-            <option value="transport">Transport-Kanban</option>
+            <option value="">{t('kanbanProduction')}</option>
+            <option value="transport">{t('kanbanWithdrawal')}</option>
           </select>
         </div>
       )}
@@ -2580,10 +2694,10 @@ function BufferEditPanel({
         <p className="rounded-control bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
       )}
       <button type="submit" disabled={isSaving} className={primaryButtonClass}>
-        Speichern
+        {t('save')}
       </button>
       <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline">
-        Schließen
+        {t('close')}
       </button>
     </form>
   )
@@ -2603,16 +2717,23 @@ function AnchorEditPanel({
   const router = useRouter()
   const demoMutate = useDemoMutate()
   const [, startTransition] = useTransition()
+  const t = useTranslations('Editor')
+  const tCanvas = useTranslations('Canvas')
   const [value, setValue] = useState(currentLabel)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
-  const title = anchor === 'supplier' ? 'Lieferant' : anchor === 'customer' ? 'Kunde' : 'ERP / Produktionssteuerung'
+  const title =
+    anchor === 'supplier'
+      ? tCanvas('supplier')
+      : anchor === 'customer'
+        ? tCanvas('customer')
+        : t('anchorErp')
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!value.trim()) {
-      setError('Darf nicht leer sein.')
+      setError(t('errorNotEmpty'))
       return
     }
     setError(null)
@@ -2638,7 +2759,7 @@ function AnchorEditPanel({
         router.refresh()
         onClose()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+        setError(err instanceof Error ? err.message : t('errorSaving'))
         setIsSaving(false)
       }
     })
@@ -2665,10 +2786,10 @@ function AnchorEditPanel({
         <p className="rounded-control bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
       )}
       <button type="submit" disabled={isSaving} className={primaryButtonClass}>
-        Speichern
+        {t('save')}
       </button>
       <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline">
-        Schließen
+        {t('close')}
       </button>
     </form>
   )
@@ -2692,6 +2813,7 @@ function ProcessBox({
   counterScale: number
   onSelect: () => void
 }) {
+  const tCanvas = useTranslations('Canvas')
   const boxStroke = isSelected ? ACCENT : isBottleneck ? BOTTLENECK : INK
   return (
     <Group
@@ -2782,7 +2904,7 @@ function ProcessBox({
         // part is spelled out in the Austaktungsdiagramm below the canvas.
         <Group x={PROCESS_WIDTH / 2} y={86} scaleX={counterScale} scaleY={counterScale}>
           <Text
-            text="⚠ Engpass"
+            text={tCanvas('bottleneck')}
             width={PROCESS_WIDTH}
             offsetX={PROCESS_WIDTH / 2}
             align="center"
@@ -2797,7 +2919,8 @@ function ProcessBox({
         // tint — keeps the print-standard B&W convention intact, same
         // restrained-accent approach as the bottleneck border/pacemaker pin.
         // Bottom-left corner is free (bottleneck "!" uses top-left, operator
-        // count uses top-right, pacemaker pin sits above the box).
+        // count uses top-right, pacemaker pin sits above the box, Kaizen-Blitz
+        // uses bottom-right — see below).
         <Text
           text={classificationMarker(process.classification) ?? ''}
           x={4}
@@ -2811,6 +2934,29 @@ function ProcessBox({
                 ? '#b45309' // amber-700 — matches the amber warning banners used elsewhere
                 : '#71717a' // zinc-500 — neutral marker for VA, not a warning
           }
+        />
+      )}
+      {(process.kaizen_note ?? '').trim().length > 0 && (
+        // [Future-State-Wizard, Frage 8] Kaizen-Blitz. Der Plan sah das
+        // Symbol oberhalb der Box mit Text darunter vor; dort stehen bei
+        // einem Schrittmacher-Prozess aber schon der Steuerungs-Pin (mittig)
+        // und immer der Bedienerkreis (oben rechts) — zusaetzlicher Text
+        // waere entweder eng an einem von beiden vorbei oder wuerde in die
+        // von der ERP-Box einlaufenden Informationspfeile hineinragen. Die
+        // freie untere rechte Ecke (Klassifizierung spiegelbildlich unten
+        // links) traegt das Symbol ohne diesen Konflikt; der volle Text
+        // steht in Frage 8 des Wizards, wo er auch bearbeitet wird — auf der
+        // Karte selbst waere fuer mehr als ein Emblem ohnehin kein Platz,
+        // ohne PROCESS_HEIGHT fuer jede Box in der Reihe zu vergroessern.
+        <Star
+          numPoints={6}
+          innerRadius={3}
+          outerRadius={7}
+          x={PROCESS_WIDTH - 10}
+          y={PROCESS_HEIGHT - 11}
+          fill="#ffffff"
+          stroke={INK}
+          strokeWidth={1.2}
         />
       )}
     </Group>
@@ -2832,6 +2978,7 @@ function BufferMarker({
   isSelected: boolean
   onSelect: () => void
 }) {
+  const tCanvas = useTranslations('Canvas')
   const radius = BUFFER_SIZE / 2
   // An empty buffer is drawn faintly rather than hidden. A solid triangle
   // labelled "0" asserts inventory that is not there; hiding it would remove
@@ -2857,6 +3004,22 @@ function BufferMarker({
         if (stage) stage.container().style.cursor = 'default'
       }}
     >
+      {/* [UX-Audit 2026-08-16, kleinere Beobachtung] Unsichtbares Ziel,
+          groesser als das sichtbare Dreieck: BUFFER_SIZE (50 Einheiten) misst
+          am Zoom-Boden (MIN_READABLE_SCALE, 60 %) nur 30x30 px — deutlich
+          unter den 44 px, die ein Finger sicher trifft. Der Puffer bleibt
+          optisch unveraendert; nur die Trefferflaeche wird auf 74 Einheiten
+          aufgeweitet, was am selben Zoom-Boden 44,4 px ergibt.
+          `fill="transparent"` ist hier keine Kosmetik, sondern noetig, damit
+          Konva die Flaeche ueberhaupt in den Hit-Test aufnimmt — ein Rect
+          ganz ohne Fill wird nicht getroffen. */}
+      <Rect
+        x={-BUFFER_HIT_PADDING}
+        y={-BUFFER_HIT_PADDING}
+        width={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
+        height={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
+        fill="transparent"
+      />
       {bufferType === 'supermarket' ? (
         <SupermarketIcon stroke={stroke} strokeWidth={strokeWidth} />
       ) : bufferType === 'fifo' ? (
@@ -2875,7 +3038,7 @@ function BufferMarker({
         />
       )}
       {bufferType === 'safety_stock' && (
-        <Text text="SS" width={BUFFER_SIZE} align="center" y={4} fontSize={CANVAS_TEXT.tag} fontStyle="bold" fill={stroke} />
+        <Text text={tCanvas('safetyStockAbbr')} width={BUFFER_SIZE} align="center" y={4} fontSize={CANVAS_TEXT.tag} fontStyle="bold" fill={stroke} />
       )}
       <Text
         text={String(wipCount)}
@@ -3088,6 +3251,69 @@ function ErpBox({
   )
 }
 
+/**
+ * Nivellierungskasten (Heijunka-Box): ein klassisches Raster-Rechteck mit
+ * Faechern fuer Kanban-Karten je Zeitintervall — hier symbolisch als 2x4-
+ * Raster, weil dieses Datenmodell keine einzelnen Produktarten oder
+ * Zeitscheiben kennt, gegen die man ein echtes Belegungsraster zeichnen
+ * koennte. Das Symbol sagt "hier wird nivelliert", nicht "so ist es belegt".
+ *
+ * Der Pitch (Frage 7) steht als Unterschrift darunter, wenn gesetzt — er ist
+ * die Zahl, die aus dem Symbol ein Mass macht: das Steuerungsintervall, in
+ * dem tatsaechlich Kanban gezogen wird.
+ */
+function HeijunkaBox({ x, y, pitchMinutes }: { x: number; y: number; pitchMinutes: number | null }) {
+  const tCanvas = useTranslations('Canvas')
+  const COLUMNS = 4
+  const LABEL_HEIGHT = 16
+  const CAPTION_HEIGHT = 16
+  const gridY = LABEL_HEIGHT
+  const gridHeight = HEIJUNKA_HEIGHT - LABEL_HEIGHT - CAPTION_HEIGHT
+  const colWidth = HEIJUNKA_WIDTH / COLUMNS
+
+  return (
+    <Group x={x} y={y}>
+      <Rect width={HEIJUNKA_WIDTH} height={HEIJUNKA_HEIGHT} fill="#ffffff" stroke={INK} strokeWidth={1.5} cornerRadius={2} />
+      <Text
+        text={tCanvas('heijunka')}
+        width={HEIJUNKA_WIDTH}
+        y={2}
+        align="center"
+        fontSize={CANVAS_TEXT.label}
+        fontStyle="bold"
+        fill={INK}
+      />
+      <Rect x={0} y={gridY} width={HEIJUNKA_WIDTH} height={gridHeight} stroke={INK} strokeWidth={1} />
+      {/* Drei senkrechte und eine waagrechte Trennlinie ergeben die acht
+          Faecher — genug, um als Raster erkennbar zu sein, ohne eine
+          Belegung vorzutaeuschen, die es nicht gibt. */}
+      {Array.from({ length: COLUMNS - 1 }, (_, i) => (
+        <Line
+          key={i}
+          points={[colWidth * (i + 1), gridY, colWidth * (i + 1), gridY + gridHeight]}
+          stroke={INK}
+          strokeWidth={1}
+        />
+      ))}
+      <Line
+        points={[0, gridY + gridHeight / 2, HEIJUNKA_WIDTH, gridY + gridHeight / 2]}
+        stroke={INK}
+        strokeWidth={1}
+      />
+      {pitchMinutes !== null && (
+        <Text
+          text={tCanvas('pitchCaption', { minutes: pitchMinutes })}
+          width={HEIJUNKA_WIDTH}
+          y={HEIJUNKA_HEIGHT - CAPTION_HEIGHT + 2}
+          align="center"
+          fontSize={CANVAS_TEXT.tag}
+          fill="#3f3f46"
+        />
+      )}
+    </Group>
+  )
+}
+
 // Heavier block/chevron arrow for shipments to/from supplier and customer,
 // visually distinct from the thin internal "push" arrows.
 function ShipmentArrow({ points }: { points: [number, number, number, number] }) {
@@ -3137,6 +3363,7 @@ function LadderSummary({
   leadTimeDays: number | null
   valueAddMinutes: number
 }) {
+  const tCanvas = useTranslations('Canvas')
   const width = 84
   // Fixed screen-pixel height now that this box no longer scales with the
   // canvas — no longer tied to the ladder step height (yBottom - yTop),
@@ -3146,9 +3373,9 @@ function LadderSummary({
   return (
     <Group x={x} y={anchorY} scaleX={counterScale} scaleY={counterScale} offsetY={height / 2}>
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
-      <Text text="PLT" x={0} y={5} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
+      <Text text={tCanvas('leadTimeAbbr')} x={0} y={5} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
-        text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} Tage` : "–"}
+        text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} ${tCanvas('daysUnit')}` : '–'}
         x={0}
         y={17}
         width={width}
@@ -3157,9 +3384,9 @@ function LadderSummary({
         fontStyle="bold"
         fill={INK}
       />
-      <Text text="VA" x={0} y={height - 30} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
+      <Text text={tCanvas('valueAddedAbbr')} x={0} y={height - 30} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
-        text={`${valueAddMinutes.toFixed(1)} min`}
+        text={`${valueAddMinutes.toFixed(1)} ${tCanvas('minUnit')}`}
         x={0}
         y={height - 18}
         width={width}

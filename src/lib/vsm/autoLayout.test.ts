@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BUFFER_SIZE,
+  ERP_WIDTH,
   LANE_GAP,
   PROCESS_HEIGHT,
   PROCESS_WIDTH,
@@ -8,6 +9,8 @@ import {
   autoLayoutProcessPositions,
   bufferPosition,
   customerCloudPosition,
+  erpBoxPosition,
+  heijunkaBoxPosition,
   laneY,
   slotPosition,
   supplierCloudPosition,
@@ -81,6 +84,25 @@ describe('laneY / slotPosition', () => {
     expect(slotPosition(0)).toEqual(auto.a)
     expect(slotPosition(1)).toEqual(auto.b)
     expect(slotPosition(2)).toEqual(auto.c)
+  })
+})
+
+describe('heijunkaBoxPosition', () => {
+  it('sits directly to the right of the ERP box, on the same row', () => {
+    const erp = erpBoxPosition(3)
+    const heijunka = heijunkaBoxPosition(3)
+
+    expect(heijunka.x).toBeGreaterThan(erp.x + ERP_WIDTH)
+    expect(heijunka.y).toBe(erp.y)
+  })
+
+  it('follows the ERP box as more processes are added, staying attached', () => {
+    const erpFew = erpBoxPosition(2)
+    const heijunkaFew = heijunkaBoxPosition(2)
+    const erpMany = erpBoxPosition(6)
+    const heijunkaMany = heijunkaBoxPosition(6)
+
+    expect(heijunkaFew.x - erpFew.x).toBe(heijunkaMany.x - erpMany.x)
   })
 })
 

@@ -19,6 +19,10 @@ export const LANE_GAP = 40
 export const ERP_WIDTH = 150
 export const ERP_HEIGHT = 70
 export const ERP_Y = 20
+export const HEIJUNKA_WIDTH = 100
+export const HEIJUNKA_HEIGHT = 60
+/** Abstand zwischen ERP-Kasten und Heijunka-Box, in derselben Reihe. */
+export const HEIJUNKA_GAP = 24
 // Process row sits below the ERP box + dashed information-flow lines.
 export const ROW_Y = ERP_Y + ERP_HEIGHT + 110
 
@@ -79,6 +83,21 @@ export function erpBoxPosition(processCount: number): Point {
   const customer = customerCloudPosition(processCount)
   const spanCenterX = (supplier.x + customer.x + CLOUD_SIZE) / 2
   return { x: spanCenterX - ERP_WIDTH / 2, y: ERP_Y }
+}
+
+/**
+ * Heijunka-Box (Nivellierungskasten), direkt rechts neben dem ERP-Kasten in
+ * derselben Reihe — analog zu erpBoxPosition, ein fester, vom Schrittmacher
+ * unabhaengiger Anker. Der Schrittmacher selbst kann an beliebiger Stelle in
+ * der Prozesskette stehen (und sich per Drag verschieben); eine an ihn
+ * gebundene Position muesste jedem Positionswechsel folgen. Die Heijunka-Box
+ * gehoert methodisch ohnehin an den Steuerungspunkt (ERP), nicht an den
+ * Schrittmacher-Prozess selbst — direkt daneben ist deshalb kein Kompromiss,
+ * sondern die naheliegende Stelle.
+ */
+export function heijunkaBoxPosition(processCount: number): Point {
+  const erp = erpBoxPosition(processCount)
+  return { x: erp.x + ERP_WIDTH + HEIJUNKA_GAP, y: ERP_Y }
 }
 
 // --- Dynamic geometry for draggable boxes -----------------------------

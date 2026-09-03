@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import type { Tables } from '@/types/database'
 import { classifyBenchmark } from '@/lib/vsm/benchmark'
 import { TierChip } from './TierChip'
@@ -17,6 +18,7 @@ interface Props {
 
 
 export default function BenchmarkPanel({ processes, references }: Props) {
+  const t = useTranslations('Benchmark')
   const industries = useMemo(() => [...new Set(references.map((r) => r.industry))], [references])
   const [industry, setIndustry] = useState(industries[0] ?? '')
 
@@ -45,9 +47,9 @@ export default function BenchmarkPanel({ processes, references }: Props) {
     // Breite seit dem Reiter von der Spalte mit, in der es liegt.
     <section className="rounded-surface border border-zinc-200 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-zinc-950">Branchenvergleich</h2>
+        <h2 className="text-sm font-semibold text-zinc-950">{t('title')}</h2>
         <span className="rounded-control bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">
-          Beispieldaten — keine echten Branchenwerte
+          {t('sampleDataWarning')}
         </span>
       </div>
 
@@ -82,13 +84,13 @@ export default function BenchmarkPanel({ processes, references }: Props) {
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <BenchmarkRow
-          label="Ø Zykluszeit"
+          label={t('avgCycleTime')}
           value={avgCycleTime}
-          unit="min"
+          unit={t('unitMin')}
           reference={cycleRef}
           higherIsBetter={false}
         />
-        <BenchmarkRow label="Ø OEE" value={avgOee} unit="%" reference={oeeRef} higherIsBetter />
+        <BenchmarkRow label={t('avgOee')} value={avgOee} unit="%" reference={oeeRef} higherIsBetter />
       </div>
     </section>
   )
@@ -107,6 +109,7 @@ function BenchmarkRow({
   reference: BenchmarkReference | undefined
   higherIsBetter: boolean
 }) {
+  const t = useTranslations('Benchmark')
   if (value === null || !reference || reference.p25 === null || reference.median === null || reference.p75 === null) {
     return (
       <div className="rounded-surface border border-dashed border-zinc-300 p-3 text-sm text-zinc-500">
@@ -133,7 +136,7 @@ function BenchmarkRow({
       <div className="mt-1 text-xs text-zinc-500">
         P25 {reference.p25} · Median {reference.median} · P75 {reference.p75} {unit}
         <span className="ml-1 text-zinc-600">
-          ({higherIsBetter ? "höher ist besser" : "kleiner ist besser"})
+          ({higherIsBetter ? t('higherIsBetter') : t('lowerIsBetter')})
         </span>
       </div>
     </div>

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import de from '../../../messages/de.json'
+import en from '../../../messages/en.json'
 import { deriveFutureStateQuestions, type FutureStateInput, type FutureStateProcessInput } from './futureStateQuestions'
 
 const process = (overrides: Partial<FutureStateProcessInput> & { id: string }): FutureStateProcessInput => ({
@@ -25,7 +27,9 @@ describe('deriveFutureStateQuestions', () => {
     const result = deriveFutureStateQuestions(baseInput())
     expect(result.map((q) => q.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
     for (const q of result) {
-      expect(q.question.length).toBeGreaterThan(0)
+      expect(q.questionKey).toBe(String(q.id))
+      expect(de.FutureState.questions[q.questionKey as '1'].length).toBeGreaterThan(0)
+      expect(en.FutureState.questions[q.questionKey as '1'].length).toBeGreaterThan(0)
       expect(['answered', 'open', 'not_applicable']).toContain(q.status)
     }
   })
@@ -39,7 +43,7 @@ describe('deriveFutureStateQuestions', () => {
     it('is answered once annual throughput yields a takt time', () => {
       const [q1] = deriveFutureStateQuestions(baseInput({ annualThroughput: 50000 }))
       expect(q1.status).toBe('answered')
-      expect(q1.summary).toMatch(/Taktzeit/)
+      expect(q1.summaryKey).toBe('q1answered')
     })
   })
 
@@ -56,7 +60,7 @@ describe('deriveFutureStateQuestions', () => {
       })
       const [, q2] = deriveFutureStateQuestions(input)
       expect(q2.status).toBe('answered')
-      expect(q2.summary).toMatch(/Direktversand/)
+      expect(q2.summaryKey).toBe('q2buildToOrder')
     })
 
     it('is answered when the terminal buffer is an explicit finished-goods supermarket', () => {
@@ -66,7 +70,7 @@ describe('deriveFutureStateQuestions', () => {
       })
       const [, q2] = deriveFutureStateQuestions(input)
       expect(q2.status).toBe('answered')
-      expect(q2.summary).toMatch(/Supermarkt/)
+      expect(q2.summaryKey).toBe('q2supermarket')
     })
 
     it('is open when stock sits at the terminal buffer without an explicit type decision', () => {
@@ -101,7 +105,8 @@ describe('deriveFutureStateQuestions', () => {
       })
       const [, , q3] = deriveFutureStateQuestions(input)
       expect(q3.status).toBe('answered')
-      expect(q3.summary).toMatch(/1 von 1/)
+      expect(q3.summaryKey).toBe('q3some')
+      expect(q3.summaryValues).toEqual({ count: 1, total: 1 })
     })
   })
 
@@ -220,7 +225,8 @@ describe('deriveFutureStateQuestions', () => {
       const input = baseInput({ processes: [process({ id: 'A', kaizenNote: 'Rüstzeit halbieren' })] })
       const [, , , , , , , q8] = deriveFutureStateQuestions(input)
       expect(q8.status).toBe('answered')
-      expect(q8.summary).toMatch(/1/)
+      expect(q8.summaryKey).toBe('q8marked')
+      expect(q8.summaryValues).toEqual({ count: 1 })
     })
 
     it('treats a whitespace-only kaizen note as unset', () => {

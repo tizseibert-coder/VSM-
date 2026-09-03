@@ -33,6 +33,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Die Vorlage gehoert ins Repo: Sie enthaelt nur Platzhalter, keine Werte,
+# und sie ist die einzige Stelle, an der steht, welche Variablen die
+# Anwendung ueberhaupt braucht. Ohne diese Ausnahme hing sie nur auf dem
+# Rechner desjenigen, der sie zuletzt angefasst hat.
+!.env.example
 
 # vercel
 .vercel

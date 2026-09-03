@@ -1,0 +1,681 @@
+{
+  "LocaleSwitcher": {
+    "label": "Language",
+    "de": "German",
+    "en": "English"
+  },
+  "Metadata": {
+    "title": "VSM Builder — Value Stream Mapping That Calculates",
+    "description": "Draw value stream maps to Rother/Shook conventions, calculate lead time, takt time and process cycle efficiency live, and compare future-state scenarios against each other.",
+    "ogTitle": "VSM Builder — Value Stream Mapping That Calculates",
+    "ogDescription": "Draw value stream maps to Rother/Shook conventions, calculate metrics live, compare future-state scenarios.",
+    "ogLocale": "en_US"
+  },
+  "Nav": {
+    "demo": "Demo",
+    "login": "Sign in",
+    "signup": "Get started free"
+  },
+  "Home": {
+    "heroTitle": "Value stream mapping that calculates.",
+    "heroBody": "Rother and Shook symbols, lead time and takt time live from your process data, future-state scenarios with payback. Not a drawing tool with VSM shapes, but a calculation tool that happens to draw a standards-compliant map.",
+    "heroDemoCta": "Open the demo",
+    "heroSignupCta": "Get started free",
+    "heroNote": "The demo runs without signing up: a complete value stream with five processes, inventory and calculated metrics. Change one cycle time and watch the lead time respond.",
+    "sketchCaption": "A section of a current-state map: process boxes with C/T and OEE, inventory as triangles, and the timeline of wait and processing time below.",
+    "kpisTitle": "Every number shows its own arithmetic",
+    "kpisBody": "Under each metric sits the formula with the values actually used. A surprising number therefore explains itself from its own inputs, instead of looking like a defect.",
+    "kpis": [
+      {
+        "name": "Lead time",
+        "formula": "WIP ÷ output",
+        "note": "Little’s Law across every inventory point in the chain."
+      },
+      {
+        "name": "Takt time",
+        "formula": "Available min/day ÷ customer demand",
+        "note": "Derived from annual demand and shift pattern, not estimated."
+      },
+      {
+        "name": "Process cycle efficiency",
+        "formula": "Value-added time ÷ lead time",
+        "note": "The number that starts the discussion in the steering committee."
+      },
+      {
+        "name": "Actual output",
+        "formula": "Available min/day ÷ bottleneck",
+        "note": "Effective cycle time including OEE, not the nominal one."
+      }
+    ],
+    "checksTitle": "The tool pushes back",
+    "checksBody": "A value stream can be methodologically wrong and still look fine. The method check runs on every change and ranks by severity: first what invalidates a metric, then what only affects the drawing.",
+    "severityCritical": "Metric affected",
+    "severityWarning": "Methodologically unsound",
+    "checks": [
+      {
+        "title": "Capacity shortfall",
+        "body": "If the line cannot meet customer demand, inventory grows without bound. Little’s Law no longer holds, and the tool says exactly that instead of claiming a lead time."
+      },
+      {
+        "title": "Push upstream of the pacemaker",
+        "body": "Everything upstream of the pacemaker needs a pull system. Where a connection still runs as push, it is named and counted."
+      },
+      {
+        "title": "No pacemaker set",
+        "body": "Without a pacemaker, the ERP schedules every process individually. The map shows it that way, and the note explains why that is rarely intended."
+      }
+    ],
+    "comparisonTitle": "From current state to business case",
+    "comparisonBody": "Each future-state scenario is its own copy of the value stream. The comparison places them side by side and translates the lean metrics into the language budgets are decided in.",
+    "comparisonColMetric": "Metric",
+    "comparisonColCurrent": "Current state",
+    "comparisonColScenario": "Scenario A",
+    "comparisonNote": "Example values, shown to illustrate the columns.",
+    "comparison": [
+      {
+        "label": "Lead time",
+        "current": "18.4 days",
+        "scenario": "9.1 days"
+      },
+      {
+        "label": "Process cycle efficiency",
+        "current": "0.41%",
+        "scenario": "0.83%"
+      },
+      {
+        "label": "Investment",
+        "current": "–",
+        "scenario": "€85,000"
+      },
+      {
+        "label": "Payback",
+        "current": "–",
+        "scenario": "14 months"
+      },
+      {
+        "label": "Risk",
+        "current": "–",
+        "scenario": "Medium"
+      }
+    ],
+    "workshopTitle": "Built for the room where the value stream is created",
+    "workshopBody": "A VSM is not filled in at a desk, it is worked out in front of the group. Afterwards it has to fit on a sheet that someone else reads.",
+    "workshop": [
+      {
+        "name": "Presentation mode",
+        "body": "Hides import and renaming. Process boxes stay editable, because a value stream is created in the room with the team and is not finished beforehand."
+      },
+      {
+        "name": "Full screen",
+        "body": "One movement space instead of three. For the projector in the meeting room and the laptop on the shop floor."
+      },
+      {
+        "name": "PDF export",
+        "body": "Map and metrics on A4 landscape. The sheet that goes into the committee."
+      },
+      {
+        "name": "24 terms explained in context",
+        "body": "Pacemaker, supermarket, FIFO, heijunka, EPEI. Explained where they appear, so green belts and operators can follow."
+      }
+    ],
+    "hostingTitle": "Where your data lives",
+    "hostingBody": "A value stream describes your production: takt times, inventory, bottlenecks. Anyone working with it wants to know up front where that is stored.",
+    "hosting": [
+      {
+        "role": "Database",
+        "provider": "Supabase",
+        "note": "EU, France region"
+      },
+      {
+        "role": "Application",
+        "provider": "Vercel",
+        "note": "EU, France region"
+      },
+      {
+        "role": "Other recipients",
+        "provider": "None",
+        "note": "No analytics or tracking service is embedded"
+      }
+    ],
+    "ctaTitle": "Look first, decide after",
+    "ctaBody": "The demo needs no account and no company address. Anyone who then wants to build their own value streams will find the same functions in the tool.",
+    "ctaButton": "Open the demo",
+    "footerTagline": "Value stream mapping with live calculation."
+  },
+  "VsmSketch": {
+    "alt": "Section of a value stream map with three processes, inventory triangles and the timeline below",
+    "process1": "Sawing",
+    "process2": "Turning",
+    "process3": "Assembly",
+    "daysUnit": "days",
+    "minUnit": "min"
+  },
+  "Demo": {
+    "metaTitle": "Demo",
+    "metaDescription": "A complete value stream to try out, without signing up. Change cycle times and watch lead time, takt time and process cycle efficiency respond.",
+    "heading": "Demo · Musterwerk Machine Shop",
+    "noticeStrong": "Everything is editable.",
+    "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo."
+  },
+  "Login": {
+    "title": "Sign in",
+    "subtitle": "Welcome back to VSM Builder.",
+    "emailLabel": "Email",
+    "submit": "Sign in",
+    "noAccount": "No account yet?",
+    "signupLink": "Sign up"
+  },
+  "Signup": {
+    "title": "Create account",
+    "subtitle": "Start with your first value stream map.",
+    "orgLabel": "Company / team (optional)",
+    "orgPlaceholder": "e.g. Example Ltd",
+    "emailLabel": "Email",
+    "passwordHint": "At least 8 characters.",
+    "submit": "Create account",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Sign in"
+  },
+  "CheckEmail": {
+    "title": "Almost there",
+    "body": "We have sent you a confirmation link by email. Click it to activate your account and sign in.",
+    "backToLogin": "Back to sign in"
+  },
+  "OAuth": {
+    "divider": "or",
+    "google": "Sign in with Google",
+    "apple": "Sign in with Apple"
+  },
+  "ErrorPage": {
+    "title": "The action failed",
+    "body": "The last step could not be completed. Your value streams are unaffected; everything up to the last successful change is saved.",
+    "backToDashboard": "Back to dashboard",
+    "loginAgain": "Sign in again",
+    "hint": "If the error keeps happening, signing in again usually helps: expired sessions are the most common cause."
+  },
+  "OgImage": {
+    "alt": "VSM Builder — value stream mapping with live calculation: a value stream map with three processes, inventory triangles and timeline",
+    "headline": "Value stream mapping with live calculation",
+    "subline": "Drawn to Rother/Shook — lead time, takt time and process cycle efficiency calculate along.",
+    "kpi1Label": "Lead time",
+    "kpi1Unit": "days",
+    "kpi2Label": "Process cycle efficiency",
+    "kpi3Label": "Takt time",
+    "kpi3Unit": "min",
+    "ctUnit": "min"
+  },
+  "PasswordField": {
+    "label": "Password",
+    "show": "Show password",
+    "hide": "Hide password"
+  },
+  "Glossary": {
+    "tooltipAria": "Definition: {term}",
+    "leadTime": {
+      "term": "Lead time",
+      "definition": "The time a part takes from the first to the last process step — including all waiting and buffer time in between, not just the processing itself."
+    },
+    "cycleTimeSum": {
+      "term": "Value-added time",
+      "definition": "The sum of the pure cycle times of every process in the chain — excluding the waiting time sitting in inventory between them."
+    },
+    "pce": {
+      "term": "Process cycle efficiency",
+      "definition": "Value-added time divided by lead time, as a percentage. Shows how much of the total lead time is actually value-adding rather than waiting in inventory. The rating follows rule-of-thumb figures from the lean literature for discrete manufacturing — below roughly 5 % is the unimproved norm, continuous flow starts around 25 %. Guide values, not a standard."
+    },
+    "taktTime": {
+      "term": "Takt time",
+      "definition": "Available production time divided by customer demand. The pace at which one part must be finished for demand to be met — not a measured processing value, but a target."
+    },
+    "availableMinutesPerDay": {
+      "term": "Available production time",
+      "definition": "How many minutes per day are actually produced (e.g. one 8-hour shift = 480 min, two shifts = 960 min, less breaks). The other factor in the takt time formula alongside customer demand."
+    },
+    "exitRate": {
+      "term": "Actual output (exit rate)",
+      "definition": "How many parts per day actually leave the value stream. Set by the slowest process (bottleneck / time trap) after its OEE losses: available production time ÷ bottleneck cycle time. Not to be confused with customer demand, which sets takt time — output is measured, takt is required. Together with WIP it gives the lead time: PLT = WIP ÷ output."
+    },
+    "balanceChart": {
+      "term": "Balance chart (Yamazumi)",
+      "definition": "One bar per station whose height shows its load including OEE losses, with takt time as a horizontal line. Unlike the timeline below the value stream, the axis here is the station rather than the sequence — which is what makes it readable which station breaks takt and where work content could be moved."
+    },
+    "capacityCoverage": {
+      "term": "Capacity coverage",
+      "definition": "Actual output divided by customer demand. Below 100 % the line cannot meet demand: inventory then grows continuously, and lead time is no longer a stable figure but rises with every day."
+    },
+    "processCycleTime": {
+      "term": "Cycle time (C/T)",
+      "definition": "The time a single process step takes to work on one part."
+    },
+    "changeoverTime": {
+      "term": "Changeover time (C/O)",
+      "definition": "The time to switch a machine or process from one product or variant to the next."
+    },
+    "oee": {
+      "term": "OEE",
+      "definition": "Overall equipment effectiveness: the product of availability, performance and quality. Shows how much of the theoretically possible time is actually used in a value-adding way."
+    },
+    "operatorCount": {
+      "term": "Operator count",
+      "definition": "How many people are needed to run this process step."
+    },
+    "pacemaker": {
+      "term": "Pacemaker process",
+      "definition": "The one process in the chain that sets the pace for the whole production — usually the last one before shipping. Production control schedules only here; every upstream process replenishes by pull."
+    },
+    "wip": {
+      "term": "WIP (work in process)",
+      "definition": "Inventory of unfinished parts between two process steps. Together with daily demand it determines how long a part waits at this point."
+    },
+    "bufferType": {
+      "term": "Inventory type",
+      "definition": "How inventory between two processes is controlled: standard (uncontrolled), supermarket (pull — replenished only on withdrawal), FIFO lane (fixed sequence, limited capacity) or continuous flow (no buffer, the part moves straight on)."
+    },
+    "flowStyle": {
+      "term": "Arrow type",
+      "definition": "How material flow is drawn: push (standard forwarding), pull (withdrawal from a supermarket), or shipment (delivery to/from supplier and customer). \"Automatic\" derives it from the inventory type."
+    },
+    "kanbanType": {
+      "term": "Kanban type",
+      "definition": "Only relevant with a supermarket: a production kanban triggers replenishment at the supplying process, a withdrawal kanban only triggers the transport of an already produced part."
+    },
+    "supermarket": {
+      "term": "Supermarket",
+      "definition": "A controlled buffer stock from which the downstream process withdraws exactly what it needs via kanban — the upstream process only replaces what was withdrawn."
+    },
+    "fifo": {
+      "term": "FIFO lane",
+      "definition": "A first-in-first-out connection between two processes with no free withdrawal — the processing sequence is strictly preserved, usually with limited capacity."
+    },
+    "onePieceFlow": {
+      "term": "One-piece flow (continuous flow)",
+      "definition": "Parts flow one at a time and without an intermediate buffer directly from one process to the next — no waiting, no inventory between the steps."
+    },
+    "bottleneck": {
+      "term": "Bottleneck",
+      "definition": "A process whose effective cycle time (cycle time ÷ OEE) exceeds takt time — in its current state it cannot serve customer demand."
+    },
+    "heijunka": {
+      "term": "Heijunka (production levelling)",
+      "definition": "Production mix and volume are spread evenly over time instead of running in large batches — it hangs off the pacemaker, because that is where production is actually scheduled."
+    },
+    "pitch": {
+      "term": "Pitch (control time increment)",
+      "definition": "A fixed time increment (a multiple of takt time) in which the pacemaker produces and releases a consistent quantity — it makes production control work in manageable portions rather than piece by piece."
+    },
+    "kaizenBlitz": {
+      "term": "Kaizen burst",
+      "definition": "A concrete improvement point marked at a process, needed to get from the current to the future state — not a general improvement wish, but a targeted note at exactly this spot."
+    }
+  },
+  "Editor": {
+    "kpiLeadTime": "Lead time",
+    "kpiPce": "Process cycle efficiency",
+    "kpiTaktTime": "Takt time",
+    "kpiExitRate": "Actual output",
+    "kpiCycleTimeSum": "Value-added time",
+    "unitDays": "days",
+    "unitMin": "min",
+    "unitPercent": "%",
+    "unitPiecesPerDay": "pcs/day",
+    "annualDemandLabel": "Annual customer demand (pcs/year)",
+    "annualDemandPlaceholder": "e.g. 50000",
+    "availableMinutesLabel": "Available production time (min/day)",
+    "availableMinutesPlaceholder": "e.g. 480",
+    "exportPdf": "Export PDF",
+    "exportingPdf": "Exporting…",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
+    "presentationMode": "Presentation mode",
+    "zoomHint": "Ctrl/Cmd + scroll wheel to zoom",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "fitView": "Fit to view",
+    "fitViewShifted": "View has been moved — back to the full map",
+    "tabsAria": "Analyses",
+    "tabBalance": "Balance chart",
+    "tabBenchmark": "Industry comparison",
+    "noProcessesYet": "No processes yet. Add the first one below.",
+    "processNameLabel": "Process name",
+    "processNamePlaceholder": "e.g. Turning",
+    "cycleTimeLabel": "Cycle time (min)",
+    "cycleTimePlaceholder": "e.g. 3.5",
+    "addProcess": "+ Add",
+    "importCsv": "Import CSV",
+    "csvColumns": "Columns: name, cycle_time, oee, wip",
+    "errorNameAndCycleTime": "Name and cycle time (minutes) are required.",
+    "errorAdding": "Could not add.",
+    "errorSaving": "Could not save.",
+    "errorReorder": "The order could not be changed.",
+    "errorLane": "The lane could not be changed.",
+    "errorConnect": "The connection could not be created.",
+    "errorDisconnect": "The connection could not be removed.",
+    "errorFields": "Please fill in all fields correctly.",
+    "errorDelete": "Could not delete.",
+    "errorNumber": "Please enter a valid number.",
+    "errorNotEmpty": "Must not be empty.",
+    "editProcess": "Edit process",
+    "position": "Position",
+    "moveEarlier": "Earlier in the sequence",
+    "moveLater": "Later in the sequence",
+    "laneUp": "Lane up",
+    "laneUpTitle": "Lane up (back to the main line)",
+    "laneDown": "Lane down",
+    "laneDownTitle": "Lane down — e.g. for parallel processes",
+    "changeoverLabel": "Changeover C/O (min)",
+    "oeeLabel": "OEE (%)",
+    "operatorsLabel": "Operators",
+    "wipBefore": "WIP before",
+    "wipAfter": "WIP after",
+    "connections": "Connections",
+    "predecessors": "Predecessors",
+    "successors": "Successors",
+    "none": "None",
+    "pacemakerProcess": "Pacemaker process",
+    "deleteProcess": "Delete process",
+    "confirmDelete": "Really delete?",
+    "wipLabel": "Inventory (WIP)",
+    "bufferTypeLabel": "Inventory type",
+    "bufferStandard": "Standard (uncontrolled)",
+    "bufferSupermarket": "Supermarket (pull)",
+    "bufferFifo": "FIFO lane",
+    "bufferContinuous": "Continuous flow (one-piece)",
+    "bufferSafetyStock": "Safety stock",
+    "flowStyleLabel": "Arrow type",
+    "flowAuto": "Automatic",
+    "flowPush": "Push",
+    "flowPull": "Pull",
+    "flowShipment": "Shipment",
+    "kanbanTypeLabel": "Kanban type",
+    "kanbanProduction": "Production kanban",
+    "kanbanWithdrawal": "Withdrawal kanban",
+    "save": "Save",
+    "close": "Close",
+    "effectiveCycleTime": "eff. cycle time: {value} min (feeds into value-added time and the capacity check — the cycle time itself is unchanged)",
+    "pacemakerHint": " (receives the schedule directly from production control)",
+    "anchorErp": "ERP / production control",
+    "leadTimeFormula": "{wip} pcs WIP ÷ {rate} pcs/day output",
+    "taktTimeFormula": "{minutes} min/day ÷ {demand} pcs/day customer demand",
+    "exitRateFormula": "{minutes} min/day ÷ {bottleneck} min bottleneck",
+    "fitViewLabel": "Fit",
+    "disconnect": "✕ disconnect",
+    "disconnectFrom": "Disconnect from {name}",
+    "disconnectTo": "Disconnect to {name}",
+    "choosePredecessor": "+ Choose predecessor…",
+    "chooseSuccessor": "+ Choose successor…",
+    "classificationLabel": "Value-added classification",
+    "classificationNone": "— not classified",
+    "unitPieces": "pcs"
+  },
+  "Canvas": {
+    "bottleneck": "⚠ Bottleneck",
+    "supplier": "Supplier",
+    "customer": "Customer",
+    "leadTimeAbbr": "PLT",
+    "valueAddedAbbr": "VA",
+    "daysUnit": "days",
+    "minUnit": "min",
+    "heijunka": "Heijunka",
+    "pitchCaption": "Pitch: {minutes} min",
+    "safetyStockAbbr": "SS",
+    "piecesUnit": "pcs"
+  },
+  "MethodCheck": {
+    "title": "Method check",
+    "show": "Show",
+    "collapse": "Collapse",
+    "severityCritical": "Metric affected",
+    "severityWarning": "Methodologically unsound",
+    "hintCount": "{count, plural, one {# note} other {# notes}}",
+    "noPacemakerTitle": "No pacemaker process set",
+    "capacityShortfallTitle": "The line covers only {percent} % of customer demand",
+    "capacityDetail": "The bottleneck lets {exit} pcs/day through, {demand} pcs/day are required. Inventory therefore grows continuously; the lead time above is not a stable figure as long as that holds.",
+    "noPacemakerDetail": "Production control currently sends the schedule to every process. Set a pacemaker in the process panel to represent this correctly.",
+    "pushTitle": "{count}× push upstream of the pacemaker instead of supermarket or FIFO",
+    "pushDetail": "Methodologically, everything upstream of the pacemaker needs a pull system (supermarket or FIFO) — otherwise inventory builds up in front of it uncontrolled."
+  },
+  "Balance": {
+    "title": "Balance chart",
+    "subtitle": "Load per station including OEE losses, measured against takt time",
+    "bottleneck": "Bottleneck",
+    "taktLabel": "Takt {value} min",
+    "legendInTakt": "Work within takt",
+    "legendOverTakt": "Work above takt",
+    "legendOeeLoss": "OEE loss",
+    "noCapacity": "no capacity",
+    "zeroAxis": "0 min",
+    "minStationsPrefix": "Work content {work} min ÷ takt {takt} min =",
+    "minStationsStrong": "at least {count} takt-compliant stations",
+    "minStationsSuffix": "— currently there are {actual}.",
+    "minStationsWarning": " As long as the work is spread across fewer stations, the line cannot meet customer demand arithmetically."
+  },
+  "Benchmark": {
+    "title": "Industry comparison",
+    "sampleDataWarning": "Sample data — not real industry figures",
+    "avgCycleTime": "Avg. cycle time",
+    "avgOee": "Avg. OEE",
+    "higherIsBetter": "higher is better",
+    "lowerIsBetter": "lower is better",
+    "noReference": "No reference value for this selection.",
+    "unitMin": "min"
+  },
+  "Tier": {
+    "top": "Top quartile",
+    "good": "Good",
+    "average": "Average",
+    "needsImprovement": "Needs improvement"
+  },
+  "Classification": {
+    "va": "Value-adding (VA)",
+    "nva": "Non-value-adding (NVA)",
+    "necessaryNva": "Necessary, non-value-adding"
+  },
+  "Scenario": {
+    "currentState": "Current state",
+    "nameLabel": "Name",
+    "investmentLabel": "Investment (CHF)",
+    "paybackLabel": "Payback (months)",
+    "riskLabel": "Risk",
+    "riskNone": "–",
+    "riskLow": "Low",
+    "riskMedium": "Medium",
+    "riskHigh": "High",
+    "save": "Save",
+    "newScenario": "+ New scenario",
+    "newIteration": "+ New iteration",
+    "typeLabel": "Type",
+    "typeTaken": " (taken)",
+    "scenarioNamePlaceholder": "e.g. Future state — pull system",
+    "create": "Create",
+    "cancel": "Cancel",
+    "copyFromScenario": "Copies this scenario as the starting point for the next iteration — independently editable afterwards.",
+    "copyFromCurrent": "Copies the current state as the starting point — independently editable afterwards.",
+    "deleteScenario": "Delete scenario",
+    "confirmDelete": "Really delete?"
+  },
+  "Pdf": {
+    "documentTitle": "Value stream map",
+    "currentState": "Current state",
+    "futureState": "Future state: {name}",
+    "footer": "Created with VSM Builder on {date}",
+    "methodCheckHeading": "METHOD CHECK"
+  },
+  "CanvasLoader": {
+    "loading": "Loading the map…"
+  },
+  "FutureState": {
+    "questions": {
+      "1": "What is customer demand (takt time)?",
+      "2": "Is production made to order or to a finished-goods store?",
+      "3": "Where is continuous flow possible?",
+      "4": "Where are supermarkets needed to control the flow (pull)?",
+      "5": "At which single point is production scheduled (pacemaker)?",
+      "6": "How is the production mix levelled at the pacemaker (heijunka)?",
+      "7": "What consistent control time increment is used (pitch)?",
+      "8": "Which process improvements are needed to reach the future state (kaizen)?"
+    },
+    "summary": {
+      "q1open": "Annual demand not entered yet — takt time cannot be calculated.",
+      "q1answered": "Takt time {takt} min at a customer demand of {demand} pcs/day.",
+      "noProcesses": "No processes created yet.",
+      "q2noHandover": "No handover point to the customer found.",
+      "q2supermarket": "Finished-goods store as a supermarket with {wip} pcs of inventory.",
+      "q2safetyStock": "Safety stock of {wip} pcs as a finished-goods buffer.",
+      "q2buildToOrder": "Direct shipment to the customer with no finished-goods inventory (build-to-order).",
+      "q2untyped": "Finished-goods inventory of {wip} pcs present, but not typed as a supermarket — decision still open.",
+      "q3single": "Only one process step — no internal flow to connect.",
+      "q3none": "None of the {total} internal connections runs as continuous flow yet.",
+      "q3some": "{count} of {total} internal connections run as continuous flow.",
+      "q4single": "Only one process step — no pull system needed.",
+      "q4allContinuous": "All internal connections already run as continuous flow — no additional pull system needed.",
+      "q4allPull": "All {total} remaining connections run as pull (supermarket/FIFO).",
+      "q4somePush": "{push} of {total} connections still run as push (standard).",
+      "q5none": "No pacemaker set yet.",
+      "q5clean": "Pacemaker set: {name}. Everything upstream already runs as pull.",
+      "q5push": "Pacemaker set ({name}), but {count} connection(s) upstream still run as push.",
+      "q6needsPacemaker": "Settle question 5 (pacemaker) before heijunka makes sense.",
+      "q6active": "Heijunka box active at the pacemaker ({name}).",
+      "q6inactive": "Heijunka not yet activated for the pacemaker ({name}).",
+      "q7needsTakt": "Takt time (question 1) not known yet.",
+      "q7answered": "A pitch of {pitch} min corresponds to {units} pcs per control increment.",
+      "q7open": "No control time increment (pitch) set yet.",
+      "q8none": "No improvement points (kaizen bursts) marked yet.",
+      "q8marked": "{count} kaizen point(s) marked."
+    }
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "team": "Team",
+    "signOut": "Sign out",
+    "organisation": "Organisation:",
+    "newProjectPlaceholder": "New project, e.g. Assembly X",
+    "create": "Create",
+    "loadExample": "Load example VSM",
+    "emptyTitle": "Start with the example VSM",
+    "emptyBody": "A machine shop with five processes, inventory and calculated metrics. Change a cycle time and watch lead time and takt time respond.",
+    "emptyHint": "Deletable at any time. Or create your own project above.",
+    "open": "Open →",
+    "signedInAs": "Signed in as {email}",
+    "deleteConfirm": "Really delete “{name}”?",
+    "delete": "Delete"
+  },
+  "Team": {
+    "title": "Team",
+    "roleOwner": "Owner",
+    "roleEditor": "Editor",
+    "roleViewer": "Viewer",
+    "inviteAccepted": "Accepted",
+    "inviteRevoked": "Revoked",
+    "inviteExpired": "Expired",
+    "inviteOpen": "Open",
+    "inviteHeading": "Invite colleagues",
+    "inviteBody": "Create a link and pass it on yourself — by email, Teams or however suits you. Whoever opens it and signs in becomes a member of {org} and sees all of that company's value stream maps.",
+    "noInvites": "No invitation created yet.",
+    "revoke": "Revoke",
+    "ownersOnly": "Only owners can invite or remove members.",
+    "roleLabel": "Role",
+    "roleEditorOption": "Editor",
+    "roleViewerOption": "Viewer",
+    "creating": "Creating…",
+    "createLink": "Create invitation link",
+    "linkCreatedPrefix": "Link created. It is valid for",
+    "linkValidity": "7 days",
+    "linkCreatedMiddle": "and can be redeemed",
+    "linkOnce": "once",
+    "linkCreatedSuffix": ". Copy it now — it will not be shown again.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "yourRole": "{org} · your role: {role}"
+  },
+  "Invite": {
+    "title": "Team invitation",
+    "body": "You have been invited to join a team. Once you accept, you will see its value stream maps and can switch between your organisations.",
+    "accept": "Accept invitation",
+    "cancel": "Cancel",
+    "signedOutBody": "Sign in or create an account to accept the invitation. You will land back here afterwards.",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "errExpired": "This invitation link has expired. Please ask for a new one.",
+    "errRevoked": "This invitation was revoked. Get in touch with the person who sent it to you.",
+    "errAccepted": "This invitation link has already been redeemed. Each link works only once.",
+    "errInvalid": "This invitation link is not valid. It may have been truncated when copied.",
+    "errSignIn": "Please sign in first.",
+    "errGeneric": "The invitation could not be redeemed. Please try again later."
+  },
+  "Compare": {
+    "backToEditor": "← Back to the editor",
+    "title": "Scenario comparison — {project}",
+    "empty": "No future-state scenario created yet. Open the editor and use “+ New scenario” to create a target state, then compare it with the current state here.",
+    "metric": "Metric",
+    "businessCase": "Business case",
+    "processes": "Processes",
+    "investment": "Investment",
+    "payback": "Payback",
+    "risk": "Risk",
+    "months": "{count} months"
+  },
+  "Wizard": {
+    "backToEditor": "← Back to the editor",
+    "title": "Future-state wizard",
+    "titleWithScenario": "Future-state wizard — {type} · {name}",
+    "noScenario": "The future-state wizard walks through the 8 questions for one specific scenario. Pick an existing scenario in the editor, or create one first.",
+    "progress": "{answered} of 8 questions answered. No fixed sequence — jump straight to any question, as often as you like.",
+    "questionLabel": "Question {id}",
+    "statusAnswered": "Answered",
+    "statusOpen": "Open",
+    "statusNotApplicable": "Not relevant yet",
+    "toCompare": "To the scenario comparison →",
+    "newIterationFrom": "+ New iteration from this scenario",
+    "allQuestions": "← All 8 questions",
+    "questionOf": "Question {id} of 8",
+    "saved": "✓ Saved.",
+    "save": "Save",
+    "toOverview": "To the overview →",
+    "q1AnnualDemand": "Annual demand (pcs/year)",
+    "q1AvailableMinutes": "Available production time (min/day)",
+    "q2Kind": "Type of finished-goods inventory",
+    "q2DirectShip": "Direct shipment (no inventory)",
+    "q2Supermarket": "Finished-goods store as a supermarket",
+    "q2SafetyStock": "Safety stock",
+    "q2Stock": "Inventory (pcs)",
+    "noInternalConnections": "No internal connections between processes yet.",
+    "q3Hint": "Just the yes/no decision: “does this connection flow straight on without an intermediate buffer?”",
+    "supplier": "Supplier",
+    "customer": "Customer",
+    "q3ContinuousFlow": "Continuous flow",
+    "q4AllContinuous": "All internal connections already run as continuous flow (question 3) — nothing left to control.",
+    "q4Hint": "Push or pull for the connections that are not already continuous flow (question 3).",
+    "q4Type": "Type",
+    "q4Standard": "Standard (push)",
+    "q4Supermarket": "Supermarket (pull)",
+    "q4Fifo": "FIFO lane (pull)",
+    "q4Wip": "WIP",
+    "noProcesses": "No processes created yet.",
+    "q5Pacemaker": "Pacemaker process",
+    "q5SetPacemaker": "Set as pacemaker",
+    "q6NeedsPacemaker": "Answer question 5 (pacemaker) first — heijunka hangs off the pacemaker methodologically.",
+    "q6HeijunkaActive": "Heijunka box active",
+    "q7Pitch": "Pitch (min)",
+    "q8NotePlaceholder": "e.g. halve changeover time"
+  },
+  "Errors": {
+    "projectNameEmpty": "The project name must not be empty.",
+    "projectCreate": "The project could not be created.",
+    "projectDelete": "The project could not be deleted.",
+    "projectNotFound": "Project not found, or no permission to delete it.",
+    "exampleCreate": "The example could not be created.",
+    "exampleProcesses": "The example processes could not be created.",
+    "exampleBuffers": "The example inventory points could not be created.",
+    "exampleDescription": "Example project with sample data to try out — deletable at any time.",
+    "processCreate": "The process could not be created.",
+    "processNotFound": "Process not found.",
+    "csvEmpty": "The CSV file contains no rows.",
+    "scenarioTypeAndName": "Type and name are required.",
+    "scenarioCreate": "The scenario could not be created.",
+    "scenarioCopyProcesses": "The processes could not be copied.",
+    "inviteRoleInvalid": "Invalid role.",
+    "inviteCreate": "The invitation could not be created.",
+    "inviteRevoke": "The invitation could not be revoked.",
+    "credentialsRequired": "Please enter email and password."
+  }
+}

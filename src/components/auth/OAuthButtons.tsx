@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { signInWithGoogle, signInWithApple } from '@/app/auth/oauth-actions'
+import { getTranslations } from 'next-intl/server'
+import { signInWithGoogle, signInWithApple } from '@/app/[locale]/auth/oauth-actions'
 
 /**
  * "Mit Apple anmelden" ist ausgeblendet, nicht gelöscht.
@@ -16,22 +17,24 @@ import { signInWithGoogle, signInWithApple } from '@/app/auth/oauth-actions'
  */
 const APPLE_SIGN_IN_ENABLED = false
 
-export function OAuthButtons() {
+export async function OAuthButtons() {
+  const t = await getTranslations('OAuth')
+
   return (
     <>
       <div className="mt-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-zinc-200" />
-        <span className="text-xs text-zinc-500">oder</span>
+        <span className="text-xs text-zinc-500">{t('divider')}</span>
         <div className="h-px flex-1 bg-zinc-200" />
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
         <form action={signInWithGoogle}>
-          <OAuthButton icon={<GoogleIcon />} label="Mit Google anmelden" />
+          <OAuthButton icon={<GoogleIcon />} label={t('google')} />
         </form>
         {APPLE_SIGN_IN_ENABLED && (
           <form action={signInWithApple}>
-            <OAuthButton icon={<AppleIcon />} label="Mit Apple anmelden" />
+            <OAuthButton icon={<AppleIcon />} label={t('apple')} />
           </form>
         )}
       </div>

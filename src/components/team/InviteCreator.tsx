@@ -1,7 +1,8 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { createInvite, type CreateInviteResult } from '@/app/team/actions'
+import { useTranslations } from 'next-intl'
+import { createInvite, type CreateInviteResult } from '@/app/[locale]/team/actions'
 import { buttonPrimary, inputMd } from '@/components/ui/buttons'
 
 // Client-Komponente, weil der fertige Link *einmalig* aus der Action
@@ -10,6 +11,7 @@ import { buttonPrimary, inputMd } from '@/components/ui/buttons'
 // Browser-Historie und in die Server-Logs schreiben — und er ist der
 // eigentliche Schluessel.
 export default function InviteCreator() {
+  const t = useTranslations('Team')
   const [result, formAction, pending] = useActionState<CreateInviteResult, FormData>(
     createInvite,
     null
@@ -20,14 +22,14 @@ export default function InviteCreator() {
     <div>
       <form action={formAction} className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-700">Rolle</span>
+          <span className="text-xs font-medium text-zinc-700">{t('roleLabel')}</span>
           <select
             name="role"
             defaultValue="editor"
             className={inputMd}
           >
-            <option value="editor">Bearbeiten (editor)</option>
-            <option value="viewer">Nur ansehen (viewer)</option>
+            <option value="editor">{t('roleEditorOption')}</option>
+            <option value="viewer">{t('roleViewerOption')}</option>
           </select>
         </label>
         <button
@@ -35,7 +37,7 @@ export default function InviteCreator() {
           disabled={pending}
           className={buttonPrimary}
         >
-          {pending ? 'Erstelle…' : 'Einladungslink erstellen'}
+          {pending ? t('creating') : t('createLink')}
         </button>
       </form>
 
@@ -48,9 +50,9 @@ export default function InviteCreator() {
       {result?.ok === true && (
         <div className="mt-4 rounded-control border border-zinc-200 bg-zinc-50 p-3">
           <p className="text-xs text-zinc-600">
-            Link erstellt. Er ist <strong>7 Tage</strong> gültig und lässt sich{' '}
-            <strong>einmal</strong> einlösen. Kopiere ihn jetzt — er wird nicht noch einmal
-            angezeigt.
+            {t('linkCreatedPrefix')} <strong>{t('linkValidity')}</strong>{' '}
+            {t('linkCreatedMiddle')} <strong>{t('linkOnce')}</strong>
+            {t('linkCreatedSuffix')}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {/* readOnly statt disabled: der Text muss markierbar bleiben, falls
@@ -76,7 +78,7 @@ export default function InviteCreator() {
               }}
               className="shrink-0 rounded-control border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
             >
-              {copied ? 'Kopiert' : 'Kopieren'}
+              {copied ? t('copied') : t('copy')}
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 /**
  * Passwortfeld mit Auge zum Einblenden.
@@ -17,18 +18,20 @@ import { useState } from 'react'
 export function PasswordField({
   autoComplete,
   minLength,
-  label = 'Passwort',
+  label,
 }: {
   autoComplete: 'current-password' | 'new-password'
   minLength?: number
+  /** Ueberschreibt die uebersetzte Standardbeschriftung; sonst weglassen. */
   label?: string
 }) {
+  const t = useTranslations('PasswordField')
   const [visible, setVisible] = useState(false)
 
   return (
     <div>
       <label htmlFor="password" className="text-sm font-medium text-zinc-700">
-        {label}
+        {label ?? t('label')}
       </label>
       <div className="relative mt-1">
         <input
@@ -50,7 +53,7 @@ export function PasswordField({
           // Formular als submit und würde die Anmeldung auslösen.
           type="button"
           onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? 'Passwort verbergen' : 'Passwort anzeigen'}
+          aria-label={visible ? t('hide') : t('show')}
           aria-pressed={visible}
           className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 hover:text-zinc-900"
         >

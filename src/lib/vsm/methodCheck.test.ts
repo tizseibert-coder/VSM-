@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { formatFindingCount, rankFindings, type MethodFinding } from './methodCheck'
+import de from '../../../messages/de.json'
+import en from '../../../messages/en.json'
+import { rankFindings, type MethodFinding } from './methodCheck'
 
 const befund = (id: string, severity: MethodFinding['severity']): MethodFinding => ({
   id,
@@ -8,17 +10,20 @@ const befund = (id: string, severity: MethodFinding['severity']): MethodFinding 
   detail: null,
 })
 
-describe('formatFindingCount', () => {
-  it('uses the singular for exactly one finding', () => {
-    expect(formatFindingCount(1)).toBe('1 Hinweis')
-  })
-
-  it('uses the plural for more than one', () => {
-    expect(formatFindingCount(3)).toBe('3 Hinweise')
-  })
-
-  it('uses the plural for none', () => {
-    expect(formatFindingCount(0)).toBe('0 Hinweise')
+// formatFindingCount() stand frueher hier und bildete "1 Hinweis" /
+// "3 Hinweise" selbst. Das kann eine feste Funktion nicht fuer jede Sprache
+// leisten — Pluralregeln sind nicht ueberall zweiteilig. Die ICU-Regel in
+// MethodCheck.hintCount hat das uebernommen; der Test haelt fest, dass beide
+// Sprachen eine mitbringen und beide Faelle abdecken.
+describe('hint count message', () => {
+  it('defines a plural rule with a singular and a plural branch', () => {
+    for (const [locale, messages] of Object.entries({ de, en })) {
+      const rule = messages.MethodCheck.hintCount
+      expect(rule, locale + ': MethodCheck.hintCount fehlt').toBeDefined()
+      expect(rule).toContain('plural')
+      expect(rule, locale + ': keine Einzahl-Form').toMatch(/\bone\s*\{/)
+      expect(rule, locale + ': keine Mehrzahl-Form').toMatch(/\bother\s*\{/)
+    }
   })
 })
 

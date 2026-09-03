@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { createScenario } from '@/app/editor/[projectId]/scenario-actions'
+import { useTranslations } from 'next-intl'
+import { createScenario } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 import { buttonPrimary } from '@/components/ui/buttons'
 
 // Extracted from ScenarioSwitcher (which stays a plain Server Component) so
@@ -15,17 +16,32 @@ import { buttonPrimary } from '@/components/ui/buttons'
 // Ist-Zustand exactly as before; passed, it copies that scenario instead, so
 // a second pass at the future state can build on the first one rather than
 // always restarting from scratch.
+//
+// usedTypes: die Buchstaben der bereits vorhandenen Szenarien im Projekt.
+// [UX-Audit 2026-08-16, kleinere Beobachtung] Der Typ stand immer auf "A"
+// vorausgewaehlt, und zwei Szenarien hiessen dadurch "A · Test1" und
+// "A · beb" — das Praefix unterschied nichts mehr, es kostete nur Breite.
+// Vorbelegt wird jetzt der erste noch freie Buchstabe. Ein bereits
+// vergebener bleibt waehlbar (eine zweite Iteration derselben Reihe ist
+// methodisch legitim — "A" nochmal fuer eine weitere Runde an dieser Idee),
+// er ist im Dropdown nur als vergeben gekennzeichnet.
+const SCENARIO_TYPES = ['A', 'B', 'C'] as const
+
 export default function NewScenarioDisclosure({
   projectId,
   sourceScenarioId,
   label,
+  usedTypes = [],
 }: {
   projectId: string
   sourceScenarioId?: string
   label?: string
+  usedTypes?: (string | null)[]
 }) {
+  const t = useTranslations('Scenario')
   const [isOpen, setIsOpen] = useState(false)
-  const buttonLabel = label ?? '+ Neues Szenario'
+  const buttonLabel = label ?? t('newScenario')
+  const nextFreeType = SCENARIO_TYPES.find((type) => !usedTypes.includes(type)) ?? SCENARIO_TYPES[0]
 
   if (!isOpen) {
     return (
@@ -54,44 +70,47 @@ export default function NewScenarioDisclosure({
       >
         {sourceScenarioId && <input type="hidden" name="sourceScenarioId" value={sourceScenarioId} />}
         <label className="text-xs font-medium text-zinc-600">
-          Typ
+          {t('typeLabel')}
           <select
             name="type"
-            defaultValue="A"
+            defaultValue={nextFreeType}
             className="mt-1 w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           >
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
+            {SCENARIO_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+                {usedTypes.includes(type) ? t('typeTaken') : ''}
+              </option>
+            ))}
           </select>
         </label>
         <label className="text-xs font-medium text-zinc-600">
-          Name
+          {t('nameLabel')}
           <input
             name="name"
             required
-            placeholder="z. B. Future State — Pull-System"
+            placeholder={t('scenarioNamePlaceholder')}
             className="mt-1 w-full rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>
         <p className="text-xs text-zinc-500">
           {sourceScenarioId
-            ? 'Kopiert dieses Szenario als Startpunkt für die nächste Iteration — danach unabhängig editierbar.'
-            : 'Kopiert den aktuellen Ist-Zustand als Startpunkt — danach unabhängig editierbar.'}
+            ? t('copyFromScenario')
+            : t('copyFromCurrent')}
         </p>
         <div className="mt-1 flex items-center gap-2">
           <button
             type="submit"
             className={buttonPrimary}
           >
-            Anlegen
+            {t('create')}
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
             className="rounded-control px-4 py-1.5 text-sm font-medium text-zinc-500 hover:bg-zinc-100"
           >
-            Abbrechen
+            {t('cancel')}
           </button>
         </div>
       </form>
