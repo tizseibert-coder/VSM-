@@ -70,14 +70,23 @@ export default async function EditorPage({
           <h1 className="text-lg font-semibold text-zinc-950">{project.name}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {activeScenario && (
-            <Link
-              href={`/editor/${projectId}/future-state?scenario=${activeScenario.id}`}
-              className={buttonSecondary}
-            >
-              {tWizard('title')}
-            </Link>
-          )}
+          {/* [Bedienbarkeitspruefung 2026-09-03, B7] Der Knopf haengt nicht
+              mehr am aktiven Szenario. Wer ein Projekt neu anlegt, hat noch
+              keines — und sah damit ausgerechnet den gefuehrten Weg nie, der
+              ihm die Methodik abnimmt, die er nicht auswendig kann. Ohne
+              Szenario fuehrt der Knopf auf die Wizard-Seite, die erklaert,
+              wozu ein Szenario da ist, und gleich eines anlegen laesst. Das
+              ist der erste Schritt des Weges, nicht seine Voraussetzung. */}
+          <Link
+            href={
+              activeScenario
+                ? `/editor/${projectId}/future-state?scenario=${activeScenario.id}`
+                : `/editor/${projectId}/future-state`
+            }
+            className={buttonSecondary}
+          >
+            {tWizard('title')}
+          </Link>
           <Link
             href={`/editor/${projectId}/compare`}
             className={buttonSecondary}

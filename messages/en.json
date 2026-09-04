@@ -156,7 +156,21 @@
     "metaDescription": "A complete value stream to try out, without signing up. Change cycle times and watch lead time, takt time and process cycle efficiency respond.",
     "heading": "Demo · Musterwerk Machine Shop",
     "noticeStrong": "Everything is editable.",
-    "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo."
+    "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo.",
+    "data": {
+      "projectName": "Musterwerk Machine Shop",
+      "description": "Public demo. Changes stay in your browser and are not saved.",
+      "company": "Musterwerk Ltd",
+      "productName": "Drive shaft A-42",
+      "customerName": "Customer",
+      "supplierName": "Supplier",
+      "erpLabel": "Production control (ERP)",
+      "process1": "Sawing",
+      "process2": "Turning",
+      "process3": "Milling",
+      "process4": "Deburring",
+      "process5": "Assembly"
+    }
   },
   "Login": {
     "title": "Sign in",
@@ -652,7 +666,7 @@
     "backToEditor": "← Back to the editor",
     "title": "Future-state wizard",
     "titleWithScenario": "Future-state wizard — {type} · {name}",
-    "noScenario": "The future-state wizard walks through the 8 questions for one specific scenario. Pick an existing scenario in the editor, or create one first.",
+    "noScenario": "A scenario is a copy of your current state where you try out changes — the current state itself stays untouched. The wizard then walks through the 8 questions that turn that copy into a future state. Create one below, or pick an existing one in the editor.",
     "progress": "{answered} of 8 questions answered. No fixed sequence — jump straight to any question, as often as you like.",
     "questionLabel": "Question {id}",
     "statusAnswered": "Answered",
@@ -708,7 +722,6 @@
     "exampleCreate": "The example could not be created.",
     "exampleProcesses": "The example processes could not be created.",
     "exampleBuffers": "The example inventory points could not be created.",
-    "exampleDescription": "Example project with sample data to try out — deletable at any time.",
     "processCreate": "The process could not be created.",
     "processNotFound": "Process not found.",
     "csvEmpty": "The CSV file contains no rows.",
@@ -751,5 +764,13 @@
     "howWip": "Inventory after: everything waiting behind this station for the next one — on pallets, on racks, in the buffer store. Count it, do not estimate: this number drives the lead time.",
     "footer": "VSM Builder data collection sheet",
     "footerWithUrl": "VSM Builder data collection sheet · Enter the filled-in values at {url}"
+  },
+  "Example": {
+    "projectName": "Example: value stream of a machine shop",
+    "description": "Example project with sample data to try out — deletable at any time.",
+    "process1": "Sawing",
+    "process2": "Turning",
+    "process3": "Milling",
+    "process4": "Assembly"
   }
 }

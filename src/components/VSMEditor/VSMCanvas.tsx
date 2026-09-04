@@ -645,46 +645,76 @@ export default function VSMCanvas({
   // Dieselben Werte wie in den Kacheln oberhalb der Zeichenfläche, nur
   // kompakt. Bewusst aus einer Quelle abgeleitet: Zwei Stellen, die dieselbe
   // Zahl unterschiedlich formatieren, laufen früher oder später auseinander.
+  // Dieselben sechs Werte wie in den Kacheln, in einer Form, die sowohl die
+  // Telefonzeile als auch die Vollbildleiste lesen kann.
+  //
+  // [Bedienbarkeitspruefung 2026-09-03, B5/B6] `term`, `formula` und `tier`
+  // sind neu. Die Telefonzeile zeigte bisher nur Name und Zahl: kein
+  // Erklaerknopf (die 25 Definitionen waren unter `lg` gar nicht erreichbar),
+  // keine Formelzeile ("9,0 Tage" ohne "1.800 Stk WIP ÷ 200,0 Stk/Tag" ist
+  // eine Behauptung) und kein Bewertungschip. Genau die drei Dinge, die aus
+  // einer Zahl ein Argument machen — und genau die fehlten dort, wo ein
+  // Yellow Belt das Werkzeug zuerst aufmacht. Die Vollbildleiste liest
+  // weiterhin nur `label`, `value` und `unit`: im Vortrag steht die Zahl,
+  // nicht ihre Herleitung.
   const fullscreenKpis = useMemo(
     () => [
       {
         label: t('kpiLeadTime'),
+        term: 'leadTime' as const,
         value: kpis.totalLeadTimeDays !== null ? num(kpis.totalLeadTimeDays) : KPI_EMPTY,
         unit: t('unitDays'),
+        formula: leadTimeFormula,
+        tier: null,
       },
       {
         label: t('kpiPce'),
+        term: 'pce' as const,
         value:
           kpis.valueAddedRatioPercent !== null
             ? num(kpis.valueAddedRatioPercent, 2)
             : KPI_EMPTY,
         unit: '%',
+        formula: undefined,
+        tier: ratePce(kpis.valueAddedRatioPercent),
       },
       {
         label: t('kpiTaktTime'),
+        term: 'taktTime' as const,
         value: kpis.taktTimeMinutes !== null ? num(kpis.taktTimeMinutes) : KPI_EMPTY,
         unit: t('unitMin'),
+        formula: taktTimeFormula,
+        tier: null,
       },
       {
         label: t('kpiExitRate'),
+        term: 'exitRate' as const,
         value: kpis.exitRatePerDay !== null ? num(kpis.exitRatePerDay) : KPI_EMPTY,
         unit: t('unitPiecesPerDay'),
+        formula: exitRateFormula,
+        tier: rateCapacityCoverage(kpis.capacityCoverage),
       },
       {
         label: t('kpiCycleTimeSum'),
+        term: 'cycleTimeSum' as const,
         value: num(kpis.totalCycleTimeMinutes),
         unit: t('unitMin'),
+        formula: undefined,
+        tier: null,
       },
       // Der Betrag traegt seine Einheit schon im Text (465.000 €), deshalb
       // hier keine zweite daneben. Am Telefon fuellt er ausserdem die sechste
       // Zelle der Dreierreihe, die bisher leer blieb.
       {
         label: t('kpiTiedUpCapital'),
+        term: 'tiedUpCapital' as const,
         value: capitalLabel,
         unit: '',
+        formula: capitalFormula,
+        tier: null,
       },
     ],
-    [kpis, t, num, capitalLabel]
+    [kpis, t, num, capitalLabel, leadTimeFormula, taktTimeFormula, exitRateFormula, capitalFormula]
   )
 
   // Die Höhe, in die eingepasst wird: im Seitenfluss die aus dem Inhalt
@@ -1454,7 +1484,12 @@ export default function VSMCanvas({
             sind am Telefon reine Flaeche". Zwei Zeilen durch drei Spalten bei
             fuenf Eintraegen. Nur unter `lg`: dort ersetzt sie die Kacheln,
             die im Diagramm-Block selbst ab `lg` erst erscheinen. */}
-        <div className="order-2 grid grid-cols-3 gap-x-3 gap-y-3 py-3 lg:hidden">
+        {/* [Bedienbarkeitspruefung 2026-09-03, B5/B6] Aus drei Spalten sind
+            zwei geworden. Drei liessen fuer Name, Zahl, Formel und Chip
+            zusammen keine 110 px — die Formelzeile waere dort zu einem
+            vierzeiligen Rest gebrochen. Zwei Spalten kosten drei Zeilen mehr
+            Hoehe und geben jeder Kennzahl das, was sie belegt. */}
+        <div className="order-2 grid grid-cols-2 gap-x-4 gap-y-4 py-3 lg:hidden">
           {fullscreenKpis.map((kpi) => (
             <div key={kpi.label} className="min-w-0">
               {/* [Bedienbarkeitsprüfung 2026-09-03, B5] Vorher `truncate`:
@@ -1463,7 +1498,9 @@ export default function VSMCanvas({
                   Kennzahl ist aber keine Nebensache, sondern das, was sie
                   erklaert. Zwei Zeilen Platz mit fester Hoehe, damit die
                   Zahlen darunter trotzdem auf einer Linie stehen. */}
-              <div className="min-h-[2.4em] text-xs leading-tight text-zinc-500">{kpi.label}</div>
+              <div className="min-h-[2.4em] text-xs leading-tight text-zinc-500">
+                <TermTooltip term={kpi.term}>{kpi.label}</TermTooltip>
+              </div>
               <div className="mt-0.5 flex items-baseline gap-1">
                 <span className="text-base font-semibold tabular-nums text-zinc-950">
                   {kpi.value}
@@ -1472,6 +1509,16 @@ export default function VSMCanvas({
                   <span className="text-xs text-zinc-500">{kpi.unit}</span>
                 )}
               </div>
+              {kpi.tier && (
+                <div className="mt-1">
+                  <TierChip tier={kpi.tier} />
+                </div>
+              )}
+              {kpi.formula && (
+                <div className="mt-1 text-[0.6875rem] leading-snug tabular-nums text-zinc-600">
+                  {kpi.formula}
+                </div>
+              )}
             </div>
           ))}
         </div>

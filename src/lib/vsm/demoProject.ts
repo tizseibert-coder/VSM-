@@ -1,4 +1,5 @@
 import type { Tables } from '@/types/database'
+import type { VsmState } from './vsmStore'
 
 type Project = Tables<'projects'>
 type Process = Tables<'processes'>
@@ -24,27 +25,64 @@ const T0 = '2026-01-15T08:00:00.000Z'
 
 const PROJECT_ID = 'demo-project'
 
-export const DEMO_PROJECT: Project = {
-  id: PROJECT_ID,
-  organization_id: 'demo-org',
-  name: 'Dreherei Musterwerk',
+/**
+ * Die Beschriftungen des Datensatzes — alles, was ein Mensch liest.
+ *
+ * [Bedienbarkeitspruefung 2026-09-03, B17] Unter /en/demo hiessen die
+ * Stationen weiterhin Saegen, Drehen, Fraesen, Entgraten, Montage, und die
+ * Firma "Dreherei Musterwerk". Fuer einen englischsprachigen Interessenten
+ * sah die Demo dadurch aus wie eine halb fertige Uebersetzung — ausgerechnet
+ * an der Stelle, die ohne Anmeldung ueberzeugen soll. Die Zahlen bleiben
+ * fest (sie tragen die Aussage der Demo), die Woerter kommen jetzt von
+ * aussen.
+ */
+export type DemoLabels = {
+  projectName: string
+  description: string
+  company: string
+  productName: string
+  customerName: string
+  supplierName: string
+  erpLabel: string
+  /** Fuenf Stationen, in der Reihenfolge der Kette. */
+  processNames: readonly string[]
+}
+
+/** Die deutsche Fassung. Sie ist zugleich das, worauf die Tests rechnen. */
+export const DEMO_LABELS_DE: DemoLabels = {
+  projectName: 'Dreherei Musterwerk',
   description: 'Öffentliche Demo. Änderungen bleiben im Browser und werden nicht gespeichert.',
   company: 'Musterwerk GmbH',
-  product_name: 'Antriebswelle A-42',
-  customer_name: 'Kunde',
-  supplier_name: 'Lieferant',
-  erp_label: 'Produktionssteuerung (ERP)',
-  annual_throughput: 50000,
-  available_minutes_per_day: 480,
-  pitch_minutes: null,
-  // Der Materialwert einer Antriebswelle. Er ist der Grund, warum in der Demo
-  // neben "9 300 Stueck" auch "465.000 €" steht: Die Stueckzahl ueberzeugt die
-  // Fertigung, der Betrag ueberzeugt den, der ueber die Investition
-  // entscheidet — und beide sollen in derselben Demo zu sehen sein.
-  piece_value: 50,
-  currency: 'EUR',
-  created_at: T0,
-  updated_at: T0,
+  productName: 'Antriebswelle A-42',
+  customerName: 'Kunde',
+  supplierName: 'Lieferant',
+  erpLabel: 'Produktionssteuerung (ERP)',
+  processNames: ['Sägen', 'Drehen', 'Fräsen', 'Entgraten', 'Montage'],
+}
+
+function demoProject(labels: DemoLabels): Project {
+  return {
+    id: PROJECT_ID,
+    organization_id: 'demo-org',
+    name: labels.projectName,
+    description: labels.description,
+    company: labels.company,
+    product_name: labels.productName,
+    customer_name: labels.customerName,
+    supplier_name: labels.supplierName,
+    erp_label: labels.erpLabel,
+    annual_throughput: 50000,
+    available_minutes_per_day: 480,
+    pitch_minutes: null,
+    // Der Materialwert einer Antriebswelle. Er ist der Grund, warum in der Demo
+    // neben "9 300 Stueck" auch "465.000 €" steht: Die Stueckzahl ueberzeugt die
+    // Fertigung, der Betrag ueberzeugt den, der ueber die Investition
+    // entscheidet — und beide sollen in derselben Demo zu sehen sein.
+    piece_value: 50,
+    currency: 'EUR',
+    created_at: T0,
+    updated_at: T0,
+  }
 }
 
 /** Felder, die jeder Prozess gleich hat. Ausgelagert, damit die Zahlen
@@ -82,20 +120,23 @@ function process(
   }
 }
 
-export const DEMO_PROCESSES: Process[] = [
-  process('demo-p1', 'Sägen', { cycle_time: 1.2, oee: 82, operator_count: 1 }),
-  process('demo-p2', 'Drehen', { cycle_time: 3.4, oee: 78, operator_count: 1 }),
-  process('demo-p3', 'Fräsen', { cycle_time: 2.6, oee: 85, operator_count: 1 }),
-  process('demo-p4', 'Entgraten', { cycle_time: 0.9, oee: 95, operator_count: 1 }),
-  // Der Schrittmacher sitzt am kundennahen Ende der Kette, wie es die
-  // Methodik für einen Prozess mit Kundentakt vorsieht.
-  process(
-    'demo-p5',
-    'Montage',
-    { cycle_time: 4.1, oee: 90, operator_count: 2 },
-    { is_pacemaker: true }
-  ),
-]
+function demoProcesses(labels: DemoLabels): Process[] {
+  const n = labels.processNames
+  return [
+    process('demo-p1', n[0], { cycle_time: 1.2, oee: 82, operator_count: 1 }),
+    process('demo-p2', n[1], { cycle_time: 3.4, oee: 78, operator_count: 1 }),
+    process('demo-p3', n[2], { cycle_time: 2.6, oee: 85, operator_count: 1 }),
+    process('demo-p4', n[3], { cycle_time: 0.9, oee: 95, operator_count: 1 }),
+    // Der Schrittmacher sitzt am kundennahen Ende der Kette, wie es die
+    // Methodik für einen Prozess mit Kundentakt vorsieht.
+    process(
+      'demo-p5',
+      n[4],
+      { cycle_time: 4.1, oee: 90, operator_count: 2 },
+      { is_pacemaker: true }
+    ),
+  ]
+}
 
 function buffer(
   id: string,
@@ -132,3 +173,19 @@ export const DEMO_BUFFERS: Buffer[] = [
   buffer('demo-b4', 'demo-p4', 'demo-p5', 600, { buffer_type: 'supermarket' }),
   buffer('demo-b5', 'demo-p5', null, 400),
 ]
+
+/** Der vollstaendige Startzustand der Demo in einer Sprache. */
+export function buildDemoState(labels: DemoLabels): VsmState {
+  return {
+    project: demoProject(labels),
+    processes: demoProcesses(labels),
+    buffers: DEMO_BUFFERS,
+  }
+}
+
+// Die deutschen Fassungen bleiben als Konstanten erhalten: Die Tests rechnen
+// mit ihnen, und sie sind die Vorlage, gegen die eine Uebersetzung geprueft
+// wird.
+const DEMO_DE = buildDemoState(DEMO_LABELS_DE)
+export const DEMO_PROJECT: Project = DEMO_DE.project
+export const DEMO_PROCESSES: Process[] = DEMO_DE.processes

@@ -89,12 +89,21 @@ export async function createExampleProject() {
 
   const supabase = await createClient()
 
+  // [Bedienbarkeitspruefung 2026-09-03, B17] Name und Stationen standen hier
+  // fest auf Deutsch. Wer sich in der englischen Fassung anmeldet und auf
+  // "Beispielprojekt anlegen" drueckt, bekam ein Projekt namens "Beispiel:
+  // Wertstromanalyse Dreherei" mit den Stationen Saegen, Drehen, Fraesen,
+  // Montage — dieselbe halbe Uebersetzung wie in der Demo, nur diesmal als
+  // Datensatz in seiner Datenbank. Die Zahlen bleiben in beiden Sprachen
+  // gleich; nur die Woerter folgen der Sprache, in der er anlegt.
+  const tEx = await getTranslations('Example')
+
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .insert({
       organization_id: orgResult.orgId,
-      name: 'Beispiel: Wertstromanalyse Dreherei',
-      description: await tErr('exampleDescription'),
+      name: tEx('projectName'),
+      description: tEx('description'),
       annual_throughput: 50000,
     })
     .select('id')
@@ -106,10 +115,10 @@ export async function createExampleProject() {
   }
 
   const exampleProcesses = [
-    { name: 'Sägen', cycle_time: 1.2, oee: 82, wip: 0 },
-    { name: 'Drehen', cycle_time: 3.4, oee: 78, wip: 0 },
-    { name: 'Fräsen', cycle_time: 2.6, oee: 85, wip: 0 },
-    { name: 'Montage', cycle_time: 4.1, oee: 90, wip: 0 },
+    { name: tEx('process1'), cycle_time: 1.2, oee: 82, wip: 0 },
+    { name: tEx('process2'), cycle_time: 3.4, oee: 78, wip: 0 },
+    { name: tEx('process3'), cycle_time: 2.6, oee: 85, wip: 0 },
+    { name: tEx('process4'), cycle_time: 4.1, oee: 90, wip: 0 },
   ]
 
   // Note: no .order() here — PostgREST rejects ordering an insert's

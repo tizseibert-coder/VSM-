@@ -156,7 +156,21 @@
     "metaDescription": "Ein vollständiger Wertstrom zum Ausprobieren, ohne Anmeldung. Zykluszeiten ändern und zusehen, wie Durchlaufzeit, Taktzeit und Wertschöpfungsanteil reagieren.",
     "heading": "Demo · Dreherei Musterwerk",
     "noticeStrong": "Alles ist bedienbar.",
-    "noticeBody": "Ändere eine Zykluszeit, verschiebe einen Prozess, setze einen Bestand — die Kennzahlen rechnen live mit. Nichts davon wird gespeichert; ein Neuladen setzt die Demo zurück."
+    "noticeBody": "Ändere eine Zykluszeit, verschiebe einen Prozess, setze einen Bestand — die Kennzahlen rechnen live mit. Nichts davon wird gespeichert; ein Neuladen setzt die Demo zurück.",
+    "data": {
+      "projectName": "Dreherei Musterwerk",
+      "description": "Öffentliche Demo. Änderungen bleiben im Browser und werden nicht gespeichert.",
+      "company": "Musterwerk GmbH",
+      "productName": "Antriebswelle A-42",
+      "customerName": "Kunde",
+      "supplierName": "Lieferant",
+      "erpLabel": "Produktionssteuerung (ERP)",
+      "process1": "Sägen",
+      "process2": "Drehen",
+      "process3": "Fräsen",
+      "process4": "Entgraten",
+      "process5": "Montage"
+    }
   },
   "Login": {
     "title": "Anmelden",
@@ -652,7 +666,7 @@
     "backToEditor": "← Zurück zum Editor",
     "title": "Future-State-Wizard",
     "titleWithScenario": "Future-State-Wizard — {type} · {name}",
-    "noScenario": "Der Future-State-Wizard führt durch die 8 Fragen für ein konkretes Szenario. Wähle im Editor ein bestehendes Szenario, oder lege zuerst eins an.",
+    "noScenario": "Ein Szenario ist die Kopie deines Ist-Zustands, in der du Änderungen ausprobierst — der Ist-Zustand selbst bleibt dabei unberührt. Der Wizard führt dann durch die 8 Fragen, die aus dieser Kopie einen Soll-Zustand machen. Leg unten eins an, oder wähle im Editor ein vorhandenes.",
     "progress": "{answered} von 8 Fragen beantwortet. Kein fester Ablauf — springe direkt zu jeder Frage, auch mehrfach.",
     "questionLabel": "Frage {id}",
     "statusAnswered": "Beantwortet",
@@ -708,7 +722,6 @@
     "exampleCreate": "Beispiel konnte nicht erstellt werden.",
     "exampleProcesses": "Beispiel-Prozesse konnten nicht angelegt werden.",
     "exampleBuffers": "Beispiel-Puffer konnten nicht angelegt werden.",
-    "exampleDescription": "Beispielprojekt mit Beispieldaten zum Ausprobieren — jederzeit löschbar.",
     "processCreate": "Prozess konnte nicht angelegt werden.",
     "processNotFound": "Prozess nicht gefunden.",
     "csvEmpty": "Die CSV-Datei enthält keine Zeilen.",
@@ -751,5 +764,13 @@
     "howWip": "Bestand danach: Alles, was hinter dieser Station auf die nächste wartet — auf Paletten, im Regal, im Zwischenlager. Zählen, nicht schätzen: Diese Zahl bestimmt die Durchlaufzeit.",
     "footer": "Erhebungsbogen VSM Builder",
     "footerWithUrl": "Erhebungsbogen VSM Builder · Ausgefüllt eintragen unter {url}"
+  },
+  "Example": {
+    "projectName": "Beispiel: Wertstromanalyse Dreherei",
+    "description": "Beispielprojekt mit Beispieldaten zum Ausprobieren — jederzeit löschbar.",
+    "process1": "Sägen",
+    "process2": "Drehen",
+    "process3": "Fräsen",
+    "process4": "Montage"
   }
 }

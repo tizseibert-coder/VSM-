@@ -6,14 +6,24 @@ import { usePathname, useRouter } from '@/i18n/navigation'
 import { routing } from '@/i18n/routing'
 
 /**
- * Unauffaellige, immer sichtbare Umschaltung — Platzhalter fuer Phase 0.
+ * Die Sprachumschaltung, als Fusszeile jeder Seite.
  *
- * Es gibt noch keinen gemeinsamen Kopfbereich, den alle Seiten teilen (jede
- * Seite baut ihre eigene "VSM BUILDER"-Zeile selbst, siehe die einzelnen
- * page.tsx-Dateien) — deshalb sitzt der Umschalter hier im Root-Layout als
- * schwebendes Element, statt in einen Header integriert zu sein. Sobald
- * eine Seite fuer die eigentliche Uebersetzung angefasst wird (Phase 1+),
- * wandert er dort an eine passendere Stelle in deren Kopfzeile.
+ * Es gibt keinen gemeinsamen Kopfbereich, den alle vierzehn Seiten teilen —
+ * jede baut ihre eigene "VSM BUILDER"-Zeile selbst, und fuenf (Anmelden,
+ * Registrieren, Bestaetigung, Einladung, Vergleich) haben ueberhaupt keine
+ * Kopfzeile. Deshalb steht der Umschalter weiterhin im Root-Layout.
+ *
+ * [Bedienbarkeitspruefung 2026-09-03, B13] Er schwebte dort bisher fest
+ * unten rechts ueber dem Inhalt und stand in mehreren Aufnahmen mitten im
+ * Erklaersatz des Austaktungsdiagramms — am Telefon ist die Textspalte so
+ * breit wie das Bild, ein schwebendes Element deckt dort immer etwas zu.
+ * Jetzt laeuft er im Fluss mit, als schmale Leiste am Seitenende. `mt-auto`
+ * im `flex flex-col` des Body haelt ihn auch auf kurzen Seiten unten, ohne
+ * dass er etwas verdeckt. Sprachwahl ist eine Handlung pro Besuch; die
+ * Fusszeile ist der Ort, an dem man sie erwartet.
+ *
+ * Die Knoepfe messen jetzt 44 px in der Hoehe statt 24 — dieselbe
+ * Mindestflaeche wie ueberall sonst im Werkzeug.
  *
  * Wechselt die Sprache unter Beibehaltung der aktuellen Seite: wer auf
  * `/de/editor/abc` steht und auf "English" klickt, landet auf
@@ -36,7 +46,7 @@ export default function LocaleSwitcher() {
     <div
       // print:hidden — auf Papier ist die Sprache entschieden, und auf dem
       // Erhebungsbogen stand der Umschalter mitten in der Fusszeile.
-      className="fixed bottom-3 right-3 z-40 flex items-center gap-1 rounded-control border border-zinc-200 bg-white/95 p-1 text-xs shadow-sm backdrop-blur print:hidden"
+      className="mt-auto flex items-center justify-end gap-1 border-t border-zinc-200 bg-white px-4 py-2 text-xs print:hidden"
       aria-label={t('label')}
     >
       {routing.locales.map((loc) => (
@@ -48,8 +58,10 @@ export default function LocaleSwitcher() {
           aria-pressed={locale === loc}
           className={
             locale === loc
-              ? 'rounded-control bg-brand-600 px-2 py-1 font-medium text-white'
-              : 'rounded-control px-2 py-1 font-medium text-zinc-600 hover:bg-zinc-100'
+              // min-h-11 = 44 px. Die Schrift ist klein, die Flaeche darf es
+              // nicht sein; `px-4 py-3` allein ergab bei 12 px Schrift nur 40.
+              ? 'inline-flex min-h-11 items-center rounded-control bg-brand-600 px-4 font-medium text-white'
+              : 'inline-flex min-h-11 items-center rounded-control px-4 font-medium text-zinc-600 hover:bg-zinc-100'
           }
         >
           {loc.toUpperCase()}
