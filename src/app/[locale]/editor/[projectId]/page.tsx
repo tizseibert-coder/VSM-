@@ -6,6 +6,7 @@ import VSMCanvasLoader from '@/components/VSMEditor/VSMCanvasLoader'
 import ScenarioSwitcher from '@/components/VSMEditor/ScenarioSwitcher'
 import ScenarioMetaPanel from '@/components/VSMEditor/ScenarioMetaPanel'
 import { buttonSecondary } from '@/components/ui/buttons'
+import type { ComparisonState } from '@/lib/vsm/scenarioComparison'
 
 export default async function EditorPage({
   params,
@@ -19,6 +20,7 @@ export default async function EditorPage({
   const t = await getTranslations('Editor')
   const tNav = await getTranslations('Nav')
   const tWizard = await getTranslations('Wizard')
+  const tScenario = await getTranslations('Scenario')
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -42,13 +44,46 @@ export default async function EditorPage({
   const activeScenario = scenarioParam ? (scenarios ?? []).find((s) => s.id === scenarioParam) : undefined
   const scenarioId = activeScenario?.id ?? null
 
-  let processesQuery = supabase.from('processes').select('*').eq('project_id', projectId)
-  processesQuery = scenarioId ? processesQuery.eq('scenario_id', scenarioId) : processesQuery.is('scenario_id', null)
-  const { data: processes } = await processesQuery.order('created_at', { ascending: true })
+  // [Bedienbarkeitspruefung 2026-09-03, B16] Frueher zwei nach scenario_id
+  // gefilterte Abfragen. Jetzt einmal alles zum Projekt und danach im
+  // Speicher aufgeteilt: dieselbe Zahl von Abfragen, aber die zweite
+  // PDF-Seite braucht ohnehin jeden Zustand, und die Vergleichsseite macht
+  // es seit jeher genauso.
+  const { data: allProcesses } = await supabase
+    .from('processes')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
 
-  let buffersQuery = supabase.from('inventory_buffers').select('*').eq('project_id', projectId)
-  buffersQuery = scenarioId ? buffersQuery.eq('scenario_id', scenarioId) : buffersQuery.is('scenario_id', null)
-  const { data: buffers } = await buffersQuery.order('created_at', { ascending: true })
+  const { data: allBuffers } = await supabase
+    .from('inventory_buffers')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+
+  const processes = (allProcesses ?? []).filter((p) => p.scenario_id === scenarioId)
+  const buffers = (allBuffers ?? []).filter((b) => b.scenario_id === scenarioId)
+
+  // Ist-Zustand zuerst — comparisonTable rechnet "freigesetztes Kapital"
+  // gegen die erste Spalte.
+  const comparisonStates: ComparisonState[] = [
+    {
+      id: null,
+      label: tScenario('currentState'),
+      processes: (allProcesses ?? [])
+        .filter((p) => p.scenario_id === null)
+        .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
+      buffers: (allBuffers ?? []).filter((b) => b.scenario_id === null).map((b) => ({ wipCount: b.wip_count })),
+    },
+    ...(scenarios ?? []).map((scenario) => ({
+      id: scenario.id,
+      label: `${scenario.type ?? '?'} · ${scenario.name ?? ''}`,
+      processes: (allProcesses ?? [])
+        .filter((p) => p.scenario_id === scenario.id)
+        .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
+      buffers: (allBuffers ?? []).filter((b) => b.scenario_id === scenario.id).map((b) => ({ wipCount: b.wip_count })),
+    })),
+  ]
 
   const { data: benchmarkReferences } = await supabase.from('benchmark_reference').select('*')
 
@@ -117,9 +152,10 @@ export default async function EditorPage({
         project={project}
         scenarioId={scenarioId}
         scenarioName={activeScenario?.name ?? null}
-        initialProcesses={processes ?? []}
-        initialBuffers={buffers ?? []}
+        initialProcesses={processes}
+        initialBuffers={buffers}
         benchmarkReferences={benchmarkReferences ?? []}
+        comparisonStates={comparisonStates}
       />
     </div>
   )

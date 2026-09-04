@@ -542,7 +542,9 @@
     "currentState": "Current state",
     "futureState": "Future state: {name}",
     "footer": "Created with VSM Builder on {date}",
-    "methodCheckHeading": "METHOD CHECK"
+    "methodCheckHeading": "METHOD CHECK",
+    "comparisonSubtitle": "Scenario comparison",
+    "comparisonNote": "All states computed against the same customer demand."
   },
   "CanvasLoader": {
     "loading": "Loading the map…"

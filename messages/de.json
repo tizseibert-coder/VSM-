@@ -156,7 +156,7 @@
     "metaDescription": "Ein vollständiger Wertstrom zum Ausprobieren, ohne Anmeldung. Zykluszeiten ändern und zusehen, wie Durchlaufzeit, Taktzeit und Wertschöpfungsanteil reagieren.",
     "heading": "Demo · Dreherei Musterwerk",
     "noticeStrong": "Alles ist bedienbar.",
-    "noticeBody": "Ändere eine Zykluszeit, verschiebe einen Prozess, setze einen Bestand — die Kennzahlen rechnen live mit. Nichts davon wird gespeichert; ein Neuladen setzt die Demo zurück.",
+    "noticeBody": "Ändern Sie eine Zykluszeit, verschieben Sie einen Prozess, setzen Sie einen Bestand — die Kennzahlen rechnen live mit. Nichts davon wird gespeichert; ein Neuladen setzt die Demo zurück.",
     "data": {
       "projectName": "Dreherei Musterwerk",
       "description": "Öffentliche Demo. Änderungen bleiben im Browser und werden nicht gespeichert.",
@@ -182,7 +182,7 @@
   },
   "Signup": {
     "title": "Konto erstellen",
-    "subtitle": "Starte mit deiner ersten Wertstromanalyse.",
+    "subtitle": "Beginnen Sie mit Ihrer ersten Wertstromanalyse.",
     "orgLabel": "Firma / Team (optional)",
     "orgPlaceholder": "z. B. Muster AG",
     "emailLabel": "E-Mail",
@@ -193,7 +193,7 @@
   },
   "CheckEmail": {
     "title": "Fast geschafft",
-    "body": "Wir haben dir einen Bestätigungslink per E-Mail geschickt. Klicke darauf, um dein Konto zu aktivieren und dich anzumelden.",
+    "body": "Wir haben Ihnen einen Bestätigungslink per E-Mail geschickt. Klicken Sie darauf, um Ihr Konto zu aktivieren und sich anzumelden.",
     "backToLogin": "Zurück zur Anmeldung"
   },
   "OAuth": {
@@ -203,7 +203,7 @@
   },
   "ErrorPage": {
     "title": "Die Aktion ist fehlgeschlagen",
-    "body": "Der letzte Schritt konnte nicht abgeschlossen werden. Deine Wertströme sind davon nicht betroffen, gespeichert ist alles bis zur letzten erfolgreichen Änderung.",
+    "body": "Der letzte Schritt konnte nicht abgeschlossen werden. Ihre Wertströme sind davon nicht betroffen, gespeichert ist alles bis zur letzten erfolgreichen Änderung.",
     "backToDashboard": "Zurück zum Dashboard",
     "loginAgain": "Neu anmelden",
     "hint": "Tritt der Fehler wiederholt auf, hilft meist eine neue Anmeldung: Abgelaufene Sitzungen sind die häufigste Ursache."
@@ -256,7 +256,7 @@
     },
     "capacityCoverage": {
       "term": "Kapazitätsdeckung",
-      "definition": "Ist-Ausbringung geteilt durch Kundenbedarf. Unter 100 % kann die Linie den Bedarf nicht decken: der Bestand wächst dann laufend an, und die Durchlaufzeit ist keine stabile Grösse mehr, sondern steigt mit jedem Tag."
+      "definition": "Ist-Ausbringung geteilt durch Kundenbedarf. Unter 100 % kann die Linie den Bedarf nicht decken: der Bestand wächst dann laufend an, und die Durchlaufzeit ist keine stabile Größe mehr, sondern steigt mit jedem Tag."
     },
     "processCycleTime": {
       "term": "Zykluszeit (C/T)",
@@ -359,7 +359,7 @@
     "tabsAria": "Auswertungen",
     "tabBalance": "Austaktung",
     "tabBenchmark": "Branchenvergleich",
-    "noProcessesYet": "Noch keine Prozesse. Leg unten den ersten an.",
+    "noProcessesYet": "Noch keine Prozesse. Legen Sie unten den ersten an.",
     "processNameLabel": "Prozessname",
     "processNamePlaceholder": "z. B. Drehen",
     "cycleTimeLabel": "Zykluszeit (min)",
@@ -443,13 +443,13 @@
     "errorCsvImport": "CSV-Import fehlgeschlagen.",
     "emptyTitle": "Drei Schritte bis zur ersten Kennzahl",
     "emptyStep1Title": "Prozesse anlegen",
-    "emptyStep1Body": "Jede Station der Kette, in der Reihenfolge, in der das Teil sie durchläuft. Name und Zykluszeit reichen zum Anfangen — alles Weitere trägst du später in der Box nach.",
+    "emptyStep1Body": "Jede Station der Kette, in der Reihenfolge, in der das Teil sie durchläuft. Name und Zykluszeit reichen zum Anfangen — alles Weitere tragen Sie später in der Box nach.",
     "emptyStep2Title": "Bestände eintragen",
-    "emptyStep2Body": "Was zwischen zwei Stationen liegt, in Stück. Tippe auf ein Dreieck im Diagramm. Diese Zahlen bestimmen die Durchlaufzeit — ohne sie rechnet das Werkzeug sie nicht aus.",
+    "emptyStep2Body": "Was zwischen zwei Stationen liegt, in Stück. Tippen Sie auf ein Dreieck im Diagramm. Diese Zahlen bestimmen die Durchlaufzeit — ohne sie rechnet das Werkzeug sie nicht aus.",
     "emptyStep3Title": "Kundenbedarf und Schichtzeit",
     "emptyStep3Body": "Die beiden Felder oben. Erst daraus entsteht die Taktzeit, und erst damit lässt sich sagen, ob die Linie den Bedarf überhaupt deckt.",
     "emptySheetLink": "Erhebungsbogen für die Linie →",
-    "emptySheetHint": "Zum Ausdrucken und Mitnehmen: eine Seite mit allen Feldern, die du an der Linie erhebst."
+    "emptySheetHint": "Zum Ausdrucken und Mitnehmen: eine Seite mit allen Feldern, die Sie an der Linie erheben."
   },
   "Canvas": {
     "bottleneck": "⚠ Engpass",
@@ -473,7 +473,7 @@
     "hintCount": "{count, plural, one {# Hinweis} other {# Hinweise}}",
     "noPacemakerTitle": "Kein Schrittmacher-Prozess festgelegt",
     "capacityShortfallTitle": "Die Linie deckt nur {percent} % des Kundenbedarfs",
-    "capacityDetail": "Der Engpass lässt {exit} Stk./Tag durch, gefordert sind {demand} Stk./Tag. Der Bestand wächst dadurch laufend an; die Durchlaufzeit oben ist keine stabile Grösse, solange das so bleibt.",
+    "capacityDetail": "Der Engpass lässt {exit} Stk./Tag durch, gefordert sind {demand} Stk./Tag. Der Bestand wächst dadurch laufend an; die Durchlaufzeit oben ist keine stabile Größe, solange das so bleibt.",
     "noPacemakerDetail": "Die Produktionssteuerung sendet den Auftrag aktuell an alle Prozesse. Lege im Prozess-Panel einen Schrittmacher fest, um das korrekt darzustellen.",
     "pushTitle": "{count}× Push vor dem Schrittmacher statt Supermarkt oder FIFO",
     "pushDetail": "Methodisch braucht alles vor dem Schrittmacher ein Pull-System (Supermarkt oder FIFO) — sonst baut sich davor unkontrolliert Bestand auf."
@@ -542,7 +542,9 @@
     "currentState": "Ist-Zustand",
     "futureState": "Future State: {name}",
     "footer": "Erstellt mit VSM Builder am {date}",
-    "methodCheckHeading": "METHODIKPRÜFUNG"
+    "methodCheckHeading": "METHODIKPRÜFUNG",
+    "comparisonSubtitle": "Szenarienvergleich",
+    "comparisonNote": "Alle Zustände gegen denselben Kundenbedarf gerechnet."
   },
   "CanvasLoader": {
     "loading": "Diagramm wird geladen…"
@@ -596,7 +598,7 @@
     "create": "Erstellen",
     "loadExample": "Beispiel-VSM laden",
     "emptyTitle": "Mit dem Beispiel-VSM anfangen",
-    "emptyBody": "Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen. Ändere eine Zykluszeit und sieh zu, wie Durchlaufzeit und Taktzeit reagieren.",
+    "emptyBody": "Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu, wie Durchlaufzeit und Taktzeit reagieren.",
     "emptyHint": "Jederzeit löschbar. Oder leg oben ein eigenes Projekt an.",
     "open": "Öffnen →",
     "signedInAs": "Angemeldet als {email}",
@@ -613,44 +615,44 @@
     "inviteExpired": "Abgelaufen",
     "inviteOpen": "Offen",
     "inviteHeading": "Kollegen einladen",
-    "inviteBody": "Erzeuge einen Link und schick ihn selbst weiter — per Mail, Teams oder wie es dir passt. Wer ihn öffnet und sich anmeldet, wird Mitglied von {org} und sieht alle VSMs dieser Firma.",
+    "inviteBody": "Erzeugen Sie einen Link und schicken Sie ihn selbst weiter — per Mail, Teams oder wie es Ihnen passt. Wer ihn öffnet und sich anmeldet, wird Mitglied von {org} und sieht alle VSMs dieser Firma.",
     "noInvites": "Noch keine Einladung erstellt.",
     "revoke": "Zurückziehen",
     "ownersOnly": "Nur Inhaber können Mitglieder einladen oder entfernen.",
     "roleLabel": "Rolle",
     "roleEditorOption": "Bearbeiten (editor)",
     "roleViewerOption": "Nur ansehen (viewer)",
-    "creating": "Erstelle…",
+    "creating": "Wird erstellt…",
     "createLink": "Einladungslink erstellen",
     "linkCreatedPrefix": "Link erstellt. Er ist",
     "linkValidity": "7 Tage",
     "linkCreatedMiddle": "gültig und lässt sich",
     "linkOnce": "einmal",
-    "linkCreatedSuffix": "einlösen. Kopiere ihn jetzt — er wird nicht noch einmal angezeigt.",
+    "linkCreatedSuffix": "einlösen. Kopieren Sie ihn jetzt — er wird nicht noch einmal angezeigt.",
     "copy": "Kopieren",
     "copied": "Kopiert",
-    "yourRole": "{org} · deine Rolle: {role}",
+    "yourRole": "{org} · Ihre Rolle: {role}",
     "inviteDates": "Erstellt {created} · gültig bis {expires}"
   },
   "Invite": {
     "title": "Einladung ins Team",
-    "body": "Du wurdest eingeladen, einem Team beizutreten. Nach dem Annehmen siehst du dessen Wertstromanalysen und kannst zwischen deinen Organisationen wechseln.",
+    "body": "Sie wurden eingeladen, einem Team beizutreten. Nach dem Annehmen sehen Sie dessen Wertstromanalysen und können zwischen Ihren Organisationen wechseln.",
     "accept": "Einladung annehmen",
     "cancel": "Abbrechen",
-    "signedOutBody": "Melde dich an oder erstelle ein Konto, um die Einladung anzunehmen. Danach landest du wieder hier.",
+    "signedOutBody": "Melden Sie sich an oder erstellen Sie ein Konto, um die Einladung anzunehmen. Danach landen Sie wieder hier.",
     "signIn": "Anmelden",
     "signUp": "Konto erstellen",
-    "errExpired": "Dieser Einladungslink ist abgelaufen. Bitte lass dir einen neuen schicken.",
-    "errRevoked": "Diese Einladung wurde zurückgezogen. Melde dich bei der Person, die sie dir geschickt hat.",
+    "errExpired": "Dieser Einladungslink ist abgelaufen. Bitte lassen Sie sich einen neuen schicken.",
+    "errRevoked": "Diese Einladung wurde zurückgezogen. Melden Sie sich bei der Person, die sie Ihnen geschickt hat.",
     "errAccepted": "Dieser Einladungslink wurde bereits eingelöst. Jeder Link gilt nur einmal.",
     "errInvalid": "Dieser Einladungslink ist ungültig. Möglicherweise ist er beim Kopieren unvollständig geblieben.",
-    "errSignIn": "Bitte melde dich zuerst an.",
+    "errSignIn": "Bitte melden Sie sich zuerst an.",
     "errGeneric": "Die Einladung konnte nicht eingelöst werden. Bitte versuche es später erneut."
   },
   "Compare": {
     "backToEditor": "← Zurück zum Editor",
     "title": "Szenario-Vergleich — {project}",
-    "empty": "Noch kein Future-State-Szenario angelegt. Öffne den Editor und lege über „+ Neues Szenario“ einen Soll-Zustand an, um ihn hier mit dem Ist-Zustand zu vergleichen.",
+    "empty": "Noch kein Future-State-Szenario angelegt. Öffnen Sie den Editor und legen Sie über „+ Neues Szenario“ einen Soll-Zustand an, um ihn hier mit dem Ist-Zustand zu vergleichen.",
     "metric": "Kennzahl",
     "businessCase": "Business Case",
     "processes": "Prozesse",
@@ -660,13 +662,13 @@
     "months": "{count} Monate",
     "tiedUpCapital": "Gebundenes Kapital",
     "releasedCapital": "Davon freigesetzt",
-    "capitalHint": "Trage im Editor einen Wert je Stück ein, dann steht hier, wie viel Geld im Bestand liegt."
+    "capitalHint": "Tragen Sie im Editor einen Wert je Stück ein, dann steht hier, wie viel Geld im Bestand liegt."
   },
   "Wizard": {
     "backToEditor": "← Zurück zum Editor",
     "title": "Future-State-Wizard",
     "titleWithScenario": "Future-State-Wizard — {type} · {name}",
-    "noScenario": "Ein Szenario ist die Kopie deines Ist-Zustands, in der du Änderungen ausprobierst — der Ist-Zustand selbst bleibt dabei unberührt. Der Wizard führt dann durch die 8 Fragen, die aus dieser Kopie einen Soll-Zustand machen. Leg unten eins an, oder wähle im Editor ein vorhandenes.",
+    "noScenario": "Ein Szenario ist die Kopie Ihres Ist-Zustands, in der Sie Änderungen ausprobieren — der Ist-Zustand selbst bleibt dabei unberührt. Der Wizard führt dann durch die 8 Fragen, die aus dieser Kopie einen Soll-Zustand machen. Legen Sie unten eins an, oder wählen Sie im Editor ein vorhandenes.",
     "progress": "{answered} von 8 Fragen beantwortet. Kein fester Ablauf — springe direkt zu jeder Frage, auch mehrfach.",
     "questionLabel": "Frage {id}",
     "statusAnswered": "Beantwortet",
@@ -759,7 +761,7 @@
     "howTitle": "Wie wird gemessen",
     "howCycleTime": "Zykluszeit: Die Zeit, die ein Stück an dieser Station tatsächlich braucht — von Teil zu Teil gestoppt, ohne Warten davor oder danach. Nicht die Zeit für ein ganzes Los.",
     "howChangeover": "Rüstzeit: Vom letzten guten Teil der alten Sorte bis zum ersten guten Teil der neuen. 0 eintragen, wenn nicht gerüstet wird.",
-    "howOee": "OEE: Anteil der geplanten Zeit, in der die Station wirklich gute Teile produziert. Aus der Anlagenauswertung, sonst geschätzt — 100 % eintragen heisst „keine Verluste bekannt\".",
+    "howOee": "OEE: Anteil der geplanten Zeit, in der die Station wirklich gute Teile produziert. Aus der Anlagenauswertung, sonst geschätzt — 100 % eintragen heißt „keine Verluste bekannt\".",
     "howOperators": "Bediener: Wie viele Personen gleichzeitig an dieser Station arbeiten.",
     "howWip": "Bestand danach: Alles, was hinter dieser Station auf die nächste wartet — auf Paletten, im Regal, im Zwischenlager. Zählen, nicht schätzen: Diese Zahl bestimmt die Durchlaufzeit.",
     "footer": "Erhebungsbogen VSM Builder",

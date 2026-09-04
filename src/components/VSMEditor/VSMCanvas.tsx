@@ -58,6 +58,8 @@ import {
   buildPdfSubtitle,
   buildPdfTitle,
 } from '@/lib/vsm/pdfSummary'
+import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
+import { buildComparisonMetrics } from '@/lib/vsm/comparisonTable'
 import jsPDF from 'jspdf'
 import {
   customerCloudPosition,
@@ -157,13 +159,23 @@ const CANVAS_TEXT = {
 } as const
 
 /**
- * Zusaetzliche Trefferflaeche rund um jedes Bestandsdreieck (siehe
- * BufferMarker), in Canvas-Einheiten je Seite. BUFFER_SIZE (50) allein
- * ergibt am Zoom-Boden MIN_READABLE_SCALE (60 %) nur 30x30 px — unter den
- * ueblichen 44 px fuer einen Finger. 12 Einheiten je Seite heben die
- * effektive Groesse auf 74, also 44,4 px bei genau diesem Zoom.
+ * Zusaetzliche Trefferflaeche rund um die kleinen Symbole der Zeichenflaeche,
+ * in Canvas-Einheiten je Seite.
+ *
+ * Bestandsdreieck: BUFFER_SIZE (50) allein ergibt am Zoom-Boden
+ * MIN_READABLE_SCALE (60 %) nur 30x30 px — unter den ueblichen 44 px fuer
+ * einen Finger. 12 Einheiten je Seite heben die effektive Groesse auf 74,
+ * also 44,4 px bei genau diesem Zoom.
+ *
+ * [Bedienbarkeitspruefung 2026-09-03, B14] Nachgemessen mit Konvas eigener
+ * Treffererkennung, Punkt fuer Punkt ueber die ganze Flaeche: Die Dreiecke
+ * kamen so auf 46x44 px, die Prozessboxen auf 94x66 bis 140x68 — beide in
+ * Ordnung. Zu klein war etwas anderes, das im Befund gar nicht stand: die
+ * Wolken fuer Lieferant und Kunde, 48x36 px. Sie sind der Anfang und das
+ * Ende jeder Kette und in einem Workshop das Erste, worauf jemand zeigt.
+ * Dieselbe Randzone hebt sie auf 62x50 px.
  */
-const BUFFER_HIT_PADDING = 12
+const HIT_PADDING = 12
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -224,6 +236,18 @@ interface Props {
    * Die oeffentliche Demo laeuft ohne.
    */
   benchmarkReferences?: BenchmarkReference[]
+  /**
+   * Alle Zustaende des Projekts — Ist-Zustand zuerst, dann jedes Szenario —
+   * ausschliesslich fuer die zweite PDF-Seite.
+   *
+   * [Bedienbarkeitspruefung 2026-09-03, B16] Das Blatt zeigte den Wertstrom
+   * und seine Kennzahlen, aber nicht, was das Szenario daran aendert. Genau
+   * das ist die Seite, wegen der ein Inhaber zustimmt oder nicht — und sie
+   * fehlte ausgerechnet in dem Dokument, das man ihm dalaesst. Weniger als
+   * zwei Zustaende heisst: nichts zu vergleichen, dann bleibt das PDF
+   * einseitig. Die oeffentliche Demo laeuft ohne.
+   */
+  comparisonStates?: ComparisonState[]
 }
 
 export default function VSMCanvas({
@@ -233,6 +257,7 @@ export default function VSMCanvas({
   initialProcesses,
   initialBuffers,
   benchmarkReferences = [],
+  comparisonStates = [],
 }: Props) {
   const locale = useLocale()
   // [Bedienbarkeitsprüfung 2026-09-03, B9] Kurz, weil sie oft vorkommen: Jede
@@ -252,6 +277,9 @@ export default function VSMCanvas({
   const tCanvas = useTranslations('Canvas')
   const tMethod = useTranslations('MethodCheck')
   const tPdf = useTranslations('Pdf')
+  // Nur fuer die zweite PDF-Seite; die Beschriftungen der Vergleichstabelle
+  // sind dieselben wie auf der Vergleichsseite und sollen es bleiben.
+  const tCompare = useTranslations('Compare')
   const hasBenchmark = benchmarkReferences.length > 0
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -967,22 +995,142 @@ export default function VSMCanvas({
       }
 
       // --- Fusszeile ------------------------------------------------------
-      const footerY = pageHeight - margin
-      pdf.setDrawColor(212, 212, 216)
-      pdf.line(margin, footerY - 14, pageWidth - margin, footerY - 14)
-      pdf.setFontSize(8)
-      pdf.setTextColor(82, 82, 91)
-      // buildPdfFooterLine() stand frueher hier und formatierte dd.mm.yyyy
-      // fest. Sowohl das Datumsformat als auch der Satz haengen an der
-      // Sprache, deshalb beides ueber Intl bzw. den Pdf-Namensraum.
-      pdf.text(
-        tPdf('footer', {
-          date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date()),
-        }),
-        margin,
-        footerY
-      )
-      pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
+      // Als Funktion, weil das Blatt seit dem Szenarienvergleich zwei Seiten
+      // haben kann und beide dieselbe Fusszeile brauchen — ein Ausdruck, bei
+      // dem die zweite Seite weder Datum noch Projektnamen traegt, ist im
+      // Gremium ein loses Blatt ohne Herkunft.
+      const drawFooter = () => {
+        const footerY = pageHeight - margin
+        pdf.setDrawColor(212, 212, 216)
+        pdf.setLineWidth(0.5)
+        pdf.line(margin, footerY - 14, pageWidth - margin, footerY - 14)
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        // buildPdfFooterLine() stand frueher hier und formatierte dd.mm.yyyy
+        // fest. Sowohl das Datumsformat als auch der Satz haengen an der
+        // Sprache, deshalb beides ueber Intl bzw. den Pdf-Namensraum.
+        pdf.text(
+          tPdf('footer', {
+            date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date()),
+          }),
+          margin,
+          footerY
+        )
+        pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
+      }
+      drawFooter()
+
+      // --- Seite 2: Szenarienvergleich -------------------------------------
+      // [Bedienbarkeitspruefung 2026-09-03, B16] Nur wenn es etwas zu
+      // vergleichen gibt. Ein Blatt mit einer einzigen Spalte "Ist-Zustand"
+      // wiederholte bloss die Kennzahlen von Seite eins.
+      //
+      // Der gerade offene Zustand kommt aus dem lokalen Zustand des Editors,
+      // nicht aus der Momentaufnahme des Servers: Sonst zeigte Seite 1 die
+      // eben getippte Zykluszeit und Seite 2 daneben die vorherige. Die
+      // uebrigen Szenarien liegen unveraendert auf dem Server.
+      if (comparisonStates.length > 1) {
+        const states: ComparisonState[] = comparisonStates.map((state) =>
+          state.id === scenarioId
+            ? {
+                ...state,
+                processes: processes.map((p) => ({
+                  cycleTime: p.cycle_time,
+                  operatorCount: p.operator_count,
+                  oee: p.oee,
+                  wip: p.wip ?? undefined,
+                })),
+                buffers: buffers.map((b) => ({ wipCount: b.wip_count })),
+              }
+            : state
+        )
+        const comparisonRows = buildComparisonRows(states, project.annual_throughput)
+        const metrics = buildComparisonMetrics(
+          comparisonRows,
+          {
+            processes: tCompare('processes'),
+            cycleTimeSum: t('kpiCycleTimeSum'),
+            leadTime: t('kpiLeadTime'),
+            pce: t('kpiPce'),
+            taktTime: t('kpiTaktTime'),
+            tiedUpCapital: tCompare('tiedUpCapital'),
+            releasedCapital: tCompare('releasedCapital'),
+            unitMin: t('unitMin'),
+            unitDays: t('unitDays'),
+            unitPercent: t('unitPercent'),
+          },
+          {
+            num,
+            // Dasselbe geschuetzte Leerzeichen wie oben: im PDF wuerde daraus
+            // je nach Schrift ein Kaestchen.
+            money: (value) =>
+              formatCurrency(value, project.currency, locale).replace(/\u00a0/g, ' '),
+          },
+          project.piece_value
+        )
+
+        pdf.addPage()
+
+        pdf.setFontSize(7.5)
+        pdf.setTextColor(15, 90, 82)
+        pdf.text('VSM BUILDER', margin, margin)
+
+        pdf.setFontSize(15)
+        pdf.setTextColor(24, 24, 27)
+        pdf.text(buildPdfTitle(project.name, tPdf('documentTitle')), margin, margin + 18)
+
+        pdf.setFontSize(9.5)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(tPdf('comparisonSubtitle'), margin, margin + 32)
+
+        pdf.setDrawColor(212, 212, 216)
+        pdf.setLineWidth(0.5)
+        pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
+
+        // Erste Spalte breiter: Dort stehen ganze Begriffe ("Gebundenes
+        // Kapital"), in den uebrigen nur Zahlen mit Einheit.
+        const tableWidth = pageWidth - margin * 2
+        const labelWidth = Math.min(190, tableWidth / 3)
+        const valueWidth = (tableWidth - labelWidth) / comparisonRows.length
+        const rowHeight = 26
+        let rowY = margin + headerSpace + 14
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(tCompare('metric'), margin, rowY)
+        pdf.setFontSize(9)
+        pdf.setTextColor(24, 24, 27)
+        comparisonRows.forEach((row, i) => {
+          // Ein Szenarioname kann beliebig lang sein; abgeschnitten waere er
+          // im Gremium nicht mehr zuzuordnen, also umbrechen und nur die
+          // erste Zeile setzen — die Spaltenbreite steht fest.
+          const [first] = pdf.splitTextToSize(row.label, valueWidth - 8)
+          pdf.text(first, margin + labelWidth + valueWidth * i, rowY)
+        })
+        rowY += 8
+        pdf.setDrawColor(212, 212, 216)
+        pdf.line(margin, rowY, pageWidth - margin, rowY)
+        rowY += rowHeight - 8
+
+        for (const metric of metrics) {
+          pdf.setFontSize(9)
+          pdf.setTextColor(82, 82, 91)
+          pdf.text(metric.label, margin, rowY)
+          pdf.setTextColor(24, 24, 27)
+          metric.values.forEach((value, i) => {
+            pdf.text(value, margin + labelWidth + valueWidth * i, rowY)
+          })
+          pdf.setDrawColor(228, 228, 231) // zinc-200, heller als die Kopflinie
+          pdf.line(margin, rowY + 8, pageWidth - margin, rowY + 8)
+          rowY += rowHeight
+        }
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(113, 113, 122) // zinc-500
+        pdf.text(tPdf('comparisonNote'), margin, rowY + 6)
+
+        drawFooter()
+      }
 
       pdf.save(`${project.name || 'vsm'}.pdf`)
     } finally {
@@ -1530,7 +1678,14 @@ export default function VSMCanvas({
               stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
               Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
               wenn das Diagramm den Bildschirm verlaesst. */}
-          <div>
+          {/* [Bedienbarkeitspruefung 2026-09-03, B15] `flex flex-col` allein
+              wegen der Reihenfolge darin: Am Telefon stand die Werkzeugleiste
+              ueber dem Diagramm, und der erste Bildschirm eines Besuchers
+              zeigte "PDF exportieren" — von etwas, das er noch nicht gesehen
+              hatte. Unter `lg` kommt jetzt erst der Wertstrom, dann die
+              Werkzeuge dazu. Ab `lg` bleibt die alte Reihenfolge: dort klebt
+              die Leiste oben und muss ueber dem stehen, woran sie haengt. */}
+          <div className="flex flex-col">
         {/* [Design-Audit 2026-08-31, Befund 06] Die Kennzahlen standen ueber
             dem Diagramm und scrollten mit ihm weg: Wer eine Zykluszeit aenderte,
             sah nie gleichzeitig den Prozess und die Zahl, die sich dadurch
@@ -1541,7 +1696,7 @@ export default function VSMCanvas({
             Erst ab `lg` — auf einem Telefon waeren 180 px klebende Leiste die
             Haelfte des Bildes, und dort scrollt man ohnehin ein Stueck nach dem
             anderen statt beides nebeneinander zu halten. */}
-        <div className="bg-zinc-50 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
+        <div className="order-2 bg-zinc-50 lg:order-1 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
           {/* Live KPI bar — ab lg; darunter zeigt die kompakte Telefon-
               Kennzahlenzeile weiter oben dieselben Werte (Befund P2). */}
           <div className="hidden gap-3 lg:grid lg:grid-cols-6">
@@ -1601,7 +1756,9 @@ export default function VSMCanvas({
               hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
               drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
               festen Bezugspunkt. */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 py-3">
+          {/* Unter `lg` steht die Leiste unter dem Diagramm, die Trennlinie
+              gehoert dann nach oben. */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 py-3 lg:mt-4 lg:border-b lg:border-t-0">
             {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
                 nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
             <p
@@ -1692,7 +1849,7 @@ export default function VSMCanvas({
           className={
             isFullscreen
               ? 'fixed inset-0 z-50 overflow-hidden bg-white'
-              : 'relative mt-2 overflow-hidden rounded-surface border border-zinc-200'
+              : 'relative order-1 mt-2 overflow-hidden rounded-surface border border-zinc-200 lg:order-2'
           }
           // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
           // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
@@ -3459,10 +3616,10 @@ function BufferMarker({
           Konva die Flaeche ueberhaupt in den Hit-Test aufnimmt — ein Rect
           ganz ohne Fill wird nicht getroffen. */}
       <Rect
-        x={-BUFFER_HIT_PADDING}
-        y={-BUFFER_HIT_PADDING}
-        width={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
-        height={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
+        x={-HIT_PADDING}
+        y={-HIT_PADDING}
+        width={BUFFER_SIZE + HIT_PADDING * 2}
+        height={BUFFER_SIZE + HIT_PADDING * 2}
         fill="transparent"
       />
       {bufferType === 'supermarket' ? (
@@ -3623,6 +3780,17 @@ function CloudShape({
         if (stage) stage.container().style.cursor = 'default'
       }}
     >
+      {/* Unsichtbares Ziel, groesser als die gezeichnete Wolke — dieselbe
+          Randzone wie beim Bestandsdreieck, und aus demselben Grund. Ohne
+          `fill="transparent"` nimmt Konva die Flaeche nicht in den Hit-Test
+          auf; ein Rect ganz ohne Fill wird nicht getroffen. */}
+      <Rect
+        x={-HIT_PADDING}
+        y={-HIT_PADDING}
+        width={CLOUD_SIZE + HIT_PADDING * 2}
+        height={CLOUD_SIZE * 0.75 + HIT_PADDING * 2}
+        fill="transparent"
+      />
       <Rect
         width={CLOUD_SIZE}
         height={CLOUD_SIZE * 0.75}

@@ -3,7 +3,8 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
-import { formatCurrency, releasedCapital, tiedUpCapital } from '@/lib/vsm/capital'
+import { buildComparisonMetrics } from '@/lib/vsm/comparisonTable'
+import { formatCurrency } from '@/lib/vsm/capital'
 import { formatDecimal } from '@/lib/vsm/numberFormat'
 
 // Zuordnung Risikostufe -> Uebersetzungsschluessel im Namensraum `Scenario`.
@@ -63,56 +64,28 @@ export default async function ComparePage({
   // Der Bestand in Geld, je Zustand mit derselben Bewertung gerechnet — und
   // die Differenz zum Ist-Zustand, denn genau die ist die Aussage: Was ein
   // Szenario an Kapital freisetzt, das heute im Regal liegt.
+  //
+  // [Bedienbarkeitspruefung 2026-09-03, B16] Die Zeilen entstehen jetzt in
+  // lib/vsm/comparisonTable.ts, damit diese Seite und das PDF dieselbe
+  // Rechnung benutzen und nicht auseinanderlaufen koennen.
   const money = (value: number) => formatCurrency(value, project.currency, locale)
-  const num = (value: number, digits = 1) => formatDecimal(value, locale, digits)
-  const capitalOf = (row: (typeof rows)[number]) => tiedUpCapital(row.totalWipCount, project.piece_value)
-  const currentCapital = rows.length > 0 ? capitalOf(rows[0]) : null
-
-  const metricRows: { label: string; format: (r: (typeof rows)[number]) => string }[] = [
-    { label: t('processes'), format: (r) => String(r.processCount) },
+  const metricRows = buildComparisonMetrics(
+    rows,
     {
-      label: tEd('kpiCycleTimeSum'),
-      format: (r) => `${num(r.totalCycleTimeMinutes)} ${tEd('unitMin')}`,
+      processes: t('processes'),
+      cycleTimeSum: tEd('kpiCycleTimeSum'),
+      leadTime: tEd('kpiLeadTime'),
+      pce: tEd('kpiPce'),
+      taktTime: tEd('kpiTaktTime'),
+      tiedUpCapital: t('tiedUpCapital'),
+      releasedCapital: t('releasedCapital'),
+      unitMin: tEd('unitMin'),
+      unitDays: tEd('unitDays'),
+      unitPercent: tEd('unitPercent'),
     },
-    {
-      label: tEd('kpiLeadTime'),
-      format: (r) =>
-        r.totalLeadTimeDays !== null && r.totalLeadTimeDays > 0
-          ? `${num(r.totalLeadTimeDays)} ${tEd('unitDays')}`
-          : '–',
-    },
-    {
-      label: tEd('kpiPce'),
-      format: (r) =>
-        r.valueAddedRatioPercent !== null
-          ? `${num(r.valueAddedRatioPercent, 2)} ${tEd('unitPercent')}`
-          : '–',
-    },
-    {
-      label: tEd('kpiTaktTime'),
-      format: (r) =>
-        r.taktTimeMinutes !== null ? `${num(r.taktTimeMinutes)} ${tEd('unitMin')}` : '–',
-    },
-    {
-      label: t('tiedUpCapital'),
-      format: (r) => {
-        const capital = capitalOf(r)
-        return capital !== null ? money(capital) : '–'
-      },
-    },
-    {
-      label: t('releasedCapital'),
-      format: (r) => {
-        // Im Ist-Zustand gibt es nichts freizusetzen — er ist der Massstab.
-        if (r.id === null) return '–'
-        const released = releasedCapital(currentCapital, capitalOf(r))
-        if (released === null) return '–'
-        // Das Vorzeichen ausgeschrieben: Ein Szenario, das Bestand aufbaut
-        // (Supermarkt vor dem Schrittmacher), soll das auch so zeigen.
-        return released > 0 ? `+ ${money(released)}` : released < 0 ? `− ${money(-released)}` : money(0)
-      },
-    },
-  ]
+    { num: (value, digits = 1) => formatDecimal(value, locale, digits), money },
+    project.piece_value
+  )
 
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
@@ -151,9 +124,9 @@ export default async function ComparePage({
               {metricRows.map((metricRow) => (
                 <tr key={metricRow.label} className="border-b border-zinc-100 last:border-0">
                   <td className="p-3 text-zinc-500">{metricRow.label}</td>
-                  {rows.map((r) => (
+                  {rows.map((r, i) => (
                     <td key={r.id ?? 'ist'} className="p-3 text-zinc-950">
-                      {metricRow.format(r)}
+                      {metricRow.values[i]}
                     </td>
                   ))}
                 </tr>
