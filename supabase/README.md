@@ -17,7 +17,8 @@ und es ist bis zum 30.08. niemandem aufgefallen.
 | Alle PascalCase-Tabellen (`Machine`, `TrackingLog`, `User`, …) | Prisma | dito |
 | `handle_new_user()`, `has_org_role()` + deren Policies | Prisma | dito |
 | `projects`, `processes`, `inventory_buffers`, `scenarios`, `spaghetti_layouts`, `reports`, `historical_metrics`, `benchmark_data`, `benchmark_reference`, `activity_logs` | VSM Builder | `supabase/migrations/` (hier) |
-| `project_org_id()`, `set_updated_at()` + die Policies auf obigen Tabellen | VSM Builder | dito |
+| `vsm_staff`, `vsm_leads`, `vsm_lead_events` | VSM Builder | dito |
+| `project_org_id()`, `set_updated_at()`, `is_vsm_staff()`, `is_vsm_admin()` + die Policies auf obigen Tabellen | VSM Builder | dito |
 | `consulting_leads` | Landing-Page | `D:\LeanPulse Landing` |
 
 Faustregel: **Wer die Tabelle besitzt, besitzt alles, was an ihr haengt** —
@@ -51,6 +52,53 @@ die sie lesen.
    select version, name from supabase_migrations.schema_migrations order by version;
    ```
 
+## Was der VSM Builder von fremden Tabellen liest
+
+Regel 1 verbietet, ein fremdes **Objekt** anzufassen — also Spalten, Policies,
+Trigger. Sie verbietet nicht, fremde **Zeilen** zu lesen und zu schreiben; das
+tut die Anwendung laengst, etwa mit `organization_invitations`. Zwei Faelle sind
+seit dem 04.09. dazugekommen und sollen hier stehen, damit sie bei der
+naechsten Prisma-Migration jemandem auffallen:
+
+- **`organization_entitlements`** traegt je Organisation und Produkt
+  (`AppProduct`) eine Stufe aus `Tier`. Das ist das Freemium-Rueckgrat aller
+  drei Produkte, und der VSM Builder leitet seine Grenzen daraus ab
+  (`src/lib/billing/entitlement.ts`). Eine eigene Tarif-Tabelle daneben waere
+  eine zweite Wahrheit ueber denselben Kunden gewesen. Gelesen wird mit
+  `product = 'VSM_BUILDER'` und `status = 'ACTIVE'`; ohne Zeile gilt FREE.
+  Geschrieben wird nur ueber den Verwaltungsbereich (`/admin/organizations`,
+  Rolle `admin`), und zwar mit Service-Role — welche Policies dort haengen,
+  entscheidet das andere Repository.
+- **`auth.users`** wird ueber die Admin-API gelesen, nicht ueber PostgREST.
+  Eine gespiegelte `profiles`-Tabelle braeuchte einen Trigger auf `auth.users`,
+  wo schon `handle_new_user()` von Prisma haengt — ein zweiter Trigger auf einer
+  fremden Tabelle ist genau die Konstellation vom 16.08.
+
+Wer auf der Prisma-Seite `Tier` oder `AppProduct` erweitert: Der VSM Builder
+faellt bei unbekannten Stufen auf FREE zurueck (`limitsFor()` in
+`src/lib/billing/plans.ts`, dort getestet), sperrt sich also nicht aus. Er
+zeigt die neue Stufe aber auch nicht an, bis sie dort eingetragen ist.
+
+## Den ersten Betreiber eintragen
+
+`vsm_staff` entscheidet, wer den Verwaltungsbereich unter `/admin` sieht — die
+Betreiberseite, unabhaengig von `organization_members`. Die Tabelle hat
+bewusst **kein** INSERT-Recht ueber PostgREST: Eine Oberflaeche, die ihre
+eigenen Zugangsrechte vergeben kann, ist keine Absicherung. Der erste Eintrag
+kommt deshalb von aussen, mit der Nutzer-Id aus dem Supabase-Dashboard
+(Authentication → Users):
+
+```sql
+insert into public.vsm_staff (user_id, role, note)
+values ('00000000-0000-0000-0000-000000000000', 'admin', 'Erstzugang')
+on conflict (user_id) do update set role = excluded.role;
+```
+
+`admin` darf zusaetzlich Tarife vergeben, `sales` nur Interessenten pflegen.
+Wer nicht in der Tabelle steht, bekommt unter `/admin` ein 404 — kein „Kein
+Zugriff", denn das waere die Bestaetigung, nach der jemand sucht, der die
+Adresse geraten hat.
+
 ## Stand dieses Verzeichnisses
 
 Angelegt am 30.08.2026 — vorher hatte der VSM Builder **gar keine** Migrationen,
@@ -72,11 +120,17 @@ Enthalten:
   Spalten der Wizard-Fragen 6 bis 8, ebenfalls nachtraeglich eingecheckt.
 - `migrations/20260903212855_piece_value_and_currency.sql` — `piece_value` und
   `currency` auf `projects`, fuer das gebundene Kapital.
+- `migrations/20260904120000_vsm_crm_and_staff.sql` — die Vertriebsschicht:
+  `vsm_staff` (wer den Verwaltungsbereich sieht), `vsm_leads` (Interessenten
+  mit ihrer Herkunft und ihrer Einwilligung) und `vsm_lead_events` (die
+  anfuegende Chronik), dazu `is_vsm_staff()`/`is_vsm_admin()` und die Policies.
+  Legt bewusst **keine** eigene Tarif-Tabelle an — siehe „Was der VSM Builder
+  von fremden Tabellen liest".
 - `seed.sql` — die Referenzwerte des Branchenvergleichs.
 - `tests/` — die nachgebildeten fremden Objekte und das Pruefskript. Keine
   Migrationen; siehe "Pruefen" unten.
 
-Die beiden letzten hiessen bis zum 04.09. `20260901120000` und
+`20260901174003` und `20260903212855` hiessen bis zum 04.09. `20260901120000` und
 `20260903180000` — Zeitstempel, die beim Schreiben der Datei entstanden und
 nicht die, unter denen die Datenbank sie verzeichnet hat. `db push` haette
 beide ein zweites Mal angewandt (folgenlos, weil idempotent, aber mit einem
@@ -126,8 +180,8 @@ Migrationen, dann den Seed, und zaehlt am Ende nach. Es braucht weder Docker
 noch die Supabase-CLI, nur ein `psql`. Auf eine Supabase-URL zu zeigen lehnt es
 ab.
 
-Stand 04.09.2026, gegen Postgres 16.13: 10 Tabellen, 19 Policies, 6
-Referenzwerte. Spalten (alle 113), Typen, NOT-NULL-Flags, Vorgabewerte,
+Stand 04.09.2026, gegen Postgres 16.13: 10 Tabellen des Baselines, 3
+Vertriebstabellen, 24 Policies, 6 Referenzwerte. Spalten (alle 113), Typen, NOT-NULL-Flags, Vorgabewerte,
 Fremdschluessel, Indizes sowie RLS und Policy-Zahl je Tabelle stimmen mit der
 Produktion ueberein.
 

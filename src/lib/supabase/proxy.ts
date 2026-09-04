@@ -52,7 +52,13 @@ export async function updateSession(request: NextRequest, baseResponse: NextResp
 
   const { locale, rest: pathWithoutLocale } = splitLocale(request.nextUrl.pathname)
   const isProtectedRoute =
-    pathWithoutLocale.startsWith('/dashboard') || pathWithoutLocale.startsWith('/editor')
+    pathWithoutLocale.startsWith('/dashboard') ||
+    pathWithoutLocale.startsWith('/editor') ||
+    // Der Verwaltungsbereich. Angemeldet zu sein reicht dafuer nicht — wer
+    // nicht in `vsm_staff` steht, bekommt dort 404 (siehe lib/crm/staff.ts).
+    // Diese Weiche erspart dem Nichtangemeldeten nur den Umweg ueber ein 404,
+    // das in Wahrheit "bitte anmelden" heisst.
+    pathWithoutLocale.startsWith('/admin')
 
   if (isProtectedRoute && !isAuthed) {
     const url = request.nextUrl.clone()

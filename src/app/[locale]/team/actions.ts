@@ -7,6 +7,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
+import { loadPlan } from '@/lib/billing/entitlement'
+import { quota } from '@/lib/billing/plans'
 
 /** Gueltigkeitsdauer einer Einladung. Kurz genug, dass ein vergessener Link nicht ewig offen steht. */
 const INVITE_DAYS = 7
@@ -41,6 +43,14 @@ export async function createInvite(
   if (orgResult.active.role !== 'owner') {
     return { ok: false, error: 'Nur Inhaber können Mitglieder einladen.' }
   }
+
+  // Sitzplaetze des Tarifs. Gezaehlt werden Mitglieder *und* offene
+  // Einladungen: Wer fuenf Plaetze hat, drei besetzt und zwei Einladungen
+  // offen, darf keine dritte verschicken — sonst waere die Grenze erst in dem
+  // Moment ueberschritten, in dem der Eingeladene sie annimmt, und die
+  // Absage traefe den Falschen.
+  const seatError = await seatLimitError(orgResult.active.organizationId)
+  if (seatError) return { ok: false, error: seatError }
 
   // 32 Byte aus der Krypto-Quelle, base64url — nicht erratbar und ohne
   // Sonderzeichen, die beim Kopieren durch Chat-Programme kaputtgehen.
@@ -104,6 +114,33 @@ export async function revokeInvite(invitationId: string) {
 
   revalidatePath('/team')
   redirect('/team')
+}
+
+/** Die Sitzplatzgrenze des Tarifs als fertige Meldung, oder null. */
+async function seatLimitError(organizationId: string): Promise<string | null> {
+  const plan = await loadPlan(organizationId)
+  if (!plan.enforced) return null
+
+  const supabase = await createClient()
+  const [{ count: memberCount }, { count: inviteCount }] = await Promise.all([
+    supabase
+      .from('organization_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId),
+    supabase
+      .from('organization_invitations')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .is('accepted_at', null)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString()),
+  ])
+
+  const seats = quota((memberCount ?? 0) + (inviteCount ?? 0), plan.limits.maxMembers)
+  if (seats.allowed) return null
+
+  const t = await getTranslations('Errors')
+  return t('planMemberLimit', { limit: seats.limit ?? 0, tier: plan.tier })
 }
 
 // Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und

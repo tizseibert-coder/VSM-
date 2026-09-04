@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { ACTIVE_ORG_COOKIE, getActiveOrg, loadMemberships } from '@/lib/org/activeOrg'
+import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
+import { noteUserActivity } from '@/lib/crm/leads'
 
 export async function signOut() {
   const supabase = await createClient()
@@ -60,6 +62,16 @@ export async function createProject(formData: FormData) {
     redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
   }
 
+  // Tarifgrenze. Geprueft wird *vor* dem Anlegen, nicht per Datenbank-
+  // Constraint: Die Grenze haengt an der Organisation, nicht an der Zeile, und
+  // eine Fehlermeldung, die den Tarif nennt, ist die einzige, mit der jemand
+  // etwas anfangen kann. Solange VSM_PLAN_ENFORCEMENT nicht auf `on` steht,
+  // zaehlt das nur mit (siehe lib/billing/entitlement.ts).
+  const limitError = await projectLimitError(orgResult.orgId)
+  if (limitError) {
+    redirect('/dashboard?error=' + encodeURIComponent(limitError))
+  }
+
   const supabase = await createClient()
   const { data: project, error } = await supabase
     .from('projects')
@@ -76,6 +88,17 @@ export async function createProject(formData: FormData) {
     redirect('/dashboard?error=' + encodeURIComponent(await tErr('projectCreate')))
   }
 
+  // Das erste angelegte Projekt ist im Vertrieb das aussagekraeftigste
+  // Signal ueberhaupt: Wer sich registriert, hat Interesse; wer einen
+  // Wertstrom anlegt, arbeitet. Ohne Eintrag in `vsm_leads` passiert nichts.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  if (claimsData?.claims?.sub) {
+    await noteUserActivity(claimsData.claims.sub, 'project_created', {
+      projectId: project.id,
+      organizationId: orgResult.orgId,
+    })
+  }
+
   redirect(`/editor/${project.id}`)
 }
 
@@ -85,6 +108,13 @@ export async function createExampleProject() {
   const orgResult = await currentUserOrgId()
   if ('error' in orgResult) {
     redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+  }
+
+  // Dieselbe Grenze wie beim leeren Projekt: Das Beispiel ist ein Projekt wie
+  // jedes andere, es faellt nur schneller vom Himmel.
+  const limitError = await projectLimitError(orgResult.orgId)
+  if (limitError) {
+    redirect('/dashboard?error=' + encodeURIComponent(limitError))
   }
 
   const supabase = await createClient()
@@ -206,6 +236,27 @@ export async function deleteProject(projectId: string) {
 
   revalidatePath('/dashboard')
   redirect('/dashboard')
+}
+
+/**
+ * Die Projektgrenze des Tarifs, als fertige Fehlermeldung oder null.
+ *
+ * Steht hier und nicht in lib/billing, weil sie eine *uebersetzte* Meldung
+ * ergibt: Die Grenze selbst ist eine Zahl, der Satz darum gehoert zur
+ * Oberflaeche.
+ */
+async function projectLimitError(organizationId: string): Promise<string | null> {
+  const plan = await loadPlan(organizationId)
+  if (!plan.enforced) return null
+
+  const usage = await loadPlanUsage(organizationId, plan)
+  if (usage.projects.allowed) return null
+
+  const t = await getTranslations('Errors')
+  return t('planProjectLimit', {
+    limit: usage.projects.limit ?? 0,
+    tier: plan.tier,
+  })
 }
 
 // Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und

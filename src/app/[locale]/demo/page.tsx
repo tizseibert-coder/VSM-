@@ -3,15 +3,28 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import DemoCanvas from '@/components/VSMEditor/DemoCanvas'
 import { buttonPrimary, buttonSecondary } from '@/components/ui/buttons'
+import { pageMetadata } from '@/lib/seo/site'
 
 // Statt einer festen `metadata`-Konstante: Titel und Beschreibung haengen
-// jetzt an der Sprache, muessen also pro Anfrage aufgeloest werden.
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('Demo')
-  return {
+// jetzt an der Sprache, muessen also pro Anfrage aufgeloest werden. Dazu die
+// kanonische Adresse und die Sprachentsprechungen — ohne sie halten
+// Suchmaschinen /de/demo und /en/demo fuer zwei Seiten mit demselben Inhalt.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'Demo' })
+  const tMeta = await getTranslations({ locale, namespace: 'Metadata' })
+
+  return pageMetadata({
+    locale,
+    path: '/demo',
     title: t('metaTitle'),
     description: t('metaDescription'),
-  }
+    ogLocale: tMeta('ogLocale'),
+  })
 }
 
 /**

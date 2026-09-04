@@ -3,6 +3,8 @@ import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signOut, createProject, createExampleProject, switchOrg } from './actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
+import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
+import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import { buttonPrimary, buttonPrimaryLg, buttonSecondary } from '@/components/ui/buttons'
@@ -33,6 +35,17 @@ export default async function DashboardPage({
         .order('created_at', { ascending: false })
     : { data: null }
 
+  // Tarif und Verbrauch. Die Anzeige laeuft unabhaengig davon, ob die Grenzen
+  // schon greifen (VSM_PLAN_ENFORCEMENT) — wer sehen kann, wie voll sein
+  // Kontingent ist, wird von der Grenze spaeter nicht ueberrascht.
+  // Der Verwaltungsbereich ist von aussen nicht zu erraten und wird nur
+  // verlinkt, wenn er auch offen ist — wer nicht in `vsm_staff` steht,
+  // bekommt dort 404.
+  const staff = await loadStaff()
+
+  const plan = activeOrg ? await loadPlan(activeOrg.organizationId) : null
+  const usage = activeOrg && plan ? await loadPlanUsage(activeOrg.organizationId, plan) : null
+
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
@@ -53,6 +66,11 @@ export default async function DashboardPage({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {staff && (
+              <Link href="/admin" className={buttonSecondary}>
+                {t('admin')}
+              </Link>
+            )}
             <Link
               href="/team"
               className={buttonSecondary}
@@ -96,6 +114,27 @@ export default async function DashboardPage({
                 </button>
               </form>
             ))}
+          </div>
+        )}
+
+        {plan && usage && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-zinc-200 bg-white px-5 py-3">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="rounded-control bg-brand-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-700">
+                {t(`tier${plan.tier}`)}
+              </span>
+              <span className="text-sm text-zinc-600">
+                {usage.projects.limit === null
+                  ? t('planUsageUnlimited', { used: usage.projects.used })
+                  : t('planUsage', {
+                      used: usage.projects.used,
+                      limit: usage.projects.limit,
+                    })}
+              </span>
+            </div>
+            <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
+              {usage.projects.allowed ? t('planCompare') : t('planUpgrade')}
+            </Link>
           </div>
         )}
 

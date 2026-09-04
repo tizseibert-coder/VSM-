@@ -4,6 +4,8 @@ import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { loadPlan } from '@/lib/billing/entitlement'
+import { quota } from '@/lib/billing/plans'
 
 // Creates a new Future-State scenario by deep-copying a source state's
 // processes + inventory_buffers into fresh rows tied to the new scenario —
@@ -24,6 +26,13 @@ export async function createScenario(projectId: string, formData: FormData) {
   }
 
   const supabase = await createClient()
+
+  // Tarifgrenze fuer Szenarien je Projekt. Sie haengt an der Organisation des
+  // Projekts, nicht am Projekt selbst — deshalb der Umweg ueber `projects`.
+  const limitError = await scenarioLimitError(projectId)
+  if (limitError) {
+    redirect(`/editor/${projectId}?error=` + encodeURIComponent(limitError))
+  }
 
   const { data: scenario, error: scenarioError } = await supabase
     .from('scenarios')
@@ -145,6 +154,32 @@ export async function updateScenarioMeta(projectId: string, scenarioId: string, 
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
   revalidatePath(`/editor/${projectId}/compare`)
+}
+
+/** Die Szenariengrenze des Tarifs als fertige Meldung, oder null. */
+async function scenarioLimitError(projectId: string): Promise<string | null> {
+  const supabase = await createClient()
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('organization_id')
+    .eq('id', projectId)
+    .maybeSingle()
+  if (!project) return null
+
+  const plan = await loadPlan(project.organization_id)
+  if (!plan.enforced) return null
+
+  const { count } = await supabase
+    .from('scenarios')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+
+  const scenarios = quota(count ?? 0, plan.limits.maxScenariosPerProject)
+  if (scenarios.allowed) return null
+
+  const t = await getTranslations('Errors')
+  return t('planScenarioLimit', { limit: scenarios.limit ?? 0, tier: plan.tier })
 }
 
 // Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und

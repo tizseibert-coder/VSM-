@@ -2,10 +2,24 @@ import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import PrintButton from '@/components/wizard/PrintButton'
+import { pageMetadata } from '@/lib/seo/site'
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('DataSheet')
-  return { title: t('metaTitle'), description: t('metaDescription') }
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'DataSheet' })
+  const tMeta = await getTranslations({ locale, namespace: 'Metadata' })
+
+  return pageMetadata({
+    locale,
+    path: '/data-sheet',
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+    ogLocale: tMeta('ogLocale'),
+  })
 }
 
 /** So viele Zeilen, wie auf eine Seite passen. Eine Kette mit mehr als zwölf

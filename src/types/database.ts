@@ -1,6 +1,14 @@
 // Auto-generated from the vsm-builder-prod Supabase project schema.
 // Regenerate via the Supabase MCP `generate_typescript_types` tool after
 // any migration instead of hand-editing this file.
+//
+// Ausnahme, bis 20260904120000_vsm_crm_and_staff.sql eingespielt ist: Die
+// drei `vsm_*`-Tabellen, `is_vsm_staff()` und `is_vsm_admin()` stehen hier
+// von Hand, weil der Generator nur abbilden kann, was in der Datenbank schon
+// steht. Sie sind aus der Migration abgeschrieben — Spalte fuer Spalte, in
+// der Sortierung des Generators (Tabellen alphabetisch ohne Ruecksicht auf
+// Gross-/Kleinschreibung, Spalten alphabetisch). Nach dem Einspielen liefert
+// eine Regenerierung genau diesen Stand; dieser Absatz kann dann weg.
 
 export type Json =
   | string
@@ -1753,6 +1761,157 @@ export type Database = {
           },
         ]
       }
+      vsm_lead_events: {
+        Row: {
+          actor_user_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          lead_id: string
+          payload: Json | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          lead_id: string
+          payload?: Json | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          lead_id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vsm_lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vsm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vsm_leads: {
+        Row: {
+          company: string | null
+          consent_at: string | null
+          consent_text: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          job_title: string | null
+          landing_path: string | null
+          last_activity_at: string
+          locale: string | null
+          message: string | null
+          organization_id: string | null
+          owner_user_id: string | null
+          phone: string | null
+          referrer: string | null
+          source: string
+          stage: string
+          updated_at: string
+          user_id: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          company?: string | null
+          consent_at?: string | null
+          consent_text?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          job_title?: string | null
+          landing_path?: string | null
+          last_activity_at?: string
+          locale?: string | null
+          message?: string | null
+          organization_id?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          referrer?: string | null
+          source?: string
+          stage?: string
+          updated_at?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          company?: string | null
+          consent_at?: string | null
+          consent_text?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          job_title?: string | null
+          landing_path?: string | null
+          last_activity_at?: string
+          locale?: string | null
+          message?: string | null
+          organization_id?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          referrer?: string | null
+          source?: string
+          stage?: string
+          updated_at?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vsm_leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vsm_staff: {
+        Row: {
+          created_at: string
+          note: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          note?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          note?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1763,6 +1922,8 @@ export type Database = {
         Args: { min_role?: string; org_id: string }
         Returns: boolean
       }
+      is_vsm_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_vsm_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
       project_org_id: { Args: { p_project_id: string }; Returns: string }
     }
     Enums: {

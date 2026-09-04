@@ -48,6 +48,12 @@ psql "$URL" -tAc "
   where schemaname='public' and tablename in
     ('projects','processes','inventory_buffers','scenarios','spaghetti_layouts',
      'reports','historical_metrics','benchmark_data','benchmark_reference','activity_logs');"
+# Die Vertriebsschicht wird getrennt gezaehlt, nicht in die Zahl oben
+# hineingerechnet: Die zehn oben sind der Baseline, und wer die Zahl gegen die
+# Angabe in README.md haelt, soll nicht raten muessen, was mitgezaehlt wurde.
+psql "$URL" -tAc "
+  select 'Vertriebstabellen: '||count(*) from pg_tables
+  where schemaname='public' and tablename in ('vsm_staff','vsm_leads','vsm_lead_events');"
 psql "$URL" -tAc "select 'Policies: '||count(*) from pg_policy;"
 psql "$URL" -tAc "select 'Referenzwerte: '||count(*) from benchmark_reference;"
 echo "Durchgelaufen."

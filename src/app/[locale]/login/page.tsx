@@ -1,8 +1,34 @@
+import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { login } from './actions'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { PasswordField } from '@/components/auth/PasswordField'
+import { pageMetadata } from '@/lib/seo/site'
+
+/**
+ * Diese Seite gehoert in den Index — sie ist regelmaessig das Ziel, wenn
+ * jemand den Produktnamen zusammen mit "Anmeldung" sucht. Was sie braucht,
+ * ist die kanonische Adresse: Ohne sie waeren `/{locale}/login` und
+ * `/{locale}/login?next=…` fuer eine Suchmaschine zwei Seiten.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'Login' })
+  const tMeta = await getTranslations({ locale, namespace: 'Metadata' })
+
+  return pageMetadata({
+    locale,
+    path: '/login',
+    title: t('title'),
+    description: t('subtitle'),
+    ogLocale: tMeta('ogLocale'),
+  })
+}
 
 export default async function LoginPage({
   searchParams,
