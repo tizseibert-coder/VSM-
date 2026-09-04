@@ -34,7 +34,9 @@ export default function LocaleSwitcher() {
 
   return (
     <div
-      className="fixed bottom-3 right-3 z-40 flex items-center gap-1 rounded-control border border-zinc-200 bg-white/95 p-1 text-xs shadow-sm backdrop-blur"
+      // print:hidden — auf Papier ist die Sprache entschieden, und auf dem
+      // Erhebungsbogen stand der Umschalter mitten in der Fusszeile.
+      className="fixed bottom-3 right-3 z-40 flex items-center gap-1 rounded-control border border-zinc-200 bg-white/95 p-1 text-xs shadow-sm backdrop-blur print:hidden"
       aria-label={t('label')}
     >
       {routing.locales.map((loc) => (

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useRouter } from 'next/navigation'
+import { Link } from '@/i18n/navigation'
 import {
   Stage,
   Layer,
@@ -2029,10 +2030,45 @@ export default function VSMCanvas({
       </div>
       </div>
 
+      {/* [Bedienbarkeitsprüfung 2026-09-03, B8] Hier stand ein Halbsatz:
+          "Noch keine Prozesse. Leg unten den ersten an." Damit steht ein Yellow
+          Belt vor der eigentlichen Frage — welche Zahlen erhebe ich an der
+          Linie, in welcher Reihenfolge, und woher kommt OEE? Genau an dieser
+          Stelle entscheidet sich, ob das Werkzeug benutzt oder wieder
+          geschlossen wird. Die drei Schritte sind die Reihenfolge, in der die
+          Kennzahlen ueberhaupt entstehen koennen: ohne Prozesse keine
+          Bearbeitungszeit, ohne Bestaende keine Durchlaufzeit, ohne
+          Kundenbedarf keine Taktzeit. */}
       {processes.length === 0 && (
-        <p className="mt-2 text-sm text-zinc-500">
-          {t('noProcessesYet')}
-        </p>
+        <div className="mt-4 rounded-surface border border-zinc-200 bg-white p-5">
+          <h2 className="text-base font-semibold text-zinc-950">{t('emptyTitle')}</h2>
+          <ol className="mt-4 grid gap-4 sm:grid-cols-3">
+            {[1, 2, 3].map((step) => (
+              <li key={step} className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-semibold tabular-nums text-brand-600">{step}</span>
+                  <h3 className="text-sm font-semibold text-zinc-950">
+                    {t(`emptyStep${step}Title` as 'emptyStep1Title')}
+                  </h3>
+                </div>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-600">
+                  {t(`emptyStep${step}Body` as 'emptyStep1Body')}
+                </p>
+              </li>
+            ))}
+          </ol>
+          {/* Der Bogen ist das, was tatsaechlich mit an die Linie geht — dort
+              steht kein Telefon in der Hand, sondern ein Blatt auf dem Klemmbrett. */}
+          <div className="mt-5 border-t border-zinc-200 pt-4">
+            <Link
+              href="/data-sheet"
+              className="text-sm font-medium text-brand-600 hover:underline"
+            >
+              {t('emptySheetLink')}
+            </Link>
+            <p className="mt-1 text-xs text-zinc-500">{t('emptySheetHint')}</p>
+          </div>
+        </div>
       )}
 
       {selectedProcess && (
