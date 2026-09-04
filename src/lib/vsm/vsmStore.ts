@@ -279,4 +279,14 @@ export const vsmOperations = {
   updateProjectLabels(state: VsmState, labels: Partial<Project>): VsmState {
     return { ...state, project: { ...state.project, ...labels } }
   },
+
+  /** Der Wert eines Stuecks. null heisst "nicht hinterlegt" — das gebundene
+   *  Kapital bleibt dann leer, statt null Euro zu behaupten. */
+  updatePieceValue(state: VsmState, pieceValue: number | null): VsmState {
+    return { ...state, project: { ...state.project, piece_value: pieceValue } }
+  },
+
+  updateCurrency(state: VsmState, currency: string): VsmState {
+    return { ...state, project: { ...state.project, currency } }
+  },
 }

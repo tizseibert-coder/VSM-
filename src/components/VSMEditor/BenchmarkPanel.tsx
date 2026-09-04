@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatDecimal } from '@/lib/vsm/numberFormat'
 import type { Tables } from '@/types/database'
 import { classifyBenchmark } from '@/lib/vsm/benchmark'
 import { TierChip } from './TierChip'
@@ -110,10 +111,11 @@ function BenchmarkRow({
   higherIsBetter: boolean
 }) {
   const t = useTranslations('Benchmark')
+  const locale = useLocale()
   if (value === null || !reference || reference.p25 === null || reference.median === null || reference.p75 === null) {
     return (
       <div className="rounded-surface border border-dashed border-zinc-300 p-3 text-sm text-zinc-500">
-        {label}: keine Daten für diese Auswahl.
+        {label}: {t('noReference')}
       </div>
     )
   }
@@ -131,7 +133,7 @@ function BenchmarkRow({
         <TierChip tier={tier} />
       </div>
       <div className="mt-1 text-lg font-semibold text-zinc-950">
-        {value.toFixed(1)} {unit}
+        {formatDecimal(value, locale)} {unit}
       </div>
       <div className="mt-1 text-xs text-zinc-500">
         P25 {reference.p25} · Median {reference.median} · P75 {reference.p75} {unit}

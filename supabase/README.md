@@ -40,6 +40,16 @@ die sie lesen.
 4. **Nichts direkt im Supabase-SQL-Editor aendern.** Wenn es doch passiert:
    sofort eine idempotente Migration nachziehen, die denselben Zustand
    herstellt.
+5. **Der Dateiname traegt die Version, die in der Datenbank steht.** Wer eine
+   Aenderung ueber den SQL-Editor oder das Supabase-Werkzeug anwendet, bekommt
+   dort einen Zeitstempel zugeteilt, den er sich nicht aussuchen kann. Die
+   nachgezogene Datei (Regel 4) muss genau diesen Namen tragen — sonst haelt
+   `db push` sie fuer eine neue Migration und wendet sie ein zweites Mal an.
+   Nachsehen mit:
+
+   ```sql
+   select version, name from supabase_migrations.schema_migrations order by version;
+   ```
 
 ## Stand dieses Verzeichnisses
 
@@ -48,42 +58,81 @@ das komplette Schema existierte nur in der Produktivdatenbank.
 
 Enthalten:
 
+- `migrations/20260830155000_vsm_tables_baseline.sql` — `CREATE TABLE` fuer
+  die zehn eigenen Tabellen samt Constraints, Indizes und Kommentaren. Steht
+  vor der Autorisierungsschicht, weil die die Tabellen voraussetzt. Siehe
+  "Von Null aufbauen" unten.
 - `migrations/20260830160000_vsm_authorization_layer.sql` — Hilfsfunktionen,
   RLS und alle Policies der VSM-Tabellen, plus die `updated_at`-Trigger. Das
   ist der Teil, dessen Verlust am teuersten waere: der VSM Builder greift
   ausschliesslich als `authenticated` ueber PostgREST zu und hat keine API mit
   Owner-Rechten, die RLS umgehen koennte. Ohne Policies ist die Anwendung nicht
   unsicher, sondern funktionslos.
+- `migrations/20260901174003_future_state_wizard_fields.sql` — die vier
+  Spalten der Wizard-Fragen 6 bis 8, ebenfalls nachtraeglich eingecheckt.
+- `migrations/20260903212855_piece_value_and_currency.sql` — `piece_value` und
+  `currency` auf `projects`, fuer das gebundene Kapital.
 - `seed.sql` — die Referenzwerte des Branchenvergleichs.
+- `tests/` — die nachgebildeten fremden Objekte und das Pruefskript. Keine
+  Migrationen; siehe "Pruefen" unten.
 
-## Was noch fehlt
+Die beiden letzten hiessen bis zum 04.09. `20260901120000` und
+`20260903180000` — Zeitstempel, die beim Schreiben der Datei entstanden und
+nicht die, unter denen die Datenbank sie verzeichnet hat. `db push` haette
+beide ein zweites Mal angewandt (folgenlos, weil idempotent, aber mit einem
+zweiten Eintrag fuer dieselbe Aenderung). Daher jetzt Regel 5.
 
-**Der Tabellen-Baseline.** `CREATE TABLE` fuer die zehn Tabellen oben steht noch
-nirgends. Solange das fehlt, laesst sich aus diesem Repository keine Datenbank
-von Null aufbauen — die Autorisierungsmigration setzt die Tabellen voraus.
+`20260830160000_vsm_authorization_layer.sql` hat bewusst *keinen* Eintrag in
+der Datenbank: Sie schreibt einen Ist-Zustand fest, der schon vorher da war.
+Ein `db push` wendet sie an — idempotent, und danach ist sie verzeichnet.
 
-Der Weg dahin, bewusst nicht blind ausgefuehrt:
+## Von Null aufbauen
+
+Seit dem 04.09.2026 geht das. Vorher stand hier "Was noch fehlt: der
+Tabellen-Baseline" — `CREATE TABLE` fuer die zehn Tabellen existierte
+nirgends.
+
+`migrations/20260830155000_vsm_tables_baseline.sql` schliesst die Luecke. Er
+ist nicht aus `supabase db pull` entstanden: Der zieht das *ganze*
+public-Schema, also auch die Prisma-Tabellen, und die haette man anschliessend
+von Hand wieder herausschneiden muessen — beide Systeme wuerden sonst dieselben
+Objekte beanspruchen. Stattdessen gezielt aus dem Katalog der
+Produktivdatenbank abgefragt: Spalten, Vorgaben, Constraints, Indizes,
+Kommentare.
+
+Die Reihenfolge auf einer frischen Datenbank:
+
+1. `prisma migrate deploy` aus `D:\LeanPulse Industrial\apps\api` — legt
+   `organizations`, `auth`-Anbindung und `has_org_role()` an.
+2. Die Migrationen hier, in Dateinamensreihenfolge.
+3. `seed.sql`.
+
+Schritt 1 ist keine Empfehlung, sondern Voraussetzung: Der Baseline prueft am
+Anfang, ob `public.organizations` und `auth.users` existieren, und bricht sonst
+mit einer Meldung ab, die sagt, was zu tun ist. `projects.organization_id` und
+die beiden Spalten von `activity_logs` zeigen dorthin — fremde Tabellen
+mit anzulegen waere eine Eigentumsverletzung, die Fremdschluessel wegzulassen
+eine Luege ueber das Schema.
+
+## Pruefen
 
 ```bash
-npx supabase link --project-ref xoqrouqzjirglnsubgzs
-npx supabase db pull --schema public
+./supabase/tests/leere-datenbank-pruefen.sh "postgresql://postgres@/wegwerf?host=/pfad/zum/socket&port=5432"
 ```
 
-`db pull` zieht das **ganze** Schema, also auch die Prisma-Tabellen. Die
-gezogene Datei muss anschliessend auf die zehn Tabellen aus der Liste oben
-zusammengestrichen werden, sonst beanspruchen beide Systeme dieselben Objekte —
-und das waere schlimmer als der heutige Zustand.
+Das Skript legt die Datenbank neu an, faehrt `tests/fremde_voraussetzungen.sql`
+(nachgebildete Prisma- und Supabase-Objekte, **keine** Migration), dann alle
+Migrationen, dann den Seed, und zaehlt am Ende nach. Es braucht weder Docker
+noch die Supabase-CLI, nur ein `psql`. Auf eine Supabase-URL zu zeigen lehnt es
+ab.
 
-Danach gegen eine frische Datenbank pruefen (`npx supabase db reset`), nicht nur
-gegen die Produktion. Ein Baseline, der nie auf einer leeren Datenbank lief, ist
-eine Vermutung.
+Stand 04.09.2026, gegen Postgres 16.13: 10 Tabellen, 19 Policies, 6
+Referenzwerte. Spalten (alle 113), Typen, NOT-NULL-Flags, Vorgabewerte,
+Fremdschluessel, Indizes sowie RLS und Policy-Zahl je Tabelle stimmen mit der
+Produktion ueberein.
 
-**Kleinere offene Punkte:**
-
-- `benchmark_reference` hat keinen Unique-Index auf
-  `(industry, company_size, metric_name)`. Deshalb muss `seed.sql` mit
-  DELETE + INSERT arbeiten statt mit einem sauberen Upsert.
-- `projects` hat keine Spalte fuer die Arbeitstage pro Jahr; die 250 stehen als
-  Konstante in `src/lib/vsm/calculations.ts`, waehrend die verfuegbaren Minuten
-  pro Tag am Projekt haengen. Beide stecken in derselben Formel (Audit-Befund
-  S5) — die Spalte waere die naechste echte Schemaaenderung hier.
+Eine Abweichung bleibt und ist keine: Vier CHECK-Constraints legt Postgres 16
+in einer anderen Schreibweise ab als 17 — `(ARRAY[…]::varchar[])::text[]` wird
+dort in Element-Casts umgeschrieben. Supabase faehrt 17, produktiv steht die
+unveraenderte Form. Geprueft wird in beiden Faellen dasselbe. Wer den Baseline
+gegen eine 16er-Instanz haelt, sollte das nicht "korrigieren".

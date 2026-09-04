@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { DEMO_BUFFERS, DEMO_PROCESSES, DEMO_PROJECT } from '@/lib/vsm/demoProject'
+import { useTranslations } from 'next-intl'
+import { buildDemoState } from '@/lib/vsm/demoProject'
 import type { VsmState } from '@/lib/vsm/vsmStore'
 import { VsmMutationProvider } from './VsmMutationContext'
 import VSMCanvasLoader from './VSMCanvasLoader'
@@ -18,13 +19,27 @@ import VSMCanvasLoader from './VSMCanvasLoader'
  * das ist beabsichtigt: Ohne Konto gibt es keinen Ort, an dem die Aenderungen
  * jemandem gehoeren wuerden. `isDemo` sagt dem Editor genau das — er laesst
  * dann die Server-Actions weg, die es hier nicht gibt.
+ *
+ * [Bedienbarkeitspruefung 2026-09-03, B17] Die Beschriftungen des Datensatzes
+ * kommen aus `Demo.data`; die Zahlen stehen weiter fest in demoProject.ts.
+ * Der Anfangszustand wird nur beim ersten Zeichnen gebildet (useState mit
+ * Funktion): Ein Sprachwechsel laedt die Seite ohnehin neu, und ohne diese
+ * Form wuerde jede Eingabe die eigene Aenderung wieder ueberschreiben.
  */
 export default function DemoCanvas() {
-  const [state, setState] = useState<VsmState>({
-    project: DEMO_PROJECT,
-    processes: DEMO_PROCESSES,
-    buffers: DEMO_BUFFERS,
-  })
+  const t = useTranslations('Demo.data')
+  const [state, setState] = useState<VsmState>(() =>
+    buildDemoState({
+      projectName: t('projectName'),
+      description: t('description'),
+      company: t('company'),
+      productName: t('productName'),
+      customerName: t('customerName'),
+      supplierName: t('supplierName'),
+      erpLabel: t('erpLabel'),
+      processNames: [t('process1'), t('process2'), t('process3'), t('process4'), t('process5')],
+    })
+  )
 
   // setState ist stabil, der Wert aendert sich also nie — ohne useMemo waere
   // es bei jedem Zeichnen ein neues Objekt und jeder Verbraucher des Context

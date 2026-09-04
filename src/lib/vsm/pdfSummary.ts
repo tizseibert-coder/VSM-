@@ -9,11 +9,20 @@
 // damit rein und testbar; die Sprache kennt nur der Aufrufer, der ohnehin im
 // React-Baum haengt und uebersetzen kann.
 
+import { formatDecimal } from './numberFormat'
+
 export interface PdfKpiInput {
   totalLeadTimeDays: number | null
   totalCycleTimeMinutes: number
   valueAddedRatioPercent: number | null
   taktTimeMinutes: number | null
+  /**
+   * Schon fertig formatiert (Betrag samt Waehrung) oder null, wenn kein Wert
+   * je Stueck hinterlegt ist. Die Formatierung haengt an Sprache und Waehrung
+   * des Projekts und gehoert deshalb nicht hierher, sondern dorthin, wo beides
+   * bekannt ist.
+   */
+  tiedUpCapital?: string | null
 }
 
 /** Beschriftungen und Einheiten fuer den Kennzahlenblock. */
@@ -22,6 +31,7 @@ export interface PdfKpiLabels {
   leadTime: string
   pce: string
   taktTime: string
+  tiedUpCapital: string
   unitMin: string
   unitDays: string
   unitPercent: string
@@ -32,22 +42,36 @@ export interface PdfKpiLabels {
  * values that aren't computable yet (no takt/throughput set), matching the
  * KPI bar's own placeholder.
  */
-export function buildKpiSummaryLines(kpis: PdfKpiInput, labels: PdfKpiLabels): string[] {
+/**
+ * @param locale Sprache des Lesers. Das Blatt geht ins Gremium; "84.5 Tage"
+ *   liest ein deutscher Fertigungsleiter als Tippfehler.
+ */
+export function buildKpiSummaryLines(
+  kpis: PdfKpiInput,
+  labels: PdfKpiLabels,
+  locale: string
+): string[] {
+  const num = (value: number, digits = 1) => formatDecimal(value, locale, digits)
   return [
-    `${labels.cycleTimeSum}: ${kpis.totalCycleTimeMinutes.toFixed(1)} ${labels.unitMin}`,
+    `${labels.cycleTimeSum}: ${num(kpis.totalCycleTimeMinutes)} ${labels.unitMin}`,
     `${labels.leadTime}: ${
       kpis.totalLeadTimeDays !== null && kpis.totalLeadTimeDays > 0
-        ? `${kpis.totalLeadTimeDays.toFixed(1)} ${labels.unitDays}`
+        ? `${num(kpis.totalLeadTimeDays)} ${labels.unitDays}`
         : '–'
     }`,
     `${labels.pce}: ${
       kpis.valueAddedRatioPercent !== null
-        ? `${kpis.valueAddedRatioPercent.toFixed(2)} ${labels.unitPercent}`
+        ? `${num(kpis.valueAddedRatioPercent, 2)} ${labels.unitPercent}`
         : '–'
     }`,
     `${labels.taktTime}: ${
-      kpis.taktTimeMinutes !== null ? `${kpis.taktTimeMinutes.toFixed(1)} ${labels.unitMin}` : '–'
+      kpis.taktTimeMinutes !== null ? `${num(kpis.taktTimeMinutes)} ${labels.unitMin}` : '–'
     }`,
+    // Die eine Zeile auf dem Blatt, die auch jemand liest, der mit Taktzeit
+    // nichts anfangen kann. Sie faellt weg statt "–" zu zeigen, wenn kein
+    // Stueckwert hinterlegt ist: ein leerer Geldbetrag im Gremium wirft mehr
+    // Fragen auf, als er beantwortet.
+    ...(kpis.tiedUpCapital ? [`${labels.tiedUpCapital}: ${kpis.tiedUpCapital}`] : []),
   ]
 }
 

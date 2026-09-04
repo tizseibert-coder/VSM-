@@ -9,6 +9,7 @@ const LABELS = {
   leadTime: 'Durchlaufzeit',
   pce: 'Wertschöpfungsanteil',
   taktTime: 'Taktzeit',
+  tiedUpCapital: 'Gebundenes Kapital',
   unitMin: 'min',
   unitDays: 'Tage',
   unitPercent: '%',
@@ -20,6 +21,23 @@ const STATE_LABELS = {
 }
 
 describe('buildKpiSummaryLines', () => {
+  // Die Zeile fuer das Gremium: Sie kommt nur dazu, wenn ein Wert je Stueck
+  // hinterlegt ist — ein leerer Geldbetrag auf dem Ausdruck wirft mehr Fragen
+  // auf, als er beantwortet.
+  it('adds the tied-up capital only when it is known', () => {
+    const input = {
+      totalCycleTimeMinutes: 12.5,
+      totalLeadTimeDays: 4.2,
+      valueAddedRatioPercent: 3.14,
+      taktTimeMinutes: 8.0,
+    }
+    expect(buildKpiSummaryLines(input, LABELS, 'de')).toHaveLength(4)
+    expect(buildKpiSummaryLines({ ...input, tiedUpCapital: null }, LABELS, 'de')).toHaveLength(4)
+    expect(buildKpiSummaryLines({ ...input, tiedUpCapital: '465.000 €' }, LABELS, 'de').at(-1)).toBe(
+      'Gebundenes Kapital: 465.000 €'
+    )
+  })
+
   it('formats all four KPIs when fully computable', () => {
     const lines = buildKpiSummaryLines(
       {
@@ -28,13 +46,16 @@ describe('buildKpiSummaryLines', () => {
         valueAddedRatioPercent: 3.14,
         taktTimeMinutes: 8.0,
       },
-      LABELS
+      LABELS,
+      'de'
     )
+    // Deutsche Zahlen auf einem deutschen Blatt — der Grund, warum die
+    // Funktion die Sprache ueberhaupt kennt.
     expect(lines).toEqual([
-      'Bearbeitungszeit: 12.5 min',
-      'Durchlaufzeit: 4.2 Tage',
-      'Wertschöpfungsanteil: 3.14 %',
-      'Taktzeit: 8.0 min',
+      'Bearbeitungszeit: 12,5 min',
+      'Durchlaufzeit: 4,2 Tage',
+      'Wertschöpfungsanteil: 3,14 %',
+      'Taktzeit: 8,0 min',
     ])
   })
 
@@ -46,17 +67,18 @@ describe('buildKpiSummaryLines', () => {
         valueAddedRatioPercent: null,
         taktTimeMinutes: null,
       },
-      LABELS
+      LABELS,
+      'de'
     )
     expect(lines).toEqual([
-      'Bearbeitungszeit: 5.0 min',
+      'Bearbeitungszeit: 5,0 min',
       'Durchlaufzeit: –',
       'Wertschöpfungsanteil: –',
       'Taktzeit: –',
     ])
   })
 
-  it('carries the given units through, so an English sheet reads in English', () => {
+  it('carries units and number format through, so an English sheet reads in English', () => {
     const lines = buildKpiSummaryLines(
       {
         totalCycleTimeMinutes: 12.5,
@@ -69,10 +91,12 @@ describe('buildKpiSummaryLines', () => {
         leadTime: 'Lead time',
         pce: 'Process cycle efficiency',
         taktTime: 'Takt time',
+        tiedUpCapital: 'Tied-up capital',
         unitMin: 'min',
         unitDays: 'days',
         unitPercent: '%',
-      }
+      },
+      'en'
     )
     expect(lines[1]).toBe('Lead time: 4.2 days')
   })

@@ -55,10 +55,7 @@ export default async function InvitePage({
 
         {isSignedIn ? (
           <>
-            <p className="mt-3 text-sm text-zinc-600">
-              Du wurdest eingeladen, einem Team beizutreten. Nach dem Annehmen siehst du dessen
-              Wertstromanalysen und kannst zwischen deinen Organisationen wechseln.
-            </p>
+            <p className="mt-3 text-sm text-zinc-600">{t('body')}</p>
             {/* Absichtlich ein Knopf und kein automatisches Einloesen beim
                 Seitenaufruf: sonst wuerde schon die Linkvorschau eines
                 Chat-Programms die Einladung verbrauchen. */}
@@ -78,10 +75,7 @@ export default async function InvitePage({
           </>
         ) : (
           <>
-            <p className="mt-3 text-sm text-zinc-600">
-              Melde dich an oder erstelle ein Konto, um die Einladung anzunehmen. Danach landest du
-              automatisch wieder hier.
-            </p>
+            <p className="mt-3 text-sm text-zinc-600">{t('signedOutBody')}</p>
             <div className="mt-6 flex flex-col gap-2">
               <Link
                 href={`/login?next=${encodeURIComponent(returnTo)}`}

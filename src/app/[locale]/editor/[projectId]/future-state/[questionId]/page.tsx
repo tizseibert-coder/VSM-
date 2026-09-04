@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { deriveFutureStateQuestions, type FutureStateInput } from '@/lib/vsm/futureStateQuestions'
+import { formatValues } from '@/lib/vsm/numberFormat'
 import { TermTooltip } from '@/components/VSMEditor/TermTooltip'
 import { WizardSaveButton } from '@/components/wizard/WizardSaveButton'
 import { submitTaktTime, submitBuffer, submitPacemaker, submitHeijunka, submitPitch, submitKaizenNote } from '../wizard-actions'
@@ -35,6 +36,7 @@ export default async function FutureStateQuestionPage({
   searchParams: Promise<{ scenario?: string; saved?: string }>
 }) {
   const { projectId, questionId } = await params
+  const locale = await getLocale()
   const t = await getTranslations('Wizard')
   const tFs = await getTranslations('FutureState')
   const { scenario: scenarioParam, saved } = await searchParams
@@ -65,7 +67,7 @@ export default async function FutureStateQuestionPage({
   const allProcesses = processes ?? []
   const allBuffers = buffers ?? []
   const nameById = new Map(allProcesses.map((p) => [p.id, p.name]))
-  const boundaryLabel = (id: string | null, boundaryLabel: string) => (id ? (nameById.get(id) ?? '?') : boundaryLabel)
+  const boundaryLabel = (id: string | null, fallback: string) => (id ? (nameById.get(id) ?? '?') : fallback)
 
   const input: FutureStateInput = {
     processes: allProcesses.map((p) => ({
@@ -118,7 +120,10 @@ export default async function FutureStateQuestionPage({
           </span>
         </div>
         <p className="mt-2 text-sm text-zinc-600">
-          {tFs(`summary.${current.summaryKey}`, current.summaryValues)}
+          {tFs(
+            `summary.${current.summaryKey}`,
+            current.summaryValues && formatValues(current.summaryValues, locale)
+          )}
         </p>
 
         {saved === '1' && (
@@ -163,7 +168,9 @@ export default async function FutureStateQuestionPage({
                   className="flex flex-col gap-3"
                 >
                   <p className="text-xs text-zinc-500">
-                    Übergabe an den Kunden{terminal?.from_process_id ? ` (nach ${boundaryLabel(terminal.from_process_id, '?')})` : ''}.
+                    {terminal?.from_process_id
+                      ? t('q2HandoverAfter', { name: boundaryLabel(terminal.from_process_id, '?') })
+                      : t('q2Handover')}
                   </p>
                   <label className="text-xs font-medium text-zinc-600">
                     {t('q2Kind')}
@@ -200,10 +207,7 @@ export default async function FutureStateQuestionPage({
               }
               return (
                 <div className="flex flex-col gap-3">
-                  <p className="text-xs text-zinc-500">
-                    {t('q3Hint')} —
-                    für Supermarkt/FIFO/Push bei den verbleibenden Verbindungen siehe Frage 4.
-                  </p>
+                  <p className="text-xs text-zinc-500">{t('q3Hint')}</p>
                   {internal.map((b) => (
                     <form
                       key={b.id}
@@ -212,7 +216,7 @@ export default async function FutureStateQuestionPage({
                     >
                       <input type="hidden" name="wipCount" value={b.wip_count} />
                       <p className="mr-auto text-xs font-medium text-zinc-600">
-                        {boundaryLabel(b.from_process_id, 'Lieferant')} → {boundaryLabel(b.to_process_id, 'Kunde')}
+                        {boundaryLabel(b.from_process_id, t('supplier'))} → {boundaryLabel(b.to_process_id, t('customer'))}
                       </p>
                       <label className="flex items-center gap-2 text-sm text-zinc-700">
                         <input
@@ -266,10 +270,10 @@ export default async function FutureStateQuestionPage({
                       className="flex flex-wrap items-end gap-2 rounded-surface border border-zinc-100 p-3"
                     >
                       <p className="mr-auto w-full text-xs font-medium text-zinc-600">
-                        {boundaryLabel(b.from_process_id, 'Lieferant')} → {boundaryLabel(b.to_process_id, 'Kunde')}
+                        {boundaryLabel(b.from_process_id, t('supplier'))} → {boundaryLabel(b.to_process_id, t('customer'))}
                       </p>
                       <label className="text-xs text-zinc-500">
-                        <TermTooltip term="bufferType">Typ</TermTooltip>
+                        <TermTooltip term="bufferType">{t('q4Type')}</TermTooltip>
                         <select name="bufferType" defaultValue={b.buffer_type ?? 'standard'} className={FIELD_CLASS}>
                           <option value="standard">{t('q4Standard')}</option>
                           <option value="supermarket">{t('q4Supermarket')}</option>
@@ -277,7 +281,7 @@ export default async function FutureStateQuestionPage({
                         </select>
                       </label>
                       <label className="text-xs text-zinc-500">
-                        <TermTooltip term="wip">WIP</TermTooltip>
+                        <TermTooltip term="wip">{t('q4Wip')}</TermTooltip>
                         <input name="wipCount" type="number" min={0} defaultValue={b.wip_count} className={FIELD_CLASS} />
                       </label>
                       <WizardSaveButton />
@@ -296,7 +300,7 @@ export default async function FutureStateQuestionPage({
                   <TermTooltip term="pacemaker">{t('q5Pacemaker')}</TermTooltip>
                   <select name="processId" defaultValue={pacemaker?.id ?? ''} className={FIELD_CLASS}>
                     <option value="" disabled>
-                      — Prozess wählen —
+                      {t('q5ChooseProcess')}
                     </option>
                     {allProcesses.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -319,7 +323,7 @@ export default async function FutureStateQuestionPage({
                 action={submitHeijunka.bind(null, projectId, scenario.id, pacemaker.id)}
                 className="flex flex-col gap-3"
               >
-                <p className="text-xs text-zinc-500">Schrittmacher: {pacemaker.name}</p>
+                <p className="text-xs text-zinc-500">{t('q6PacemakerIs', { name: pacemaker.name })}</p>
                 <label className="flex items-center gap-2 text-sm text-zinc-700">
                   <input type="checkbox" name="hasHeijunka" defaultChecked={pacemaker.has_heijunka} />
                   <TermTooltip term="heijunka">{t('q6HeijunkaActive')}</TermTooltip>
@@ -379,7 +383,7 @@ export default async function FutureStateQuestionPage({
               href={`/editor/${projectId}/future-state/${qid - 1}${scenarioQuery}`}
               className="text-sm text-zinc-600 hover:underline"
             >
-              ← Frage {qid - 1}
+              {t('previousQuestion', { id: qid - 1 })}
             </Link>
           ) : (
             <span />
@@ -389,7 +393,7 @@ export default async function FutureStateQuestionPage({
               href={`/editor/${projectId}/future-state/${qid + 1}${scenarioQuery}`}
               className="text-sm text-zinc-600 hover:underline"
             >
-              Frage {qid + 1} →
+              {t('nextQuestion', { id: qid + 1 })}
             </Link>
           ) : (
             <Link

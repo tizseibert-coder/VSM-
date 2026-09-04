@@ -140,9 +140,7 @@ export default async function DashboardPage({
                     {t('emptyTitle')}
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                    Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen.
-                    Ändere eine Zykluszeit und sieh zu, wie Durchlaufzeit und Taktzeit
-                    reagieren.
+                    {t('emptyBody')}
                   </p>
                   <form action={createExampleProject} className="mt-5">
                     <button

@@ -1059,12 +1059,14 @@ export type Database = {
           available_minutes_per_day: number
           company: string | null
           created_at: string
+          currency: string
           customer_name: string
           description: string | null
           erp_label: string
           id: string
           name: string
           organization_id: string
+          piece_value: number | null
           pitch_minutes: number | null
           product_name: string | null
           supplier_name: string
@@ -1075,12 +1077,14 @@ export type Database = {
           available_minutes_per_day?: number
           company?: string | null
           created_at?: string
+          currency?: string
           customer_name?: string
           description?: string | null
           erp_label?: string
           id?: string
           name: string
           organization_id: string
+          piece_value?: number | null
           pitch_minutes?: number | null
           product_name?: string | null
           supplier_name?: string
@@ -1091,12 +1095,14 @@ export type Database = {
           available_minutes_per_day?: number
           company?: string | null
           created_at?: string
+          currency?: string
           customer_name?: string
           description?: string | null
           erp_label?: string
           id?: string
           name?: string
           organization_id?: string
+          piece_value?: number | null
           pitch_minutes?: number | null
           product_name?: string | null
           supplier_name?: string

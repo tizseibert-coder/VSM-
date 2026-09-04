@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -10,6 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useRouter } from 'next/navigation'
+import { Link } from '@/i18n/navigation'
 import {
   Stage,
   Layer,
@@ -45,6 +47,8 @@ import { bufferGapIndices, findBuffer } from '@/lib/vsm/buffers'
 import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geometry'
 import { computeAutoFitScale, clampScale, MIN_READABLE_SCALE } from '@/lib/vsm/viewport'
 import { checkCapacity } from '@/lib/vsm/capacity'
+import { formatCurrency, tiedUpCapital, SUPPORTED_CURRENCIES } from '@/lib/vsm/capital'
+import { formatCount, formatDecimal, formatPlain } from '@/lib/vsm/numberFormat'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
@@ -54,6 +58,8 @@ import {
   buildPdfSubtitle,
   buildPdfTitle,
 } from '@/lib/vsm/pdfSummary'
+import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
+import { buildComparisonMetrics } from '@/lib/vsm/comparisonTable'
 import jsPDF from 'jspdf'
 import {
   customerCloudPosition,
@@ -86,6 +92,8 @@ import {
   setBufferWip,
   deleteBufferConnection,
   updateProjectLabels,
+  updatePieceValue,
+  updateCurrency,
 } from '@/app/[locale]/editor/[projectId]/actions'
 
 type Project = Tables<'projects'>
@@ -151,13 +159,23 @@ const CANVAS_TEXT = {
 } as const
 
 /**
- * Zusaetzliche Trefferflaeche rund um jedes Bestandsdreieck (siehe
- * BufferMarker), in Canvas-Einheiten je Seite. BUFFER_SIZE (50) allein
- * ergibt am Zoom-Boden MIN_READABLE_SCALE (60 %) nur 30x30 px — unter den
- * ueblichen 44 px fuer einen Finger. 12 Einheiten je Seite heben die
- * effektive Groesse auf 74, also 44,4 px bei genau diesem Zoom.
+ * Zusaetzliche Trefferflaeche rund um die kleinen Symbole der Zeichenflaeche,
+ * in Canvas-Einheiten je Seite.
+ *
+ * Bestandsdreieck: BUFFER_SIZE (50) allein ergibt am Zoom-Boden
+ * MIN_READABLE_SCALE (60 %) nur 30x30 px — unter den ueblichen 44 px fuer
+ * einen Finger. 12 Einheiten je Seite heben die effektive Groesse auf 74,
+ * also 44,4 px bei genau diesem Zoom.
+ *
+ * [Bedienbarkeitspruefung 2026-09-03, B14] Nachgemessen mit Konvas eigener
+ * Treffererkennung, Punkt fuer Punkt ueber die ganze Flaeche: Die Dreiecke
+ * kamen so auf 46x44 px, die Prozessboxen auf 94x66 bis 140x68 — beide in
+ * Ordnung. Zu klein war etwas anderes, das im Befund gar nicht stand: die
+ * Wolken fuer Lieferant und Kunde, 48x36 px. Sie sind der Anfang und das
+ * Ende jeder Kette und in einem Workshop das Erste, worauf jemand zeigt.
+ * Dieselbe Randzone hebt sie auf 62x50 px.
  */
-const BUFFER_HIT_PADDING = 12
+const HIT_PADDING = 12
 const LADDER_HIGH_STEP = 40
 const LADDER_MARGIN_TOP = 70
 const SUMMARY_WIDTH = 100 // matches LadderSummary's box width (84) + margin
@@ -218,6 +236,30 @@ interface Props {
    * Die oeffentliche Demo laeuft ohne.
    */
   benchmarkReferences?: BenchmarkReference[]
+  /**
+   * Alle Zustaende des Projekts — Ist-Zustand zuerst, dann jedes Szenario —
+   * ausschliesslich fuer die zweite PDF-Seite.
+   *
+   * [Bedienbarkeitspruefung 2026-09-03, B16] Das Blatt zeigte den Wertstrom
+   * und seine Kennzahlen, aber nicht, was das Szenario daran aendert. Genau
+   * das ist die Seite, wegen der ein Inhaber zustimmt oder nicht — und sie
+   * fehlte ausgerechnet in dem Dokument, das man ihm dalaesst. Weniger als
+   * zwei Zustaende heisst: nichts zu vergleichen, dann bleibt das PDF
+   * einseitig. Die oeffentliche Demo laeuft ohne.
+   */
+  comparisonStates?: ComparisonState[]
+}
+
+/**
+ * Wartet diese Zeile noch auf ihre Id aus der Datenbank?
+ *
+ * Modulweit, weil nicht nur die Zeichenflaeche das wissen muss, sondern auch
+ * die Bearbeitungspanels darunter: Jede Behelfs-Id, die in eine uuid-Spalte
+ * geht, endet mit einem Datenbankfehler (22P02). In der Demo gibt es keine
+ * echten Ids, dort sind genau diese die richtigen.
+ */
+function awaitingServerId(isDemo: boolean, id: string | null): boolean {
+  return !isDemo && id !== null && isOptimisticId(id)
 }
 
 export default function VSMCanvas({
@@ -227,12 +269,29 @@ export default function VSMCanvas({
   initialProcesses,
   initialBuffers,
   benchmarkReferences = [],
+  comparisonStates = [],
 }: Props) {
   const locale = useLocale()
+  // [Bedienbarkeitsprüfung 2026-09-03, B9] Kurz, weil sie oft vorkommen: Jede
+  // Zahl, die hier angezeigt wird, geht durch eine der beiden — sonst steht
+  // "84.5 Tage" in einer deutschen Oberflaeche, waehrend die Startseite
+  // daneben "16,8" schreibt.
+  // useCallback, damit die beiden nicht bei jedem Zeichnen eine neue Identitaet
+  // bekommen: Sie stehen in den Abhaengigkeiten der useMemo-Bloecke fuer
+  // Methodikbefunde und Kennzahlenzeile, und ein neuer Verweis pro Durchlauf
+  // wuerde beide Berechnungen jedes Mal verwerfen.
+  const num = useCallback(
+    (value: number, digits = 1) => formatDecimal(value, locale, digits),
+    [locale]
+  )
+  const count = useCallback((value: number) => formatCount(value, locale), [locale])
   const t = useTranslations('Editor')
   const tCanvas = useTranslations('Canvas')
   const tMethod = useTranslations('MethodCheck')
   const tPdf = useTranslations('Pdf')
+  // Nur fuer die zweite PDF-Seite; die Beschriftungen der Vergleichstabelle
+  // sind dieselben wie auf der Vergleichsseite und sollen es bleiben.
+  const tCompare = useTranslations('Compare')
   const hasBenchmark = benchmarkReferences.length > 0
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -272,6 +331,9 @@ export default function VSMCanvas({
   const [availableMinutesInput, setAvailableMinutesInput] = useState(
     String(initialProject.available_minutes_per_day)
   )
+  const [pieceValueInput, setPieceValueInput] = useState(
+    initialProject.piece_value?.toString() ?? ''
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Zoom/pan camera state: the world (canvasWidth x canvasHeight, computed
@@ -300,6 +362,12 @@ export default function VSMCanvas({
   // Strg/Cmd ueber der Zeichenflaeche scrollt (siehe handleWheel), und dann
   // nur fuer zwei Sekunden.
   const [showZoomHint, setShowZoomHint] = useState(false)
+  // [Bedienbarkeitsprüfung 2026-09-03, B3] Der Zoom-Hinweis daneben gilt fuer
+  // Maus und Trackpad. Am Telefon fehlte jeder Hinweis darauf, dass die Kette
+  // ueber den Rand hinausgeht und sich schieben laesst — der Zoom-Hinweis
+  // erscheint beim Mausrad, das es dort nicht gibt. Dieser hier steht, bis er
+  // weggetippt oder die Ansicht zum ersten Mal bewegt wird.
+  const [panHintDismissed, setPanHintDismissed] = useState(false)
   const zoomHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   // Nur im Vollbild gebraucht: dort bestimmt der Bildschirm die Höhe, sonst
@@ -319,6 +387,21 @@ export default function VSMCanvas({
   const stageContainerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
+
+  // [Bedienbarkeitsprüfung 2026-09-03, B1/B2] Am Telefon liegt das
+  // Bearbeitungsfeld als Blatt ueber dem unteren Rand (siehe editPanelShell).
+  // Damit daneben ueberhaupt etwas zu sehen ist, holt jede Auswahl die
+  // Zeichenflaeche an den oberen Rand — vorher bearbeitete man eine Box, die
+  // eine Bildschirmhoehe weiter oben stand. Ab lg passiert nichts: Dort stehen
+  // Diagramm und Feld ohnehin gemeinsam im Bild.
+  useEffect(() => {
+    if (!selection || typeof window === 'undefined') return
+    if (window.innerWidth >= 1024) return
+    const container = stageContainerRef.current
+    if (!container) return
+    const jumpsInstead = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    container.scrollIntoView({ behavior: jumpsInstead ? 'auto' : 'smooth', block: 'start' })
+  }, [selection])
 
   // Der Zustand, aus dem tatsaechlich gezeichnet wird.
   //
@@ -387,7 +470,7 @@ export default function VSMCanvas({
    * Datenbankfehler enden. In der Demo gibt es keine echten Ids, dort sind
    * genau diese die richtigen.
    */
-  const isAwaitingServerId = (id: string | null) => !isDemo && id !== null && isOptimisticId(id)
+  const isAwaitingServerId = (id: string | null) => awaitingServerId(isDemo, id)
 
   // The pacemaker (Schrittmacher) is the one process that gets scheduled
   // directly from production control — everything else is pulled via
@@ -483,11 +566,11 @@ export default function VSMCanvas({
         id: 'capacity-coverage',
         severity: 'critical',
         title: tMethod('capacityShortfallTitle', {
-          percent: (kpis.capacityCoverage * 100).toFixed(0),
+          percent: num(kpis.capacityCoverage * 100, 0),
         }),
         detail: tMethod('capacityDetail', {
-          exit: kpis.exitRatePerDay?.toFixed(1) ?? '',
-          demand: kpis.demandRatePerDay?.toFixed(1) ?? '',
+          exit: kpis.exitRatePerDay !== null ? num(kpis.exitRatePerDay) : '',
+          demand: kpis.demandRatePerDay !== null ? num(kpis.demandRatePerDay) : '',
         }),
       })
     }
@@ -511,37 +594,53 @@ export default function VSMCanvas({
     }
 
     return found
-  }, [kpis, pacemaker, processes.length, pushBeforePacemaker.length, tMethod])
+  }, [kpis, num, pacemaker, processes.length, pushBeforePacemaker.length, tMethod])
 
   // Live transparency for the "how is this actually calculated" question —
   // shown as a small formula caption under Durchlaufzeit/Taktzeit so a
   // surprising number (e.g. a very low Jahresbedarf making PLT look huge)
   // is visibly explained by its own inputs instead of looking like a bug.
-  const totalWipCount = useMemo(() => buffers.reduce((sum, b) => sum + b.wip_count, 0), [buffers])
+  // Dieselbe Zahl, mit der die Durchlaufzeit gerechnet wird — vorher zaehlte
+  // diese Zeile nur die Puffer und liess den Bestand *an* den Stationen weg,
+  // sodass die Formelzeile eine andere Menge nannte als die Rechnung darueber
+  // benutzte.
+  const totalWipCount = kpis.totalWipCount
   const effectiveAvailableMinutes = liveAvailableMinutes ?? SHIFT_MINUTES
   // Each caption names the divisor it actually used. Lead time divides by the
   // *departure* rate (the smaller of Ausbringung and Kundenbedarf), takt by the
   // customer demand — naming both prevents the confusion that produced the old
   // single "Exitrate" label for two different quantities.
+  // Der Bestand in Geld. Bleibt leer, solange kein Wert je Stueck hinterlegt
+  // ist — "0 €" waere die einzige Aussage, die sicher falsch ist.
+  const capital = tiedUpCapital(totalWipCount, project.piece_value)
+  const capitalLabel = capital !== null ? formatCurrency(capital, project.currency, locale) : KPI_EMPTY
+  const capitalFormula =
+    capital !== null && project.piece_value !== null
+      ? t('tiedUpCapitalFormula', {
+          wip: count(totalWipCount),
+          value: formatCurrency(project.piece_value, project.currency, locale),
+        })
+      : undefined
+
   const leadTimeFormula =
     kpis.departureRatePerDay !== null
       ? t('leadTimeFormula', {
-          wip: totalWipCount,
-          rate: kpis.departureRatePerDay.toFixed(1),
+          wip: count(totalWipCount),
+          rate: num(kpis.departureRatePerDay),
         })
       : undefined
   const taktTimeFormula =
     kpis.demandRatePerDay !== null
       ? t('taktTimeFormula', {
-          minutes: effectiveAvailableMinutes,
-          demand: kpis.demandRatePerDay.toFixed(1),
+          minutes: count(effectiveAvailableMinutes),
+          demand: num(kpis.demandRatePerDay),
         })
       : undefined
   const exitRateFormula =
     kpis.bottleneckCycleTimeMinutes !== null && Number.isFinite(kpis.bottleneckCycleTimeMinutes)
       ? t('exitRateFormula', {
-          minutes: effectiveAvailableMinutes,
-          bottleneck: kpis.bottleneckCycleTimeMinutes.toFixed(2),
+          minutes: count(effectiveAvailableMinutes),
+          bottleneck: num(kpis.bottleneckCycleTimeMinutes, 2),
         })
       : undefined
 
@@ -586,38 +685,76 @@ export default function VSMCanvas({
   // Dieselben Werte wie in den Kacheln oberhalb der Zeichenfläche, nur
   // kompakt. Bewusst aus einer Quelle abgeleitet: Zwei Stellen, die dieselbe
   // Zahl unterschiedlich formatieren, laufen früher oder später auseinander.
+  // Dieselben sechs Werte wie in den Kacheln, in einer Form, die sowohl die
+  // Telefonzeile als auch die Vollbildleiste lesen kann.
+  //
+  // [Bedienbarkeitspruefung 2026-09-03, B5/B6] `term`, `formula` und `tier`
+  // sind neu. Die Telefonzeile zeigte bisher nur Name und Zahl: kein
+  // Erklaerknopf (die 25 Definitionen waren unter `lg` gar nicht erreichbar),
+  // keine Formelzeile ("9,0 Tage" ohne "1.800 Stk WIP ÷ 200,0 Stk/Tag" ist
+  // eine Behauptung) und kein Bewertungschip. Genau die drei Dinge, die aus
+  // einer Zahl ein Argument machen — und genau die fehlten dort, wo ein
+  // Yellow Belt das Werkzeug zuerst aufmacht. Die Vollbildleiste liest
+  // weiterhin nur `label`, `value` und `unit`: im Vortrag steht die Zahl,
+  // nicht ihre Herleitung.
   const fullscreenKpis = useMemo(
     () => [
       {
         label: t('kpiLeadTime'),
-        value: kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY,
+        term: 'leadTime' as const,
+        value: kpis.totalLeadTimeDays !== null ? num(kpis.totalLeadTimeDays) : KPI_EMPTY,
         unit: t('unitDays'),
+        formula: leadTimeFormula,
+        tier: null,
       },
       {
         label: t('kpiPce'),
+        term: 'pce' as const,
         value:
           kpis.valueAddedRatioPercent !== null
-            ? kpis.valueAddedRatioPercent.toFixed(2)
+            ? num(kpis.valueAddedRatioPercent, 2)
             : KPI_EMPTY,
         unit: '%',
+        formula: undefined,
+        tier: ratePce(kpis.valueAddedRatioPercent),
       },
       {
         label: t('kpiTaktTime'),
-        value: kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY,
+        term: 'taktTime' as const,
+        value: kpis.taktTimeMinutes !== null ? num(kpis.taktTimeMinutes) : KPI_EMPTY,
         unit: t('unitMin'),
+        formula: taktTimeFormula,
+        tier: null,
       },
       {
         label: t('kpiExitRate'),
-        value: kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY,
+        term: 'exitRate' as const,
+        value: kpis.exitRatePerDay !== null ? num(kpis.exitRatePerDay) : KPI_EMPTY,
         unit: t('unitPiecesPerDay'),
+        formula: exitRateFormula,
+        tier: rateCapacityCoverage(kpis.capacityCoverage),
       },
       {
         label: t('kpiCycleTimeSum'),
-        value: kpis.totalCycleTimeMinutes.toFixed(1),
+        term: 'cycleTimeSum' as const,
+        value: num(kpis.totalCycleTimeMinutes),
         unit: t('unitMin'),
+        formula: undefined,
+        tier: null,
+      },
+      // Der Betrag traegt seine Einheit schon im Text (465.000 €), deshalb
+      // hier keine zweite daneben. Am Telefon fuellt er ausserdem die sechste
+      // Zelle der Dreierreihe, die bisher leer blieb.
+      {
+        label: t('kpiTiedUpCapital'),
+        term: 'tiedUpCapital' as const,
+        value: capitalLabel,
+        unit: '',
+        formula: capitalFormula,
+        tier: null,
       },
     ],
-    [kpis, t]
+    [kpis, t, num, capitalLabel, leadTimeFormula, taktTimeFormula, exitRateFormula, capitalFormula]
   )
 
   // Die Höhe, in die eingepasst wird: im Seitenfluss die aus dem Inhalt
@@ -644,12 +781,27 @@ export default function VSMCanvas({
   // darunter bleibt zwangsläufig Platz — das Diagramm kann die Höhe gar nicht
   // füllen, ohne seitlich herauszulaufen. Oben angeschlagen sah das aus wie ein
   // halb geladenes Bild; zentriert sieht es aus wie ein Blatt.
+  // [Bedienbarkeitsprüfung 2026-09-03, B3] Passt die Kette nicht ins Fenster,
+  // ist Zentrieren die falsche Wahl: Am Telefon blieben bei 60 % Mindestmassstab
+  // 38 % der Kette uebrig — und zwar die *Mitte*, ohne Lieferant und ohne Kunde.
+  // Wer ein VSM zum ersten Mal sieht, haelt das fuer einen Ladefehler. Ein
+  // Wertstrom wird von links gelesen, also faengt er auch links an; der Rest
+  // wird geschoben. Passt alles hinein, bleibt es mittig wie bisher.
+  const scaledCanvasWidth = canvasWidth * autoFitScale
+  const overflowsHorizontally = scaledCanvasWidth > viewportWidth + 1
   const autoFitPos: Point = {
-    x: (viewportWidth - canvasWidth * autoFitScale) / 2,
+    x: overflowsHorizontally ? 8 : (viewportWidth - scaledCanvasWidth) / 2,
     y: Math.max(16, (stageHeight - canvasHeight * autoFitScale) / 2),
   }
   const stageScale = camera?.scale ?? autoFitScale
   const stagePos = camera?.pos ?? autoFitPos
+
+  // Nur solange die Ansicht noch unberuehrt ist: Wer einmal geschoben oder
+  // gezoomt hat (dann steht `camera`), hat die Antwort schon gefunden. Und
+  // nicht, waehrend unten das Bearbeitungsblatt liegt — dann ist die
+  // Aufmerksamkeit bei der Box, nicht bei der Navigation.
+  const showPanHint =
+    !camera && !selection && overflowsHorizontally && viewportWidth < 500 && !panHintDismissed
 
   function handleFitToView() {
     setCamera(null) // back to automatic — also resumes auto-shrinking as the diagram grows
@@ -776,15 +928,28 @@ export default function VSMCanvas({
       // buildKpiSummaryLines; hier wird nur am ersten ": " in Beschriftung und
       // Wert getrennt. Beide Seiten sind fest formatiert (Begriff bzw. Zahl
       // mit Einheit), ein zweites ": " kann darin nicht vorkommen.
-      const kpiLines = buildKpiSummaryLines(kpis, {
-        cycleTimeSum: t('kpiCycleTimeSum'),
-        leadTime: t('kpiLeadTime'),
-        pce: t('kpiPce'),
-        taktTime: t('kpiTaktTime'),
-        unitMin: t('unitMin'),
-        unitDays: t('unitDays'),
-        unitPercent: t('unitPercent'),
-      })
+      const kpiLines = buildKpiSummaryLines(
+        {
+          ...kpis,
+          // Intl setzt zwischen Betrag und Waehrungszeichen ein geschuetztes
+          // Leerzeichen (U+00A0). Auf dem Bildschirm ist das richtig, im PDF
+          // haengt es von der Schrift ab, ob daraus ein Leerzeichen oder ein
+          // Kaestchen wird — auf dem Blatt, das ins Gremium geht, ist ein
+          // Kaestchen keine Option.
+          tiedUpCapital: capital !== null ? capitalLabel.replace(/\u00a0/g, ' ') : null,
+        },
+        {
+          cycleTimeSum: t('kpiCycleTimeSum'),
+          leadTime: t('kpiLeadTime'),
+          pce: t('kpiPce'),
+          taktTime: t('kpiTaktTime'),
+          tiedUpCapital: t('kpiTiedUpCapital'),
+          unitMin: t('unitMin'),
+          unitDays: t('unitDays'),
+          unitPercent: t('unitPercent'),
+        },
+        locale
+      )
       const columnWidth = availableWidth / kpiLines.length
       const kpiY = imgY + imgHeight + 30
       kpiLines.forEach((line, i) => {
@@ -842,22 +1007,149 @@ export default function VSMCanvas({
       }
 
       // --- Fusszeile ------------------------------------------------------
-      const footerY = pageHeight - margin
-      pdf.setDrawColor(212, 212, 216)
-      pdf.line(margin, footerY - 14, pageWidth - margin, footerY - 14)
-      pdf.setFontSize(8)
-      pdf.setTextColor(82, 82, 91)
-      // buildPdfFooterLine() stand frueher hier und formatierte dd.mm.yyyy
-      // fest. Sowohl das Datumsformat als auch der Satz haengen an der
-      // Sprache, deshalb beides ueber Intl bzw. den Pdf-Namensraum.
-      pdf.text(
-        tPdf('footer', {
-          date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date()),
-        }),
-        margin,
-        footerY
-      )
-      pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
+      // Als Funktion, weil das Blatt seit dem Szenarienvergleich zwei Seiten
+      // haben kann und beide dieselbe Fusszeile brauchen — ein Ausdruck, bei
+      // dem die zweite Seite weder Datum noch Projektnamen traegt, ist im
+      // Gremium ein loses Blatt ohne Herkunft.
+      const drawFooter = () => {
+        const footerY = pageHeight - margin
+        pdf.setDrawColor(212, 212, 216)
+        pdf.setLineWidth(0.5)
+        pdf.line(margin, footerY - 14, pageWidth - margin, footerY - 14)
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        // buildPdfFooterLine() stand frueher hier und formatierte dd.mm.yyyy
+        // fest. Sowohl das Datumsformat als auch der Satz haengen an der
+        // Sprache, deshalb beides ueber Intl bzw. den Pdf-Namensraum.
+        pdf.text(
+          tPdf('footer', {
+            date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date()),
+          }),
+          margin,
+          footerY
+        )
+        pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
+      }
+      drawFooter()
+
+      // --- Seite 2: Szenarienvergleich -------------------------------------
+      // [Bedienbarkeitspruefung 2026-09-03, B16] Nur wenn es etwas zu
+      // vergleichen gibt. Ein Blatt mit einer einzigen Spalte "Ist-Zustand"
+      // wiederholte bloss die Kennzahlen von Seite eins.
+      //
+      // Der gerade offene Zustand kommt aus dem lokalen Zustand des Editors,
+      // nicht aus der Momentaufnahme des Servers: Sonst zeigte Seite 1 die
+      // eben getippte Zykluszeit und Seite 2 daneben die vorherige. Die
+      // uebrigen Szenarien liegen unveraendert auf dem Server.
+      if (comparisonStates.length > 1) {
+        const states: ComparisonState[] = comparisonStates.map((state) =>
+          state.id === scenarioId
+            ? {
+                ...state,
+                processes: processes.map((p) => ({
+                  cycleTime: p.cycle_time,
+                  operatorCount: p.operator_count,
+                  oee: p.oee,
+                  wip: p.wip ?? undefined,
+                })),
+                buffers: buffers.map((b) => ({ wipCount: b.wip_count })),
+              }
+            : state
+        )
+        // Dieselben beiden Projektgroessen wie Seite 1 (siehe `kpis` oben) —
+        // sonst nennen die zwei Seiten desselben Blatts fuer denselben
+        // Ist-Zustand verschiedene Taktzeiten.
+        const comparisonRows = buildComparisonRows(
+          states,
+          liveAnnualThroughput,
+          liveAvailableMinutes
+        )
+        const metrics = buildComparisonMetrics(
+          comparisonRows,
+          {
+            processes: tCompare('processes'),
+            cycleTimeSum: t('kpiCycleTimeSum'),
+            leadTime: t('kpiLeadTime'),
+            pce: t('kpiPce'),
+            taktTime: t('kpiTaktTime'),
+            tiedUpCapital: tCompare('tiedUpCapital'),
+            releasedCapital: tCompare('releasedCapital'),
+            unitMin: t('unitMin'),
+            unitDays: t('unitDays'),
+            unitPercent: t('unitPercent'),
+          },
+          {
+            num,
+            // Dasselbe geschuetzte Leerzeichen wie oben: im PDF wuerde daraus
+            // je nach Schrift ein Kaestchen.
+            money: (value) =>
+              formatCurrency(value, project.currency, locale).replace(/\u00a0/g, ' '),
+          },
+          project.piece_value
+        )
+
+        pdf.addPage()
+
+        pdf.setFontSize(7.5)
+        pdf.setTextColor(15, 90, 82)
+        pdf.text('VSM BUILDER', margin, margin)
+
+        pdf.setFontSize(15)
+        pdf.setTextColor(24, 24, 27)
+        pdf.text(buildPdfTitle(project.name, tPdf('documentTitle')), margin, margin + 18)
+
+        pdf.setFontSize(9.5)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(tPdf('comparisonSubtitle'), margin, margin + 32)
+
+        pdf.setDrawColor(212, 212, 216)
+        pdf.setLineWidth(0.5)
+        pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
+
+        // Erste Spalte breiter: Dort stehen ganze Begriffe ("Gebundenes
+        // Kapital"), in den uebrigen nur Zahlen mit Einheit.
+        const tableWidth = pageWidth - margin * 2
+        const labelWidth = Math.min(190, tableWidth / 3)
+        const valueWidth = (tableWidth - labelWidth) / comparisonRows.length
+        const rowHeight = 26
+        let rowY = margin + headerSpace + 14
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(82, 82, 91)
+        pdf.text(tCompare('metric'), margin, rowY)
+        pdf.setFontSize(9)
+        pdf.setTextColor(24, 24, 27)
+        comparisonRows.forEach((row, i) => {
+          // Ein Szenarioname kann beliebig lang sein; abgeschnitten waere er
+          // im Gremium nicht mehr zuzuordnen, also umbrechen und nur die
+          // erste Zeile setzen — die Spaltenbreite steht fest.
+          const [first] = pdf.splitTextToSize(row.label, valueWidth - 8)
+          pdf.text(first, margin + labelWidth + valueWidth * i, rowY)
+        })
+        rowY += 8
+        pdf.setDrawColor(212, 212, 216)
+        pdf.line(margin, rowY, pageWidth - margin, rowY)
+        rowY += rowHeight - 8
+
+        for (const metric of metrics) {
+          pdf.setFontSize(9)
+          pdf.setTextColor(82, 82, 91)
+          pdf.text(metric.label, margin, rowY)
+          pdf.setTextColor(24, 24, 27)
+          metric.values.forEach((value, i) => {
+            pdf.text(value, margin + labelWidth + valueWidth * i, rowY)
+          })
+          pdf.setDrawColor(228, 228, 231) // zinc-200, heller als die Kopflinie
+          pdf.line(margin, rowY + 8, pageWidth - margin, rowY + 8)
+          rowY += rowHeight
+        }
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(113, 113, 122) // zinc-500
+        pdf.text(tPdf('comparisonNote'), margin, rowY + 6)
+
+        drawFooter()
+      }
 
       pdf.save(`${project.name || 'vsm'}.pdf`)
     } finally {
@@ -1038,9 +1330,9 @@ export default function VSMCanvas({
         y: ladderHighY,
         label:
           days !== null
-            ? `${days.toFixed(1)} ${tCanvas('daysUnit')}`
+            ? `${num(days)} ${tCanvas('daysUnit')}`
             : buffer
-              ? `${buffer.wip_count} ${tCanvas('piecesUnit')}`
+              ? `${count(buffer.wip_count)} ${tCanvas('piecesUnit')}`
               : '0',
         kind: 'wait',
       })
@@ -1119,12 +1411,18 @@ export default function VSMCanvas({
   }
 
   // Aendert eine Aenderung nur Felder bestehender Zeilen, dann steht die
-  // Wahrheit nach dem Schreiben genau da, wo sie hier schon steht — ein
-  // router.refresh() im Erfolgsfall wuerde denselben Zustand noch einmal ueber
-  // die Leitung holen und dabei eine zwischenzeitlich getippte zweite
-  // Aenderung kurz zurueckwerfen. Deshalb hier nur noch im Fehlerfall: Dann
-  // gilt der eigene Zustand nicht mehr, und der Server sagt, was wirklich
-  // gespeichert ist.
+  // Wahrheit nach dem Schreiben genau da, wo sie hier schon steht. Deshalb
+  // hier kein router.refresh() im Erfolgsfall, sondern nur im Fehlerfall:
+  // Dann gilt der eigene Zustand nicht mehr, und der Server sagt, was
+  // wirklich gespeichert ist.
+  //
+  // [Code-Review 2026-09-04] Was das *nicht* heisst: dass danach nichts mehr
+  // vom Server kommt. Jede der siebzehn Actions ruft revalidatePath, und die
+  // Antwort darauf bringt neue Props mit — der Abgleich beim Zeichnen (siehe
+  // `syncedFrom` oben) uebernimmt sie. Der eigene Zustand ueberlebt das, weil
+  // die Antwort dasselbe enthaelt, was hier schon steht. Was das Weglassen
+  // von refresh() spart, ist also nicht der Abgleich, sondern ein zweiter
+  // Weg nach Frankfurt fuer denselben Inhalt.
   function handleThroughputBlur() {
     setError(null)
     mutate((s) => vsmOperations.updateAnnualThroughput(s, liveAnnualThroughput ?? null))
@@ -1156,6 +1454,42 @@ export default function VSMCanvas({
     })
   }
 
+  function handlePieceValueBlur() {
+    const trimmed = pieceValueInput.trim()
+    const parsed = trimmed === '' ? null : Number(trimmed)
+    // Leer heisst "nicht hinterlegt" und loescht den Wert; eine unbrauchbare
+    // Eingabe laesst den gespeicherten stehen, statt ihn zu verwerfen.
+    if (parsed !== null && (Number.isNaN(parsed) || parsed < 0)) return
+
+    setError(null)
+    mutate((s) => vsmOperations.updatePieceValue(s, parsed))
+    if (isDemo) return
+
+    startTransition(async () => {
+      try {
+        await updatePieceValue(project.id, parsed)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
+      }
+    })
+  }
+
+  function handleCurrencyChange(currency: string) {
+    setError(null)
+    mutate((s) => vsmOperations.updateCurrency(s, currency))
+    if (isDemo) return
+
+    startTransition(async () => {
+      try {
+        await updateCurrency(project.id, currency)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
+      }
+    })
+  }
+
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1169,7 +1503,7 @@ export default function VSMCanvas({
           await importProcessesCsv(project.id, scenarioId, text)
           router.refresh()
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'CSV-Import fehlgeschlagen.')
+          setError(err instanceof Error ? err.message : t('errorCsvImport'))
         }
       })
     }
@@ -1183,15 +1517,28 @@ export default function VSMCanvas({
     const newOrder = moveInOrder(chainOrder, processId, direction)
     if (newOrder === chainOrder) return // already at that end, nothing to do
 
+    // [Code-Review 2026-09-04] Die Server-Action haengt die Pufferzeilen an
+    // der *ganzen* Reihenfolge um, nicht nur an der bewegten Box. Steht darin
+    // noch ein Platzhalter (`process-neu-1`) eines gerade angelegten
+    // Prozesses, landet er in einer uuid-Spalte und Postgres bricht mit 22P02
+    // ab — die Box selbst ist ueber isAwaitingServerId geschuetzt, ihre
+    // Nachbarn waren es nicht. Das Fenster ist kurz (ein Aufruf nach
+    // Frankfurt), aber es reicht fuer den zweiten Klick. Solange darin ein
+    // Platzhalter steht, passiert gar nichts: Ein halb umgehaengter
+    // Wertstrom waere schlimmer als eine Bewegung, die man gleich noch
+    // einmal machen muss.
+    if (newOrder.some((id) => isAwaitingServerId(id))) return
+
     setError(null)
     mutate((s) => vsmOperations.reorderProcesses(s, newOrder))
     if (isDemo) return
 
     // Die Kette umzuhaengen ist die Bewegung, auf die vorher am laengsten
     // gewartet wurde — und die, die man mehrmals hintereinander klickt, um
-    // eine Box zwei Plaetze weiter zu schieben. Genau dafuer darf hier kein
-    // refresh() im Erfolgsfall stehen: Die Antwort auf den ersten Klick wuerde
-    // sonst den zweiten kurz zuruecknehmen.
+    // eine Box zwei Plaetze weiter zu schieben. Deshalb hier kein zusaetzliches
+    // refresh() im Erfolgsfall; siehe die Anmerkung bei handleThroughputBlur,
+    // warum das den Abgleich mit dem Server nicht abschaltet, sondern nur
+    // einen zweiten Aufruf dafuer spart.
     startTransition(async () => {
       try {
         await reorderProcesses(project.id, scenarioId, newOrder)
@@ -1268,6 +1615,39 @@ export default function VSMCanvas({
               className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
             />
           </div>
+          {/* Der eine fehlende Faktor: Ohne ihn bleibt der Bestand eine
+              Stueckzahl, mit ihm wird er zu Geld, das im Regal liegt. Steht
+              bewusst neben Jahresbedarf und Schichtzeit — es ist dieselbe Art
+              Angabe: eine Eigenschaft des Projekts, die die Kennzahlen
+              darueber speist. */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="piece-value" className="text-sm text-zinc-600">
+              <TermTooltip term="pieceValue">{t('pieceValueLabel')}</TermTooltip>
+            </label>
+            <input
+              id="piece-value"
+              type="number"
+              min={0}
+              step="0.01"
+              value={pieceValueInput}
+              onChange={(e) => setPieceValueInput(e.target.value)}
+              onBlur={handlePieceValueBlur}
+              placeholder={t('pieceValuePlaceholder')}
+              className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+            <select
+              aria-label={t('currencyLabel')}
+              value={project.currency}
+              onChange={(e) => handleCurrencyChange(e.target.value)}
+              className="rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            >
+              {SUPPORTED_CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {error && (
@@ -1290,10 +1670,23 @@ export default function VSMCanvas({
             sind am Telefon reine Flaeche". Zwei Zeilen durch drei Spalten bei
             fuenf Eintraegen. Nur unter `lg`: dort ersetzt sie die Kacheln,
             die im Diagramm-Block selbst ab `lg` erst erscheinen. */}
-        <div className="order-2 grid grid-cols-3 gap-x-3 gap-y-3 py-3 lg:hidden">
+        {/* [Bedienbarkeitspruefung 2026-09-03, B5/B6] Aus drei Spalten sind
+            zwei geworden. Drei liessen fuer Name, Zahl, Formel und Chip
+            zusammen keine 110 px — die Formelzeile waere dort zu einem
+            vierzeiligen Rest gebrochen. Zwei Spalten kosten drei Zeilen mehr
+            Hoehe und geben jeder Kennzahl das, was sie belegt. */}
+        <div className="order-2 grid grid-cols-2 gap-x-4 gap-y-4 py-3 lg:hidden">
           {fullscreenKpis.map((kpi) => (
             <div key={kpi.label} className="min-w-0">
-              <div className="truncate text-xs text-zinc-500">{kpi.label}</div>
+              {/* [Bedienbarkeitsprüfung 2026-09-03, B5] Vorher `truncate`:
+                  "Wertschöpfungsanteil" wurde zu "Wertschöpfungsa…" und
+                  "Gebundenes Kapital" zu "Gebundenes Kapi…" — der Name einer
+                  Kennzahl ist aber keine Nebensache, sondern das, was sie
+                  erklaert. Zwei Zeilen Platz mit fester Hoehe, damit die
+                  Zahlen darunter trotzdem auf einer Linie stehen. */}
+              <div className="min-h-[2.4em] text-xs leading-tight text-zinc-500">
+                <TermTooltip term={kpi.term}>{kpi.label}</TermTooltip>
+              </div>
               <div className="mt-0.5 flex items-baseline gap-1">
                 <span className="text-base font-semibold tabular-nums text-zinc-950">
                   {kpi.value}
@@ -1302,6 +1695,16 @@ export default function VSMCanvas({
                   <span className="text-xs text-zinc-500">{kpi.unit}</span>
                 )}
               </div>
+              {kpi.tier && (
+                <div className="mt-1">
+                  <TierChip tier={kpi.tier} />
+                </div>
+              )}
+              {kpi.formula && (
+                <div className="mt-1 text-[0.6875rem] leading-snug tabular-nums text-zinc-600">
+                  {kpi.formula}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1313,7 +1716,14 @@ export default function VSMCanvas({
               stehen, wenn man laengst beim Austaktungsdiagramm liest — 271 px
               Zahlen, auf die gerade niemand schaut. So loest sie sich genau dann,
               wenn das Diagramm den Bildschirm verlaesst. */}
-          <div>
+          {/* [Bedienbarkeitspruefung 2026-09-03, B15] `flex flex-col` allein
+              wegen der Reihenfolge darin: Am Telefon stand die Werkzeugleiste
+              ueber dem Diagramm, und der erste Bildschirm eines Besuchers
+              zeigte "PDF exportieren" — von etwas, das er noch nicht gesehen
+              hatte. Unter `lg` kommt jetzt erst der Wertstrom, dann die
+              Werkzeuge dazu. Ab `lg` bleibt die alte Reihenfolge: dort klebt
+              die Leiste oben und muss ueber dem stehen, woran sie haengt. */}
+          <div className="flex flex-col">
         {/* [Design-Audit 2026-08-31, Befund 06] Die Kennzahlen standen ueber
             dem Diagramm und scrollten mit ihm weg: Wer eine Zykluszeit aenderte,
             sah nie gleichzeitig den Prozess und die Zahl, die sich dadurch
@@ -1324,18 +1734,18 @@ export default function VSMCanvas({
             Erst ab `lg` — auf einem Telefon waeren 180 px klebende Leiste die
             Haelfte des Bildes, und dort scrollt man ohnehin ein Stueck nach dem
             anderen statt beides nebeneinander zu halten. */}
-        <div className="bg-zinc-50 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
+        <div className="order-2 bg-zinc-50 lg:order-1 lg:sticky lg:top-0 lg:z-20 lg:pt-4">
           {/* Live KPI bar — ab lg; darunter zeigt die kompakte Telefon-
               Kennzahlenzeile weiter oben dieselben Werte (Befund P2). */}
-          <div className="hidden gap-3 lg:grid lg:grid-cols-5">
+          <div className="hidden gap-3 lg:grid lg:grid-cols-6">
             <KpiTile
               label={<TermTooltip term="cycleTimeSum">{t('kpiCycleTimeSum')}</TermTooltip>}
-              value={kpis.totalCycleTimeMinutes.toFixed(1)}
+              value={num(kpis.totalCycleTimeMinutes)}
               unit={t('unitMin')}
             />
             <KpiTile
               label={<TermTooltip term="leadTime">{t('kpiLeadTime')}</TermTooltip>}
-              value={kpis.totalLeadTimeDays !== null ? kpis.totalLeadTimeDays.toFixed(1) : KPI_EMPTY}
+              value={kpis.totalLeadTimeDays !== null ? num(kpis.totalLeadTimeDays) : KPI_EMPTY}
               unit={t('unitDays')}
               formula={leadTimeFormula}
             />
@@ -1344,23 +1754,33 @@ export default function VSMCanvas({
               tier={ratePce(kpis.valueAddedRatioPercent)}
               value={
                 kpis.valueAddedRatioPercent !== null
-                  ? kpis.valueAddedRatioPercent.toFixed(2)
+                  ? num(kpis.valueAddedRatioPercent, 2)
                   : KPI_EMPTY
               }
               unit={t('unitPercent')}
             />
             <KpiTile
               label={<TermTooltip term="taktTime">{t('kpiTaktTime')}</TermTooltip>}
-              value={kpis.taktTimeMinutes !== null ? kpis.taktTimeMinutes.toFixed(1) : KPI_EMPTY}
+              value={kpis.taktTimeMinutes !== null ? num(kpis.taktTimeMinutes) : KPI_EMPTY}
               unit={t('unitMin')}
               formula={taktTimeFormula}
             />
             <KpiTile
               label={<TermTooltip term="exitRate">{t('kpiExitRate')}</TermTooltip>}
-              value={kpis.exitRatePerDay !== null ? kpis.exitRatePerDay.toFixed(1) : KPI_EMPTY}
+              value={kpis.exitRatePerDay !== null ? num(kpis.exitRatePerDay) : KPI_EMPTY}
               unit={t('unitPiecesPerDay')}
               formula={exitRateFormula}
               tier={rateCapacityCoverage(kpis.capacityCoverage)}
+            />
+            {/* Die einzige Kachel, die nicht in Minuten oder Stueck rechnet.
+                Sie steht am Ende der Reihe, weil sie aus dem Bestand folgt —
+                und sie ist die einzige, die jemand ohne Lean-Ausbildung sofort
+                versteht. Ohne hinterlegten Stueckwert bleibt sie leer und
+                erklaert sich ueber den Begriff daneben. */}
+            <KpiTile
+              label={<TermTooltip term="tiedUpCapital">{t('kpiTiedUpCapital')}</TermTooltip>}
+              value={capitalLabel}
+              formula={capitalFormula}
             />
           </div>
 
@@ -1374,7 +1794,9 @@ export default function VSMCanvas({
               hat. Das war die Hauptursache fuer "man verscrollt sich schnell":
               drei Bewegungsraeume (Seite, Diagramm, Zoom) ohne einen einzigen
               festen Bezugspunkt. */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 py-3">
+          {/* Unter `lg` steht die Leiste unter dem Diagramm, die Trennlinie
+              gehoert dann nach oben. */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 py-3 lg:mt-4 lg:border-b lg:border-t-0">
             {/* Der Hinweis gilt nur für Maus und Trackpad — auf dem Telefon ist er
                 nicht nur nutzlos, er drängt auch die Knöpfe daneben aus dem Bild. */}
             <p
@@ -1382,7 +1804,7 @@ export default function VSMCanvas({
                 showZoomHint ? 'opacity-100' : 'opacity-0'
               }`}
             >
-              Strg/Cmd + Mausrad zum Zoomen
+              {t('zoomHint')}
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
@@ -1465,7 +1887,7 @@ export default function VSMCanvas({
           className={
             isFullscreen
               ? 'fixed inset-0 z-50 overflow-hidden bg-white'
-              : 'relative mt-2 overflow-hidden rounded-surface border border-zinc-200'
+              : 'relative order-1 mt-2 overflow-hidden rounded-surface border border-zinc-200 lg:order-2'
           }
           // [Live-Test 2026-08-16, Smartphone] Die Stage steht auf `draggable`,
           // und Konva greift damit auch Wischgesten mit dem Finger ab: wer den
@@ -1537,6 +1959,15 @@ export default function VSMCanvas({
           >
             {t('fitViewLabel')}
           </button>
+          {showPanHint && (
+            <button
+              type="button"
+              onClick={() => setPanHintDismissed(true)}
+              className="absolute inset-x-3 bottom-3 z-10 rounded-control bg-zinc-900/85 px-3 py-2 text-left text-xs font-medium leading-snug text-white shadow-sm backdrop-blur"
+            >
+              {t('panHint')}
+            </button>
+          )}
           <Stage
             ref={stageRef}
             width={viewportWidth}
@@ -1841,10 +2272,45 @@ export default function VSMCanvas({
       </div>
       </div>
 
+      {/* [Bedienbarkeitsprüfung 2026-09-03, B8] Hier stand ein Halbsatz:
+          "Noch keine Prozesse. Leg unten den ersten an." Damit steht ein Yellow
+          Belt vor der eigentlichen Frage — welche Zahlen erhebe ich an der
+          Linie, in welcher Reihenfolge, und woher kommt OEE? Genau an dieser
+          Stelle entscheidet sich, ob das Werkzeug benutzt oder wieder
+          geschlossen wird. Die drei Schritte sind die Reihenfolge, in der die
+          Kennzahlen ueberhaupt entstehen koennen: ohne Prozesse keine
+          Bearbeitungszeit, ohne Bestaende keine Durchlaufzeit, ohne
+          Kundenbedarf keine Taktzeit. */}
       {processes.length === 0 && (
-        <p className="mt-2 text-sm text-zinc-500">
-          {t('noProcessesYet')}
-        </p>
+        <div className="mt-4 rounded-surface border border-zinc-200 bg-white p-5">
+          <h2 className="text-base font-semibold text-zinc-950">{t('emptyTitle')}</h2>
+          <ol className="mt-4 grid gap-4 sm:grid-cols-3">
+            {[1, 2, 3].map((step) => (
+              <li key={step} className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-semibold tabular-nums text-brand-600">{step}</span>
+                  <h3 className="text-sm font-semibold text-zinc-950">
+                    {t(`emptyStep${step}Title` as 'emptyStep1Title')}
+                  </h3>
+                </div>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-600">
+                  {t(`emptyStep${step}Body` as 'emptyStep1Body')}
+                </p>
+              </li>
+            ))}
+          </ol>
+          {/* Der Bogen ist das, was tatsaechlich mit an die Linie geht — dort
+              steht kein Telefon in der Hand, sondern ein Blatt auf dem Klemmbrett. */}
+          <div className="mt-5 border-t border-zinc-200 pt-4">
+            <Link
+              href="/data-sheet"
+              className="text-sm font-medium text-brand-600 hover:underline"
+            >
+              {t('emptySheetLink')}
+            </Link>
+            <p className="mt-1 text-xs text-zinc-500">{t('emptySheetHint')}</p>
+          </div>
+        </div>
       )}
 
       {selectedProcess && (
@@ -2031,6 +2497,31 @@ function bufferIdentity(buffers: Buffer[], fromProcessId: string | null, toProce
   }
 }
 
+/**
+ * Die Huelle der drei Bearbeitungsfelder.
+ *
+ * [Bedienbarkeitsprüfung 2026-09-03, B1/B2] Im Seitenfluss stand das Feld
+ * unter der Zeichenflaeche — am Telefon begann es 202 px unterhalb des
+ * Sichtfelds. Wer eine Prozessbox antippte, sah nur einen Rahmen aufleuchten
+ * und hielt das Werkzeug fuer kaputt; und wer die Reihenfolge ueber ←/→
+ * aenderte, hatte vom Diagramm noch 59 seiner 320 px im Bild, also gerade den
+ * ERP-Kasten. Beides derselbe Grund: Bedienfeld und Diagramm passen
+ * untereinander nicht auf einen Telefonbildschirm.
+ *
+ * Bis `lg` liegt das Feld deshalb als Blatt ueber dem unteren Rand und nimmt
+ * hoechstens 55 % der Hoehe ein. Darueber bleibt Platz fuer die
+ * Zeichenflaeche, die bei jeder Auswahl an den oberen Rand geholt wird (siehe
+ * useEffect in VSMCanvas). Ab `lg` ist alles wie zuvor: ein Kasten im
+ * Seitenfluss, denn dort war nie etwas kaputt.
+ *
+ * z-50 statt z-40: Im Vollbild liegt die Zeichenflaeche selbst auf z-50 und
+ * verdeckte das Feld bisher vollstaendig. Da das Blatt spaeter im Baum steht,
+ * gewinnt es bei gleichem Wert — Bearbeiten im Vollbild geht damit ueberhaupt
+ * erst.
+ */
+const editPanelShell =
+  'fixed inset-x-0 bottom-0 z-50 max-h-[55vh] overflow-y-auto rounded-t-surface border border-brand-600 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl lg:static lg:mt-4 lg:max-h-none lg:overflow-visible lg:rounded-surface lg:pb-4 lg:shadow-none'
+
 // Die Werkzeugleiste im Editor ist die Reihe, die ein Moderator im Workshop
 // am Trackpad trifft — deshalb durchgaengig die grosse Groesse (44 px). Die
 // Formen selbst kommen aus components/ui/buttons, damit es keine zweite
@@ -2143,6 +2634,7 @@ function ProcessEditPanel({
 }) {
   const router = useRouter()
   const { mutate, isDemo } = useVsmMutationRequired()
+  const locale = useLocale()
   const [, startTransition] = useTransition()
   const [name, setName] = useState(process.name)
   const [cycleTime, setCycleTime] = useState(String(process.cycle_time))
@@ -2187,7 +2679,7 @@ function ProcessEditPanel({
 
   function processLabel(id: string | null): string {
     if (id === null) return '—'
-    return allProcesses.find((p) => p.id === id)?.name ?? '(unbekannt)'
+    return allProcesses.find((p) => p.id === id)?.name ?? t('unknownProcess')
   }
 
   // Candidates for a new predecessor: any other process not already a
@@ -2342,6 +2834,27 @@ function ProcessEditPanel({
     onClose()
     if (isDemo) return
 
+    // [Code-Review 2026-09-04] Zwei Gruende, hier nachzusehen, statt einfach
+    // zu schreiben:
+    //
+    // Erstens sucht setBufferWip die Zeile ueber `from_process_id` und
+    // `to_process_id`. Wartet ein *Nachbar* noch auf seine Id aus der
+    // Datenbank, geht ein `process-neu-1` in eine uuid-Spalte und Postgres
+    // bricht mit 22P02 ab — nachdem updateProcess bereits geschrieben hat.
+    // Ein halb gespeicherter Prozess ist schlimmer als ein nicht
+    // gespeicherter Bestand, also bleibt diese eine Kante ungeschrieben.
+    //
+    // Zweitens legt setBufferWip die Zeile an, wenn es keine gibt (nach einem
+    // CSV-Import haben die Prozesse keine Kanten). Die Id dafuer vergibt die
+    // Datenbank; lokal steht dann ein `buffer-neu-1`, und daran haengen die
+    // Knoepfe "Verbindung trennen", die auf Platzhalter abgeschaltet sind.
+    // Ohne Nachladen blieben sie es fuer immer.
+    const skipBefore = awaitingServerId(isDemo, prevProcessId)
+    const skipAfter = awaitingServerId(isDemo, nextProcessId)
+    const createsEdge =
+      findBuffer(buffers, prevProcessId, process.id) === undefined ||
+      findBuffer(buffers, process.id, nextProcessId) === undefined
+
     startTransition(async () => {
       try {
         await updateProcess(projectId, process.id, {
@@ -2353,8 +2866,18 @@ function ProcessEditPanel({
           isPacemaker,
           classification: classification || null,
         })
-        await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
-        await setBufferWip(projectId, scenarioId, { ...afterBuffer, wipCount: afterNum })
+        if (!skipBefore) {
+          await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
+        }
+        if (!skipAfter) {
+          await setBufferWip(projectId, scenarioId, { ...afterBuffer, wipCount: afterNum })
+        }
+        // Nur in diesen beiden Faellen: Beim uebersprungenen Bestand zeigt
+        // das Diagramm sonst eine Zahl, die nirgends steht, und bei einer neu
+        // angelegten Kante blieben die Knoepfe daran dauerhaft abgeschaltet.
+        // Der haeufige Fall — Zykluszeit aendern, Kanten sind laengst da —
+        // laedt weiterhin nicht nach.
+        if (skipBefore || skipAfter || createsEdge) router.refresh()
       } catch (err) {
         // Das Panel ist hier bereits geschlossen, seine eigene Fehlerzeile
         // also nicht mehr sichtbar. Die Meldung gehoert deshalb in das Banner
@@ -2386,7 +2909,7 @@ function ProcessEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 rounded-surface border border-brand-600 bg-white p-4"
+      className={editPanelShell}
     >
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-zinc-950">{t('editProcess')}</h2>
@@ -2433,7 +2956,7 @@ function ProcessEditPanel({
             disabled={process.lane <= 0}
             className={secondaryButtonClass}
             aria-label={t('laneUpTitle')}
-            title="Spur höher"
+            title={t('laneUp')}
           >
             ↑
           </button>
@@ -2448,7 +2971,7 @@ function ProcessEditPanel({
           </button>
         </div>
         {process.lane > 0 && (
-          <span className="text-xs text-zinc-500">Spur {process.lane + 1}</span>
+          <span className="text-xs text-zinc-500">{t('laneNumber', { lane: process.lane + 1 })}</span>
         )}
       </div>
 
@@ -2494,8 +3017,9 @@ function ProcessEditPanel({
           />
           {liveEffectiveCycleTime !== null && (
             <p className="mt-1 text-xs text-zinc-500">
-              eff. Zykluszeit: {liveEffectiveCycleTime.toFixed(1)} min (fliesst in Bearbeitungszeit/Kapazitäts-Check
-              ein — die Zykluszeit selbst bleibt unverändert)
+              {t('effectiveCycleTime', {
+                value: formatDecimal(liveEffectiveCycleTime, locale),
+              })}
             </p>
           )}
         </div>
@@ -2759,7 +3283,7 @@ function BufferEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-surface border border-brand-600 bg-white p-4"
+      className={`${editPanelShell} flex flex-wrap items-end gap-3`}
     >
       <h2 className="text-sm font-semibold text-zinc-950">
         <TermTooltip term="wip">{t('wipLabel')}</TermTooltip>
@@ -2905,12 +3429,12 @@ function AnchorEditPanel({
   return (
     <form
       onSubmit={handleSave}
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-surface border border-brand-600 bg-white p-4"
+      className={`${editPanelShell} flex flex-wrap items-end gap-3`}
     >
-      <h2 className="text-sm font-semibold text-zinc-950">{title} bearbeiten</h2>
+      <h2 className="text-sm font-semibold text-zinc-950">{t('editAnchor', { title })}</h2>
       <div>
         <label htmlFor="anchor-label" className="block text-xs font-medium text-zinc-600">
-          Bezeichnung
+          {t('anchorLabelField')}
         </label>
         <input
           id="anchor-label"
@@ -2951,6 +3475,10 @@ function ProcessBox({
   onSelect: () => void
 }) {
   const tCanvas = useTranslations('Canvas')
+  const locale = useLocale()
+  // Eingetippte Werte behalten ihre Genauigkeit, bekommen aber das
+  // Dezimalzeichen der Sprache: 0,75 statt 0.75 in der Prozessbox.
+  const plain = (value: number) => formatPlain(value, locale)
   const boxStroke = isSelected ? ACCENT : isBottleneck ? BOTTLENECK : INK
   return (
     <Group
@@ -3020,11 +3548,17 @@ function ProcessBox({
       />
       <Rect x={10} y={34} width={PROCESS_WIDTH - 20} height={1} fill="#d4d4d8" />
       <Text
-        text={`C/T: ${process.cycle_time} min${
+        text={`C/T: ${plain(process.cycle_time)} min${
           process.operator_count > 1
-            ? ` (eff. ${effectiveCycleTime({ cycleTime: process.cycle_time, operatorCount: process.operator_count }).toFixed(1)})`
+            ? ` (eff. ${formatDecimal(
+                effectiveCycleTime({
+                  cycleTime: process.cycle_time,
+                  operatorCount: process.operator_count,
+                }),
+                locale
+              )})`
             : ''
-        }\nC/O: ${process.changeover_time} min\nOEE: ${process.oee}%`}
+        }\nC/O: ${plain(process.changeover_time)} min\nOEE: ${plain(process.oee)}%`}
         width={PROCESS_WIDTH}
         align="center"
         y={39}
@@ -3151,10 +3685,10 @@ function BufferMarker({
           Konva die Flaeche ueberhaupt in den Hit-Test aufnimmt — ein Rect
           ganz ohne Fill wird nicht getroffen. */}
       <Rect
-        x={-BUFFER_HIT_PADDING}
-        y={-BUFFER_HIT_PADDING}
-        width={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
-        height={BUFFER_SIZE + BUFFER_HIT_PADDING * 2}
+        x={-HIT_PADDING}
+        y={-HIT_PADDING}
+        width={BUFFER_SIZE + HIT_PADDING * 2}
+        height={BUFFER_SIZE + HIT_PADDING * 2}
         fill="transparent"
       />
       {bufferType === 'supermarket' ? (
@@ -3315,6 +3849,17 @@ function CloudShape({
         if (stage) stage.container().style.cursor = 'default'
       }}
     >
+      {/* Unsichtbares Ziel, groesser als die gezeichnete Wolke — dieselbe
+          Randzone wie beim Bestandsdreieck, und aus demselben Grund. Ohne
+          `fill="transparent"` nimmt Konva die Flaeche nicht in den Hit-Test
+          auf; ein Rect ganz ohne Fill wird nicht getroffen. */}
+      <Rect
+        x={-HIT_PADDING}
+        y={-HIT_PADDING}
+        width={CLOUD_SIZE + HIT_PADDING * 2}
+        height={CLOUD_SIZE * 0.75 + HIT_PADDING * 2}
+        fill="transparent"
+      />
       <Rect
         width={CLOUD_SIZE}
         height={CLOUD_SIZE * 0.75}
@@ -3501,6 +4046,7 @@ function LadderSummary({
   valueAddMinutes: number
 }) {
   const tCanvas = useTranslations('Canvas')
+  const locale = useLocale()
   const width = 84
   // Fixed screen-pixel height now that this box no longer scales with the
   // canvas — no longer tied to the ladder step height (yBottom - yTop),
@@ -3512,7 +4058,9 @@ function LadderSummary({
       <Rect width={width} height={height} stroke={INK} strokeWidth={1.5} fill="#ffffff" />
       <Text text={tCanvas('leadTimeAbbr')} x={0} y={5} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
-        text={leadTimeDays !== null ? `${leadTimeDays.toFixed(1)} ${tCanvas('daysUnit')}` : '–'}
+        text={
+          leadTimeDays !== null ? `${formatDecimal(leadTimeDays, locale)} ${tCanvas('daysUnit')}` : '–'
+        }
         x={0}
         y={17}
         width={width}
@@ -3523,7 +4071,7 @@ function LadderSummary({
       />
       <Text text={tCanvas('valueAddedAbbr')} x={0} y={height - 30} width={width} align="center" fontSize={CANVAS_TEXT.label} fill="#52525b" />
       <Text
-        text={`${valueAddMinutes.toFixed(1)} ${tCanvas('minUnit')}`}
+        text={`${formatDecimal(valueAddMinutes, locale)} ${tCanvas('minUnit')}`}
         x={0}
         y={height - 18}
         width={width}

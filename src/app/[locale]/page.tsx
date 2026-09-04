@@ -49,11 +49,16 @@ export default async function Home() {
   return (
     <main className="bg-white">
       <header className="border-b border-zinc-200">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-5">
+        {/* [Bedienbarkeitsprüfung 2026-09-03, B4] Ohne Umbruch braucht diese
+            Zeile 435 px — auf einem 390 px breiten Telefon stand "Kostenlos
+            starten" zur Hälfte ausserhalb des Bildes, also genau der Knopf, für
+            den die Seite geschrieben ist. Die Kopfzeile der Demo-Seite macht es
+            seit jeher richtig; hier fehlte flex-wrap. */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 py-5">
           <span className="whitespace-nowrap text-sm font-semibold uppercase tracking-widest text-brand-600">
             VSM Builder
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>
               {tNav('demo')}
             </Link>

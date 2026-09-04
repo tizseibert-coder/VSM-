@@ -14,7 +14,8 @@
   "Nav": {
     "demo": "Demo",
     "login": "Sign in",
-    "signup": "Get started free"
+    "signup": "Get started free",
+    "backToDashboard": "← Dashboard"
   },
   "Home": {
     "heroTitle": "Value stream mapping that calculates.",
@@ -155,7 +156,21 @@
     "metaDescription": "A complete value stream to try out, without signing up. Change cycle times and watch lead time, takt time and process cycle efficiency respond.",
     "heading": "Demo · Musterwerk Machine Shop",
     "noticeStrong": "Everything is editable.",
-    "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo."
+    "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo.",
+    "data": {
+      "projectName": "Musterwerk Machine Shop",
+      "description": "Public demo. Changes stay in your browser and are not saved.",
+      "company": "Musterwerk Ltd",
+      "productName": "Drive shaft A-42",
+      "customerName": "Customer",
+      "supplierName": "Supplier",
+      "erpLabel": "Production control (ERP)",
+      "process1": "Sawing",
+      "process2": "Turning",
+      "process3": "Milling",
+      "process4": "Deburring",
+      "process5": "Assembly"
+    }
   },
   "Login": {
     "title": "Sign in",
@@ -306,6 +321,14 @@
     "kaizenBlitz": {
       "term": "Kaizen burst",
       "definition": "A concrete improvement point marked at a process, needed to get from the current to the future state — not a general improvement wish, but a targeted note at exactly this spot."
+    },
+    "pieceValue": {
+      "term": "Value per piece",
+      "definition": "What one piece of inventory is worth — usually the production cost up to this point, not the sales price. This single factor is all that is missing to turn a count on the shelf into an amount of money."
+    },
+    "tiedUpCapital": {
+      "term": "Tied-up capital",
+      "definition": "Inventory times value per piece: the money sitting in the value stream instead of in the bank. Halve the inventory in a scenario and half of it comes back — that is the figure an investment rests on."
     }
   },
   "Editor": {
@@ -328,6 +351,7 @@
     "exitFullscreen": "Exit full screen",
     "presentationMode": "Presentation mode",
     "zoomHint": "Ctrl/Cmd + scroll wheel to zoom",
+    "panHint": "Swipe to pan — turn the phone sideways and the whole stream fits. Tap to dismiss.",
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
     "fitView": "Fit to view",
@@ -405,7 +429,27 @@
     "chooseSuccessor": "+ Choose successor…",
     "classificationLabel": "Value-added classification",
     "classificationNone": "— not classified",
-    "unitPieces": "pcs"
+    "unitPieces": "pcs",
+    "pieceValueLabel": "Value per piece",
+    "pieceValuePlaceholder": "e.g. 50",
+    "currencyLabel": "Currency",
+    "kpiTiedUpCapital": "Tied-up capital",
+    "tiedUpCapitalFormula": "{wip} pcs × {value} each",
+    "compareScenarios": "Compare scenarios",
+    "editAnchor": "Edit {title}",
+    "anchorLabelField": "Label",
+    "laneNumber": "Lane {lane}",
+    "unknownProcess": "(unknown)",
+    "errorCsvImport": "CSV import failed.",
+    "emptyTitle": "Three steps to the first metric",
+    "emptyStep1Title": "Add the processes",
+    "emptyStep1Body": "Every station in the chain, in the order the part passes through them. A name and a cycle time are enough to start — everything else goes into the box later.",
+    "emptyStep2Title": "Enter the inventory",
+    "emptyStep2Body": "What sits between two stations, in pieces. Tap a triangle in the diagram. These numbers drive the lead time — without them the tool cannot compute it.",
+    "emptyStep3Title": "Customer demand and shift time",
+    "emptyStep3Body": "The two fields above. They produce the takt time, and only then can the tool say whether the line covers demand at all.",
+    "emptySheetLink": "Data collection sheet for the shop floor →",
+    "emptySheetHint": "To print and take along: one page with every field you record at the line."
   },
   "Canvas": {
     "bottleneck": "⚠ Bottleneck",
@@ -473,7 +517,7 @@
   "Scenario": {
     "currentState": "Current state",
     "nameLabel": "Name",
-    "investmentLabel": "Investment (CHF)",
+    "investmentLabel": "Investment ({currency})",
     "paybackLabel": "Payback (months)",
     "riskLabel": "Risk",
     "riskNone": "–",
@@ -498,7 +542,9 @@
     "currentState": "Current state",
     "futureState": "Future state: {name}",
     "footer": "Created with VSM Builder on {date}",
-    "methodCheckHeading": "METHOD CHECK"
+    "methodCheckHeading": "METHOD CHECK",
+    "comparisonSubtitle": "Scenario comparison",
+    "comparisonNote": "All states computed against the same customer demand."
   },
   "CanvasLoader": {
     "loading": "Loading the map…"
@@ -585,7 +631,8 @@
     "linkCreatedSuffix": ". Copy it now — it will not be shown again.",
     "copy": "Copy",
     "copied": "Copied",
-    "yourRole": "{org} · your role: {role}"
+    "yourRole": "{org} · your role: {role}",
+    "inviteDates": "Created {created} · valid until {expires}"
   },
   "Invite": {
     "title": "Team invitation",
@@ -612,13 +659,16 @@
     "investment": "Investment",
     "payback": "Payback",
     "risk": "Risk",
-    "months": "{count} months"
+    "months": "{count} months",
+    "tiedUpCapital": "Tied-up capital",
+    "releasedCapital": "Of which released",
+    "capitalHint": "Enter a value per piece in the editor and this row shows how much money sits in inventory."
   },
   "Wizard": {
     "backToEditor": "← Back to the editor",
     "title": "Future-state wizard",
     "titleWithScenario": "Future-state wizard — {type} · {name}",
-    "noScenario": "The future-state wizard walks through the 8 questions for one specific scenario. Pick an existing scenario in the editor, or create one first.",
+    "noScenario": "A scenario is a copy of your current state where you try out changes — the current state itself stays untouched. The wizard then walks through the 8 questions that turn that copy into a future state. Create one below, or pick an existing one in the editor.",
     "progress": "{answered} of 8 questions answered. No fixed sequence — jump straight to any question, as often as you like.",
     "questionLabel": "Question {id}",
     "statusAnswered": "Answered",
@@ -641,7 +691,7 @@
     "q2SafetyStock": "Safety stock",
     "q2Stock": "Inventory (pcs)",
     "noInternalConnections": "No internal connections between processes yet.",
-    "q3Hint": "Just the yes/no decision: “does this connection flow straight on without an intermediate buffer?”",
+    "q3Hint": "Just the yes/no decision: “does this connection flow straight on without an intermediate buffer?” — for supermarket, FIFO or push on the remaining connections see question 4.",
     "supplier": "Supplier",
     "customer": "Customer",
     "q3ContinuousFlow": "Continuous flow",
@@ -658,7 +708,13 @@
     "q6NeedsPacemaker": "Answer question 5 (pacemaker) first — heijunka hangs off the pacemaker methodologically.",
     "q6HeijunkaActive": "Heijunka box active",
     "q7Pitch": "Pitch (min)",
-    "q8NotePlaceholder": "e.g. halve changeover time"
+    "q8NotePlaceholder": "e.g. halve changeover time",
+    "q2Handover": "Handover to the customer.",
+    "q2HandoverAfter": "Handover to the customer (after {name}).",
+    "q5ChooseProcess": "— pick a process —",
+    "q6PacemakerIs": "Pacemaker: {name}",
+    "previousQuestion": "← Question {id}",
+    "nextQuestion": "Question {id} →"
   },
   "Errors": {
     "projectNameEmpty": "The project name must not be empty.",
@@ -668,7 +724,6 @@
     "exampleCreate": "The example could not be created.",
     "exampleProcesses": "The example processes could not be created.",
     "exampleBuffers": "The example inventory points could not be created.",
-    "exampleDescription": "Example project with sample data to try out — deletable at any time.",
     "processCreate": "The process could not be created.",
     "processNotFound": "Process not found.",
     "csvEmpty": "The CSV file contains no rows.",
@@ -678,6 +733,46 @@
     "inviteRoleInvalid": "Invalid role.",
     "inviteCreate": "The invitation could not be created.",
     "inviteRevoke": "The invitation could not be revoked.",
-    "credentialsRequired": "Please enter email and password."
+    "credentialsRequired": "Please enter email and password.",
+    "currencyUnsupported": "That currency is not supported."
+  },
+  "DataSheet": {
+    "metaTitle": "Data collection sheet",
+    "metaDescription": "Printable sheet for recording data at the line: cycle time, changeover, OEE, operators and inventory per station.",
+    "title": "Value stream data collection sheet",
+    "intro": "Take it to the line, fill it in, then enter it in VSM Builder. One row per station, in the order the part passes through them.",
+    "print": "Print",
+    "back": "← Back",
+    "project": "Project / product",
+    "recordedBy": "Recorded by",
+    "date": "Date",
+    "frameTitle": "Frame data (applies to the whole chain)",
+    "annualDemand": "Annual customer demand (pcs/year)",
+    "availableMinutes": "Available production time (min/day)",
+    "pieceValue": "Value per piece",
+    "stationsTitle": "Stations",
+    "colNo": "No.",
+    "colProcess": "Process / station",
+    "colCycleTime": "Cycle time C/T (min)",
+    "colChangeover": "Changeover C/O (min)",
+    "colOee": "OEE (%)",
+    "colOperators": "Operators",
+    "colWipAfter": "Inventory after (pcs)",
+    "howTitle": "How to measure",
+    "howCycleTime": "Cycle time: the time one piece actually takes at this station — timed part to part, without the waiting before or after. Not the time for a whole batch.",
+    "howChangeover": "Changeover: from the last good part of the old variant to the first good part of the new one. Enter 0 where there is no changeover.",
+    "howOee": "OEE: the share of planned time in which the station really produces good parts. From the machine report, otherwise estimated — entering 100 % means “no losses known”.",
+    "howOperators": "Operators: how many people work at this station at the same time.",
+    "howWip": "Inventory after: everything waiting behind this station for the next one — on pallets, on racks, in the buffer store. Count it, do not estimate: this number drives the lead time.",
+    "footer": "VSM Builder data collection sheet",
+    "footerWithUrl": "VSM Builder data collection sheet · Enter the filled-in values at {url}"
+  },
+  "Example": {
+    "projectName": "Example: value stream of a machine shop",
+    "description": "Example project with sample data to try out — deletable at any time.",
+    "process1": "Sawing",
+    "process2": "Turning",
+    "process3": "Milling",
+    "process4": "Assembly"
   }
 }

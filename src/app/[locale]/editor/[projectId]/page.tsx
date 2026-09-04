@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import VSMCanvasLoader from '@/components/VSMEditor/VSMCanvasLoader'
 import ScenarioSwitcher from '@/components/VSMEditor/ScenarioSwitcher'
 import ScenarioMetaPanel from '@/components/VSMEditor/ScenarioMetaPanel'
 import { buttonSecondary } from '@/components/ui/buttons'
+import type { ComparisonState } from '@/lib/vsm/scenarioComparison'
 
 export default async function EditorPage({
   params,
@@ -15,6 +17,10 @@ export default async function EditorPage({
 }) {
   const { projectId } = await params
   const { scenario: scenarioParam, error } = await searchParams
+  const t = await getTranslations('Editor')
+  const tNav = await getTranslations('Nav')
+  const tWizard = await getTranslations('Wizard')
+  const tScenario = await getTranslations('Scenario')
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -38,13 +44,46 @@ export default async function EditorPage({
   const activeScenario = scenarioParam ? (scenarios ?? []).find((s) => s.id === scenarioParam) : undefined
   const scenarioId = activeScenario?.id ?? null
 
-  let processesQuery = supabase.from('processes').select('*').eq('project_id', projectId)
-  processesQuery = scenarioId ? processesQuery.eq('scenario_id', scenarioId) : processesQuery.is('scenario_id', null)
-  const { data: processes } = await processesQuery.order('created_at', { ascending: true })
+  // [Bedienbarkeitspruefung 2026-09-03, B16] Frueher zwei nach scenario_id
+  // gefilterte Abfragen. Jetzt einmal alles zum Projekt und danach im
+  // Speicher aufgeteilt: dieselbe Zahl von Abfragen, aber die zweite
+  // PDF-Seite braucht ohnehin jeden Zustand, und die Vergleichsseite macht
+  // es seit jeher genauso.
+  const { data: allProcesses } = await supabase
+    .from('processes')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
 
-  let buffersQuery = supabase.from('inventory_buffers').select('*').eq('project_id', projectId)
-  buffersQuery = scenarioId ? buffersQuery.eq('scenario_id', scenarioId) : buffersQuery.is('scenario_id', null)
-  const { data: buffers } = await buffersQuery.order('created_at', { ascending: true })
+  const { data: allBuffers } = await supabase
+    .from('inventory_buffers')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+
+  const processes = (allProcesses ?? []).filter((p) => p.scenario_id === scenarioId)
+  const buffers = (allBuffers ?? []).filter((b) => b.scenario_id === scenarioId)
+
+  // Ist-Zustand zuerst — comparisonTable rechnet "freigesetztes Kapital"
+  // gegen die erste Spalte.
+  const comparisonStates: ComparisonState[] = [
+    {
+      id: null,
+      label: tScenario('currentState'),
+      processes: (allProcesses ?? [])
+        .filter((p) => p.scenario_id === null)
+        .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
+      buffers: (allBuffers ?? []).filter((b) => b.scenario_id === null).map((b) => ({ wipCount: b.wip_count })),
+    },
+    ...(scenarios ?? []).map((scenario) => ({
+      id: scenario.id,
+      label: `${scenario.type ?? '?'} · ${scenario.name ?? ''}`,
+      processes: (allProcesses ?? [])
+        .filter((p) => p.scenario_id === scenario.id)
+        .map((p) => ({ cycleTime: p.cycle_time, operatorCount: p.operator_count, oee: p.oee, wip: p.wip ?? undefined })),
+      buffers: (allBuffers ?? []).filter((b) => b.scenario_id === scenario.id).map((b) => ({ wipCount: b.wip_count })),
+    })),
+  ]
 
   const { data: benchmarkReferences } = await supabase.from('benchmark_reference').select('*')
 
@@ -57,7 +96,7 @@ export default async function EditorPage({
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-6">
         <div>
           <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
-            ← Dashboard
+            {tNav('backToDashboard')}
           </Link>
           <span className="mx-1.5 text-xs text-zinc-600">·</span>
           <span className="text-xs font-semibold uppercase tracking-widest text-brand-600">
@@ -66,19 +105,28 @@ export default async function EditorPage({
           <h1 className="text-lg font-semibold text-zinc-950">{project.name}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {activeScenario && (
-            <Link
-              href={`/editor/${projectId}/future-state?scenario=${activeScenario.id}`}
-              className={buttonSecondary}
-            >
-              Future-State-Wizard
-            </Link>
-          )}
+          {/* [Bedienbarkeitspruefung 2026-09-03, B7] Der Knopf haengt nicht
+              mehr am aktiven Szenario. Wer ein Projekt neu anlegt, hat noch
+              keines — und sah damit ausgerechnet den gefuehrten Weg nie, der
+              ihm die Methodik abnimmt, die er nicht auswendig kann. Ohne
+              Szenario fuehrt der Knopf auf die Wizard-Seite, die erklaert,
+              wozu ein Szenario da ist, und gleich eines anlegen laesst. Das
+              ist der erste Schritt des Weges, nicht seine Voraussetzung. */}
+          <Link
+            href={
+              activeScenario
+                ? `/editor/${projectId}/future-state?scenario=${activeScenario.id}`
+                : `/editor/${projectId}/future-state`
+            }
+            className={buttonSecondary}
+          >
+            {tWizard('title')}
+          </Link>
           <Link
             href={`/editor/${projectId}/compare`}
             className={buttonSecondary}
           >
-            Szenarien vergleichen
+            {t('compareScenarios')}
           </Link>
         </div>
       </header>
@@ -95,6 +143,7 @@ export default async function EditorPage({
             projectId={projectId}
             scenario={activeScenario}
             usedTypes={(scenarios ?? []).map((s) => s.type)}
+            currency={project.currency}
           />
         )}
       </div>
@@ -103,9 +152,10 @@ export default async function EditorPage({
         project={project}
         scenarioId={scenarioId}
         scenarioName={activeScenario?.name ?? null}
-        initialProcesses={processes ?? []}
-        initialBuffers={buffers ?? []}
+        initialProcesses={processes}
+        initialBuffers={buffers}
         benchmarkReferences={benchmarkReferences ?? []}
+        comparisonStates={comparisonStates}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
@@ -14,16 +14,18 @@ const ROLE_KEY: Record<string, string> = {
   viewer: 'roleViewer',
 }
 
+/** Zustand einer Einladung als Uebersetzungsschluessel — die vier Texte lagen
+ *  uebersetzt in messages/, standen hier aber deutsch im Quelltext. */
 function inviteStatus(inv: {
   revoked_at: string | null
   accepted_at: string | null
   expires_at: string
-}): { label: string; tone: string } {
-  if (inv.accepted_at) return { label: 'Eingelöst', tone: 'text-zinc-500' }
-  if (inv.revoked_at) return { label: 'Zurückgezogen', tone: 'text-zinc-500' }
+}): { key: string; tone: string } {
+  if (inv.accepted_at) return { key: 'inviteAccepted', tone: 'text-zinc-500' }
+  if (inv.revoked_at) return { key: 'inviteRevoked', tone: 'text-zinc-500' }
   if (new Date(inv.expires_at) <= new Date())
-    return { label: 'Abgelaufen', tone: 'text-amber-700' }
-  return { label: 'Offen', tone: 'text-green-700' }
+    return { key: 'inviteExpired', tone: 'text-amber-700' }
+  return { key: 'inviteOpen', tone: 'text-green-700' }
 }
 
 export default async function TeamPage({
@@ -33,6 +35,8 @@ export default async function TeamPage({
 }) {
   const { error } = await searchParams
   const t = await getTranslations('Team')
+  const tNav = await getTranslations('Nav')
+  const locale = await getLocale()
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const myUserId = claimsData?.claims?.sub
@@ -43,7 +47,7 @@ export default async function TeamPage({
       <div className="min-h-screen bg-zinc-50 px-6 py-10">
         <div className="mx-auto max-w-3xl">
           <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
-            ← Dashboard
+            {tNav('backToDashboard')}
           </Link>
           <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {orgResult.error}
@@ -76,7 +80,7 @@ export default async function TeamPage({
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
         <Link href="/dashboard" className="text-xs text-zinc-500 hover:underline">
-          ← Dashboard
+          {tNav('backToDashboard')}
         </Link>
         <h1 className="mt-1 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
         <p className="mt-1 text-sm text-zinc-600">
@@ -146,11 +150,13 @@ export default async function TeamPage({
                         <div className="min-w-0">
                           <div className="text-sm text-zinc-800">
                             {ROLE_KEY[inv.role] ? t(ROLE_KEY[inv.role]) : inv.role} ·{' '}
-                            <span className={status.tone}>{status.label}</span>
+                            <span className={status.tone}>{t(status.key)}</span>
                           </div>
                           <div className="text-xs text-zinc-500">
-                            Erstellt {new Date(inv.created_at).toLocaleDateString('de-CH')} · gültig
-                            bis {new Date(inv.expires_at).toLocaleDateString('de-CH')}
+                            {t('inviteDates', {
+                              created: new Date(inv.created_at).toLocaleDateString(locale),
+                              expires: new Date(inv.expires_at).toLocaleDateString(locale),
+                            })}
                           </div>
                         </div>
                         {canRevoke && (

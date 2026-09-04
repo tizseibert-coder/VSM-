@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { parseProcessesCsv } from '@/lib/vsm/csvImport'
 import { reconcileChainEdges } from '@/lib/vsm/chainOrder'
+import { isSupportedCurrency } from '@/lib/vsm/capital'
 
 export interface AddProcessInput {
   name: string
@@ -150,6 +151,40 @@ export async function updateAnnualThroughput(projectId: string, annualThroughput
   if (error) throw new Error(error.message)
   revalidatePath(`/editor/${projectId}`)
   revalidatePath(`/editor/${projectId}/future-state`)
+}
+
+// Der Wert eines Stuecks — der eine fehlende Faktor zwischen "9 300 Stueck
+// Bestand" und "465.000 € liegen im Regal". Am Projekt und nicht am Szenario:
+// Der Materialwert gehoert zum Erzeugnis, nicht zur Art, wie man den
+// Wertstrom organisiert. Genau deshalb ist der Vergleich zweier Szenarien
+// ueberhaupt aussagekraeftig.
+export async function updatePieceValue(projectId: string, pieceValue: number | null) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('projects')
+    .update({ piece_value: pieceValue })
+    .eq('id', projectId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/compare`)
+}
+
+// Bis heute stand die Waehrung fest im Quelltext: "CHF" und de-CH, waehrend
+// die Startseite mit Euro wirbt. Wer in Deutschland verkauft, darf im
+// Investitionsfeld nicht Franken anzeigen. Die Liste der angebotenen
+// Waehrungen steht in lib/vsm/capital.ts — eine Datei mit 'use server' darf
+// nur asynchrone Funktionen exportieren.
+export async function updateCurrency(projectId: string, currency: string) {
+  if (!isSupportedCurrency(currency)) {
+    throw new Error(await tErr('currencyUnsupported'))
+  }
+  const supabase = await createClient()
+  const { error } = await supabase.from('projects').update({ currency }).eq('id', projectId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/compare`)
 }
 
 // Takt time's other input, previously hardcoded to SHIFT_MINUTES with no way

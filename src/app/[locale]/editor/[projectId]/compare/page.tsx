@@ -1,8 +1,11 @@
 import { notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
+import { buildComparisonMetrics } from '@/lib/vsm/comparisonTable'
+import { formatCurrency } from '@/lib/vsm/capital'
+import { formatDecimal } from '@/lib/vsm/numberFormat'
 
 // Zuordnung Risikostufe -> Uebersetzungsschluessel im Namensraum `Scenario`.
 const RISK_KEY: Record<string, string> = { low: 'riskLow', medium: 'riskMedium', high: 'riskHigh' }
@@ -13,6 +16,7 @@ export default async function ComparePage({
   params: Promise<{ projectId: string }>
 }) {
   const { projectId } = await params
+  const locale = await getLocale()
   const t = await getTranslations('Compare')
   const tEd = await getTranslations('Editor')
   const tSc = await getTranslations('Scenario')
@@ -55,34 +59,37 @@ export default async function ComparePage({
     })),
   ]
 
-  const rows = buildComparisonRows(states, project.annual_throughput)
+  const rows = buildComparisonRows(
+    states,
+    project.annual_throughput,
+    project.available_minutes_per_day ?? undefined
+  )
 
-  const metricRows: { label: string; format: (r: (typeof rows)[number]) => string }[] = [
-    { label: t('processes'), format: (r) => String(r.processCount) },
+  // Der Bestand in Geld, je Zustand mit derselben Bewertung gerechnet — und
+  // die Differenz zum Ist-Zustand, denn genau die ist die Aussage: Was ein
+  // Szenario an Kapital freisetzt, das heute im Regal liegt.
+  //
+  // [Bedienbarkeitspruefung 2026-09-03, B16] Die Zeilen entstehen jetzt in
+  // lib/vsm/comparisonTable.ts, damit diese Seite und das PDF dieselbe
+  // Rechnung benutzen und nicht auseinanderlaufen koennen.
+  const money = (value: number) => formatCurrency(value, project.currency, locale)
+  const metricRows = buildComparisonMetrics(
+    rows,
     {
-      label: tEd('kpiCycleTimeSum'),
-      format: (r) => `${r.totalCycleTimeMinutes.toFixed(1)} ${tEd('unitMin')}`,
+      processes: t('processes'),
+      cycleTimeSum: tEd('kpiCycleTimeSum'),
+      leadTime: tEd('kpiLeadTime'),
+      pce: tEd('kpiPce'),
+      taktTime: tEd('kpiTaktTime'),
+      tiedUpCapital: t('tiedUpCapital'),
+      releasedCapital: t('releasedCapital'),
+      unitMin: tEd('unitMin'),
+      unitDays: tEd('unitDays'),
+      unitPercent: tEd('unitPercent'),
     },
-    {
-      label: tEd('kpiLeadTime'),
-      format: (r) =>
-        r.totalLeadTimeDays !== null && r.totalLeadTimeDays > 0
-          ? `${r.totalLeadTimeDays.toFixed(1)} ${tEd('unitDays')}`
-          : '–',
-    },
-    {
-      label: tEd('kpiPce'),
-      format: (r) =>
-        r.valueAddedRatioPercent !== null
-          ? `${r.valueAddedRatioPercent.toFixed(2)} ${tEd('unitPercent')}`
-          : '–',
-    },
-    {
-      label: tEd('kpiTaktTime'),
-      format: (r) =>
-        r.taktTimeMinutes !== null ? `${r.taktTimeMinutes.toFixed(1)} ${tEd('unitMin')}` : '–',
-    },
-  ]
+    { num: (value, digits = 1) => formatDecimal(value, locale, digits), money },
+    project.piece_value
+  )
 
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
@@ -121,9 +128,9 @@ export default async function ComparePage({
               {metricRows.map((metricRow) => (
                 <tr key={metricRow.label} className="border-b border-zinc-100 last:border-0">
                   <td className="p-3 text-zinc-500">{metricRow.label}</td>
-                  {rows.map((r) => (
+                  {rows.map((r, i) => (
                     <td key={r.id ?? 'ist'} className="p-3 text-zinc-950">
-                      {metricRow.format(r)}
+                      {metricRow.values[i]}
                     </td>
                   ))}
                 </tr>
@@ -131,6 +138,10 @@ export default async function ComparePage({
             </tbody>
           </table>
         </div>
+
+        {project.piece_value === null && (
+          <p className="mt-2 text-xs text-zinc-500">{t('capitalHint')}</p>
+        )}
 
         {(scenarios ?? []).length > 0 && (
           <div className="mt-6 overflow-x-auto rounded-surface border border-zinc-200">
@@ -150,7 +161,10 @@ export default async function ComparePage({
                   <td className="p-3 text-zinc-500">{t('investment')}</td>
                   {(scenarios ?? []).map((s) => (
                     <td key={s.id} className="p-3 text-zinc-950">
-                      {s.investment_chf != null ? `CHF ${s.investment_chf.toLocaleString('de-CH')}` : '–'}
+                      {/* Die Spalte heisst investment_chf, weil sie so angelegt
+                          wurde; angezeigt wird sie in der Waehrung des Projekts
+                          (Migration 20260903212855). */}
+                      {s.investment_chf != null ? money(s.investment_chf) : '–'}
                     </td>
                   ))}
                 </tr>
