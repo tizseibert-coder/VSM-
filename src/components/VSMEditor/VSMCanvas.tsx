@@ -250,6 +250,18 @@ interface Props {
   comparisonStates?: ComparisonState[]
 }
 
+/**
+ * Wartet diese Zeile noch auf ihre Id aus der Datenbank?
+ *
+ * Modulweit, weil nicht nur die Zeichenflaeche das wissen muss, sondern auch
+ * die Bearbeitungspanels darunter: Jede Behelfs-Id, die in eine uuid-Spalte
+ * geht, endet mit einem Datenbankfehler (22P02). In der Demo gibt es keine
+ * echten Ids, dort sind genau diese die richtigen.
+ */
+function awaitingServerId(isDemo: boolean, id: string | null): boolean {
+  return !isDemo && id !== null && isOptimisticId(id)
+}
+
 export default function VSMCanvas({
   project: initialProject,
   scenarioId,
@@ -458,7 +470,7 @@ export default function VSMCanvas({
    * Datenbankfehler enden. In der Demo gibt es keine echten Ids, dort sind
    * genau diese die richtigen.
    */
-  const isAwaitingServerId = (id: string | null) => !isDemo && id !== null && isOptimisticId(id)
+  const isAwaitingServerId = (id: string | null) => awaitingServerId(isDemo, id)
 
   // The pacemaker (Schrittmacher) is the one process that gets scheduled
   // directly from production control — everything else is pulled via
@@ -1044,7 +1056,14 @@ export default function VSMCanvas({
               }
             : state
         )
-        const comparisonRows = buildComparisonRows(states, project.annual_throughput)
+        // Dieselben beiden Projektgroessen wie Seite 1 (siehe `kpis` oben) —
+        // sonst nennen die zwei Seiten desselben Blatts fuer denselben
+        // Ist-Zustand verschiedene Taktzeiten.
+        const comparisonRows = buildComparisonRows(
+          states,
+          liveAnnualThroughput,
+          liveAvailableMinutes
+        )
         const metrics = buildComparisonMetrics(
           comparisonRows,
           {
@@ -1392,12 +1411,18 @@ export default function VSMCanvas({
   }
 
   // Aendert eine Aenderung nur Felder bestehender Zeilen, dann steht die
-  // Wahrheit nach dem Schreiben genau da, wo sie hier schon steht — ein
-  // router.refresh() im Erfolgsfall wuerde denselben Zustand noch einmal ueber
-  // die Leitung holen und dabei eine zwischenzeitlich getippte zweite
-  // Aenderung kurz zurueckwerfen. Deshalb hier nur noch im Fehlerfall: Dann
-  // gilt der eigene Zustand nicht mehr, und der Server sagt, was wirklich
-  // gespeichert ist.
+  // Wahrheit nach dem Schreiben genau da, wo sie hier schon steht. Deshalb
+  // hier kein router.refresh() im Erfolgsfall, sondern nur im Fehlerfall:
+  // Dann gilt der eigene Zustand nicht mehr, und der Server sagt, was
+  // wirklich gespeichert ist.
+  //
+  // [Code-Review 2026-09-04] Was das *nicht* heisst: dass danach nichts mehr
+  // vom Server kommt. Jede der siebzehn Actions ruft revalidatePath, und die
+  // Antwort darauf bringt neue Props mit — der Abgleich beim Zeichnen (siehe
+  // `syncedFrom` oben) uebernimmt sie. Der eigene Zustand ueberlebt das, weil
+  // die Antwort dasselbe enthaelt, was hier schon steht. Was das Weglassen
+  // von refresh() spart, ist also nicht der Abgleich, sondern ein zweiter
+  // Weg nach Frankfurt fuer denselben Inhalt.
   function handleThroughputBlur() {
     setError(null)
     mutate((s) => vsmOperations.updateAnnualThroughput(s, liveAnnualThroughput ?? null))
@@ -1492,15 +1517,28 @@ export default function VSMCanvas({
     const newOrder = moveInOrder(chainOrder, processId, direction)
     if (newOrder === chainOrder) return // already at that end, nothing to do
 
+    // [Code-Review 2026-09-04] Die Server-Action haengt die Pufferzeilen an
+    // der *ganzen* Reihenfolge um, nicht nur an der bewegten Box. Steht darin
+    // noch ein Platzhalter (`process-neu-1`) eines gerade angelegten
+    // Prozesses, landet er in einer uuid-Spalte und Postgres bricht mit 22P02
+    // ab — die Box selbst ist ueber isAwaitingServerId geschuetzt, ihre
+    // Nachbarn waren es nicht. Das Fenster ist kurz (ein Aufruf nach
+    // Frankfurt), aber es reicht fuer den zweiten Klick. Solange darin ein
+    // Platzhalter steht, passiert gar nichts: Ein halb umgehaengter
+    // Wertstrom waere schlimmer als eine Bewegung, die man gleich noch
+    // einmal machen muss.
+    if (newOrder.some((id) => isAwaitingServerId(id))) return
+
     setError(null)
     mutate((s) => vsmOperations.reorderProcesses(s, newOrder))
     if (isDemo) return
 
     // Die Kette umzuhaengen ist die Bewegung, auf die vorher am laengsten
     // gewartet wurde — und die, die man mehrmals hintereinander klickt, um
-    // eine Box zwei Plaetze weiter zu schieben. Genau dafuer darf hier kein
-    // refresh() im Erfolgsfall stehen: Die Antwort auf den ersten Klick wuerde
-    // sonst den zweiten kurz zuruecknehmen.
+    // eine Box zwei Plaetze weiter zu schieben. Deshalb hier kein zusaetzliches
+    // refresh() im Erfolgsfall; siehe die Anmerkung bei handleThroughputBlur,
+    // warum das den Abgleich mit dem Server nicht abschaltet, sondern nur
+    // einen zweiten Aufruf dafuer spart.
     startTransition(async () => {
       try {
         await reorderProcesses(project.id, scenarioId, newOrder)
@@ -2796,6 +2834,27 @@ function ProcessEditPanel({
     onClose()
     if (isDemo) return
 
+    // [Code-Review 2026-09-04] Zwei Gruende, hier nachzusehen, statt einfach
+    // zu schreiben:
+    //
+    // Erstens sucht setBufferWip die Zeile ueber `from_process_id` und
+    // `to_process_id`. Wartet ein *Nachbar* noch auf seine Id aus der
+    // Datenbank, geht ein `process-neu-1` in eine uuid-Spalte und Postgres
+    // bricht mit 22P02 ab — nachdem updateProcess bereits geschrieben hat.
+    // Ein halb gespeicherter Prozess ist schlimmer als ein nicht
+    // gespeicherter Bestand, also bleibt diese eine Kante ungeschrieben.
+    //
+    // Zweitens legt setBufferWip die Zeile an, wenn es keine gibt (nach einem
+    // CSV-Import haben die Prozesse keine Kanten). Die Id dafuer vergibt die
+    // Datenbank; lokal steht dann ein `buffer-neu-1`, und daran haengen die
+    // Knoepfe "Verbindung trennen", die auf Platzhalter abgeschaltet sind.
+    // Ohne Nachladen blieben sie es fuer immer.
+    const skipBefore = awaitingServerId(isDemo, prevProcessId)
+    const skipAfter = awaitingServerId(isDemo, nextProcessId)
+    const createsEdge =
+      findBuffer(buffers, prevProcessId, process.id) === undefined ||
+      findBuffer(buffers, process.id, nextProcessId) === undefined
+
     startTransition(async () => {
       try {
         await updateProcess(projectId, process.id, {
@@ -2807,8 +2866,18 @@ function ProcessEditPanel({
           isPacemaker,
           classification: classification || null,
         })
-        await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
-        await setBufferWip(projectId, scenarioId, { ...afterBuffer, wipCount: afterNum })
+        if (!skipBefore) {
+          await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
+        }
+        if (!skipAfter) {
+          await setBufferWip(projectId, scenarioId, { ...afterBuffer, wipCount: afterNum })
+        }
+        // Nur in diesen beiden Faellen: Beim uebersprungenen Bestand zeigt
+        // das Diagramm sonst eine Zahl, die nirgends steht, und bei einer neu
+        // angelegten Kante blieben die Knoepfe daran dauerhaft abgeschaltet.
+        // Der haeufige Fall — Zykluszeit aendern, Kanten sind laengst da —
+        // laedt weiterhin nicht nach.
+        if (skipBefore || skipAfter || createsEdge) router.refresh()
       } catch (err) {
         // Das Panel ist hier bereits geschlossen, seine eigene Fehlerzeile
         // also nicht mehr sichtbar. Die Meldung gehoert deshalb in das Banner

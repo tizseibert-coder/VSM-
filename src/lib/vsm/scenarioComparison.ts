@@ -23,10 +23,20 @@ export interface ComparisonRow extends KpiResult {
  * Computes comparable KPIs for every state against the same customer demand
  * (annualThroughput is a project-level constraint, not something that
  * differs per scenario in the current model — see project memory).
+ *
+ * [Code-Review 2026-09-04] `availableMinutesPerDay` fehlte hier und
+ * calculateKpis fiel damit auf seine Vorgabe von 480 zurueck — auf einem
+ * Projekt mit zwei Schichten rechnete der Vergleich also gegen eine
+ * Schichtzeit, die das Projekt gar nicht hat. Seit der Vergleich auch auf
+ * Seite zwei des PDF steht, war das nicht nur falsch, sondern sichtbar
+ * falsch: Seite eins nannte fuer denselben Ist-Zustand eine andere Taktzeit
+ * als Seite zwei. Wie der Kundenbedarf ist die Schichtzeit eine Eigenschaft
+ * des Projekts und gilt fuer alle Zustaende gleich.
  */
 export function buildComparisonRows(
   states: ComparisonState[],
-  annualThroughput: number | null
+  annualThroughput: number | null,
+  availableMinutesPerDay?: number
 ): ComparisonRow[] {
   return states.map((state) => ({
     id: state.id,
@@ -36,6 +46,7 @@ export function buildComparisonRows(
       processes: state.processes,
       buffers: state.buffers,
       annualThroughput,
+      availableMinutesPerDay,
     }),
   }))
 }

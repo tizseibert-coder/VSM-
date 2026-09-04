@@ -89,3 +89,23 @@ describe('buildComparisonMetrics', () => {
     expect(table.find((m) => m.label === LABELS.cycleTimeSum)!.values[0]).toBe('5,0 min')
   })
 })
+
+describe('buildComparisonRows', () => {
+  // [Code-Review 2026-09-04] Die Schichtzeit fehlte und calculateKpis fiel auf
+  // 480 zurueck. Seit der Vergleich auf Seite zwei des PDF steht, nannten die
+  // beiden Seiten desselben Blatts fuer denselben Ist-Zustand verschiedene
+  // Taktzeiten.
+  it('computes takt time against the project shift time, not the 480-minute default', () => {
+    const state: ComparisonState = {
+      id: null,
+      label: 'Ist-Zustand',
+      processes: [{ cycleTime: 2, operatorCount: 1, oee: 100 }],
+      buffers: [],
+    }
+    // 50.000 Stück / 250 Tage = 200 Stück/Tag.
+    const einschichtig = buildComparisonRows([state], 50000)[0]
+    const zweischichtig = buildComparisonRows([state], 50000, 960)[0]
+    expect(einschichtig.taktTimeMinutes).toBeCloseTo(2.4, 5)
+    expect(zweischichtig.taktTimeMinutes).toBeCloseTo(4.8, 5)
+  })
+})

@@ -59,7 +59,11 @@ export default async function ComparePage({
     })),
   ]
 
-  const rows = buildComparisonRows(states, project.annual_throughput)
+  const rows = buildComparisonRows(
+    states,
+    project.annual_throughput,
+    project.available_minutes_per_day ?? undefined
+  )
 
   // Der Bestand in Geld, je Zustand mit derselben Bewertung gerechnet — und
   // die Differenz zum Ist-Zustand, denn genau die ist die Aussage: Was ein
