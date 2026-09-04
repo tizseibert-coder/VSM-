@@ -92,7 +92,7 @@ irgendwann.
 
 ## Scharfstellen — in dieser Reihenfolge
 
-1. **Migration einspielen.** `supabase/migrations/20260904120000_vsm_crm_and_staff.sql`.
+1. **Migration einspielen.** `supabase/migrations/20260904175944_vsm_crm_and_staff.sql`.
    Idempotent; gegen eine leere Datenbank geprueft mit
    `supabase/tests/leere-datenbank-pruefen.sh`.
 2. **`SUPABASE_SERVICE_ROLE_KEY` setzen.** Ohne ihn nimmt das Formular

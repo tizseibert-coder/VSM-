@@ -120,7 +120,7 @@ Enthalten:
   Spalten der Wizard-Fragen 6 bis 8, ebenfalls nachtraeglich eingecheckt.
 - `migrations/20260903212855_piece_value_and_currency.sql` — `piece_value` und
   `currency` auf `projects`, fuer das gebundene Kapital.
-- `migrations/20260904120000_vsm_crm_and_staff.sql` — die Vertriebsschicht:
+- `migrations/20260904175944_vsm_crm_and_staff.sql` — die Vertriebsschicht:
   `vsm_staff` (wer den Verwaltungsbereich sieht), `vsm_leads` (Interessenten
   mit ihrer Herkunft und ihrer Einwilligung) und `vsm_lead_events` (die
   anfuegende Chronik), dazu `is_vsm_staff()`/`is_vsm_admin()` und die Policies.
