@@ -40,6 +40,16 @@ die sie lesen.
 4. **Nichts direkt im Supabase-SQL-Editor aendern.** Wenn es doch passiert:
    sofort eine idempotente Migration nachziehen, die denselben Zustand
    herstellt.
+5. **Der Dateiname traegt die Version, die in der Datenbank steht.** Wer eine
+   Aenderung ueber den SQL-Editor oder das Supabase-Werkzeug anwendet, bekommt
+   dort einen Zeitstempel zugeteilt, den er sich nicht aussuchen kann. Die
+   nachgezogene Datei (Regel 4) muss genau diesen Namen tragen — sonst haelt
+   `db push` sie fuer eine neue Migration und wendet sie ein zweites Mal an.
+   Nachsehen mit:
+
+   ```sql
+   select version, name from supabase_migrations.schema_migrations order by version;
+   ```
 
 ## Stand dieses Verzeichnisses
 
@@ -54,7 +64,21 @@ Enthalten:
   ausschliesslich als `authenticated` ueber PostgREST zu und hat keine API mit
   Owner-Rechten, die RLS umgehen koennte. Ohne Policies ist die Anwendung nicht
   unsicher, sondern funktionslos.
+- `migrations/20260901174003_future_state_wizard_fields.sql` — die vier
+  Spalten der Wizard-Fragen 6 bis 8, ebenfalls nachtraeglich eingecheckt.
+- `migrations/20260903212855_piece_value_and_currency.sql` — `piece_value` und
+  `currency` auf `projects`, fuer das gebundene Kapital.
 - `seed.sql` — die Referenzwerte des Branchenvergleichs.
+
+Die beiden letzten hiessen bis zum 04.09. `20260901120000` und
+`20260903180000` — Zeitstempel, die beim Schreiben der Datei entstanden und
+nicht die, unter denen die Datenbank sie verzeichnet hat. `db push` haette
+beide ein zweites Mal angewandt (folgenlos, weil idempotent, aber mit einem
+zweiten Eintrag fuer dieselbe Aenderung). Daher jetzt Regel 5.
+
+`20260830160000_vsm_authorization_layer.sql` hat bewusst *keinen* Eintrag in
+der Datenbank: Sie schreibt einen Ist-Zustand fest, der schon vorher da war.
+Ein `db push` wendet sie an — idempotent, und danach ist sie verzeichnet.
 
 ## Was noch fehlt
 

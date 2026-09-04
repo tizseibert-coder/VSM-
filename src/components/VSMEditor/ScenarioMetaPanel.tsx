@@ -21,7 +21,7 @@ export default async function ScenarioMetaPanel({
   scenario: Scenario
   /** Alle Szenario-Typen des Projekts — Vorbelegung im Iterations-Dropdown. */
   usedTypes: (string | null)[]
-  /** Waehrung des Projekts. Stand bis zur Migration 20260903180000 fest als
+  /** Waehrung des Projekts. Stand bis zur Migration 20260903212855 fest als
    *  "CHF" in der Beschriftung — in einem Werkzeug, dessen Startseite mit Euro
    *  wirbt. */
   currency: string

@@ -163,7 +163,7 @@ export default async function ComparePage({
                     <td key={s.id} className="p-3 text-zinc-950">
                       {/* Die Spalte heisst investment_chf, weil sie so angelegt
                           wurde; angezeigt wird sie in der Waehrung des Projekts
-                          (Migration 20260903180000). */}
+                          (Migration 20260903212855). */}
                       {s.investment_chf != null ? money(s.investment_chf) : '–'}
                     </td>
                   ))}
