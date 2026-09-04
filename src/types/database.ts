@@ -1753,6 +1753,157 @@ export type Database = {
           },
         ]
       }
+      vsm_lead_events: {
+        Row: {
+          actor_user_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          lead_id: string
+          payload: Json | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          lead_id: string
+          payload?: Json | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          lead_id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vsm_lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vsm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vsm_leads: {
+        Row: {
+          company: string | null
+          consent_at: string | null
+          consent_text: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          job_title: string | null
+          landing_path: string | null
+          last_activity_at: string
+          locale: string | null
+          message: string | null
+          organization_id: string | null
+          owner_user_id: string | null
+          phone: string | null
+          referrer: string | null
+          source: string
+          stage: string
+          updated_at: string
+          user_id: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          company?: string | null
+          consent_at?: string | null
+          consent_text?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          job_title?: string | null
+          landing_path?: string | null
+          last_activity_at?: string
+          locale?: string | null
+          message?: string | null
+          organization_id?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          referrer?: string | null
+          source?: string
+          stage?: string
+          updated_at?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          company?: string | null
+          consent_at?: string | null
+          consent_text?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          job_title?: string | null
+          landing_path?: string | null
+          last_activity_at?: string
+          locale?: string | null
+          message?: string | null
+          organization_id?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          referrer?: string | null
+          source?: string
+          stage?: string
+          updated_at?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vsm_leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vsm_staff: {
+        Row: {
+          created_at: string
+          note: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          note?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          note?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1763,6 +1914,8 @@ export type Database = {
         Args: { min_role?: string; org_id: string }
         Returns: boolean
       }
+      is_vsm_admin: { Args: never; Returns: boolean }
+      is_vsm_staff: { Args: never; Returns: boolean }
       project_org_id: { Args: { p_project_id: string }; Returns: string }
     }
     Enums: {
@@ -1822,12 +1975,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1851,11 +2004,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1876,11 +2029,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1901,11 +2054,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1918,11 +2071,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

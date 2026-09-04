@@ -1,6 +1,11 @@
+import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import VsmSketch from '@/components/marketing/VsmSketch'
+import LeadForm from '@/components/marketing/LeadForm'
+import JsonLd from '@/components/seo/JsonLd'
+import { localizedUrl, pageMetadata } from '@/lib/seo/site'
+import { PUBLIC_TIERS } from '@/lib/billing/plans'
 import {
   buttonPrimary,
   buttonPrimaryLg,
@@ -21,6 +26,32 @@ import {
  * Unterauftragsverarbeitern und AVV, bevor hier ein Satz dazu stehen darf.
  */
 
+/**
+ * Titel, Beschreibung und die kanonische Adresse dieser Seite.
+ *
+ * Das Root-Layout setzt bereits Titel und Beschreibung; was hier dazukommt,
+ * ist `alternates` — die kanonische Adresse und die Sprachentsprechungen im
+ * HTML. Das Layout kann sie nicht setzen, weil es den Pfad der Seite nicht
+ * kennt: Jede Unterseite gaebe dort "/de" und "/en" als ihre Entsprechungen
+ * an (siehe die Begruendung in i18n/routing.ts).
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'Metadata' })
+
+  return pageMetadata({
+    locale,
+    path: '/',
+    title: t('title'),
+    description: t('description'),
+    ogLocale: t('ogLocale'),
+  })
+}
+
 // Die Inhalte der vier Wiederholungslisten stehen jetzt in
 // messages/{de,en}.json statt hier als Konstanten — sonst gaebe es sie pro
 // Sprache einmal im Quelltext. Die Formen bleiben unveraendert; nur die
@@ -36,9 +67,11 @@ type HostingItem = { role: string; provider: string; note: string }
 // eine Einladung, sie beim Uebersetzen versehentlich zu aendern.
 const CHECK_SEVERITIES = ['critical', 'warning', 'warning'] as const
 
-export default async function Home() {
+export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
   const t = await getTranslations('Home')
   const tNav = await getTranslations('Nav')
+  const tPricing = await getTranslations('Pricing')
 
   const kpis = t.raw('kpis') as Kpi[]
   const checks = t.raw('checks') as Check[]
@@ -48,6 +81,25 @@ export default async function Home() {
 
   return (
     <main className="bg-white">
+      {/* Strukturierte Daten. Hier steht ausschliesslich, was auf der Seite
+          auch sichtbar ist — bei Google ist eine Abweichung zwischen
+          Auszeichnung und Fliesstext ein Verstoss, der die Domain kostet und
+          nicht nur das Suchergebnis. Kein Preis, keine Bewertung, keine
+          Anschrift: nichts davon ist belegt. */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: 'VSM Builder',
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Web',
+          description: t('heroBody'),
+          url: localizedUrl(locale, '/'),
+          inLanguage: locale,
+          featureList: (t.raw('kpis') as Kpi[]).map((kpi) => kpi.name),
+        }}
+      />
+
       <header className="border-b border-zinc-200">
         {/* [Bedienbarkeitsprüfung 2026-09-03, B4] Ohne Umbruch braucht diese
             Zeile 435 px — auf einem 390 px breiten Telefon stand "Kostenlos
@@ -61,6 +113,12 @@ export default async function Home() {
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>
               {tNav('demo')}
+            </Link>
+            <Link
+              href="/pricing"
+              className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              {tNav('pricing')}
             </Link>
             <Link
               href="/login"
@@ -241,26 +299,73 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Der Tarifausschnitt, nicht die ganze Tabelle: Wer hier landet, will
+          wissen, ob es etwas Kostenloses gibt und wo die Grenze liegt. Alles
+          Weitere steht auf /pricing — und der Verweis dorthin ist zugleich
+          die interne Verlinkung, die die Preisseite ueberhaupt erst
+          auffindbar macht. */}
       <section className="border-t border-zinc-200">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-14">
-          <div>
-            <p className="text-xl font-semibold tracking-tight text-zinc-950">
-              {t('ctaTitle')}
-            </p>
-            <p className="mt-2 max-w-lg text-zinc-700">{t('ctaBody')}</p>
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
+              {tPricing('title')}
+            </h2>
+            <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
+              {tPricing('teaserLink')}
+            </Link>
           </div>
-          <Link href="/demo" className={buttonPrimaryLg}>
-            {t('ctaButton')}
-          </Link>
+          <dl className="mt-8 grid gap-px overflow-hidden rounded-surface border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-4">
+            {PUBLIC_TIERS.map((tier) => (
+              <div key={tier} className="bg-white px-5 py-5">
+                <dt className="font-medium text-zinc-950">{tPricing(`tier${tier}Name`)}</dt>
+                <dd className="mt-1 text-sm text-brand-700">{tPricing(`tier${tier}Price`)}</dd>
+                <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
+                  {tPricing(`tier${tier}Body`)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      <section id="kontakt" className="border-t border-zinc-200 bg-zinc-50 scroll-mt-8">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
+            <div>
+              <p className="text-xl font-semibold tracking-tight text-zinc-950">
+                {t('ctaTitle')}
+              </p>
+              <p className="mt-2 max-w-lg text-zinc-700">{t('ctaBody')}</p>
+              <Link href="/demo" className={`${buttonPrimaryLg} mt-6 inline-block`}>
+                {t('ctaButton')}
+              </Link>
+            </div>
+            <LeadForm />
+          </div>
         </div>
       </section>
 
       <footer className="border-t border-zinc-200">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline gap-x-3 gap-y-1 px-6 py-8 text-sm text-zinc-600">
-          <span className="font-semibold uppercase tracking-widest text-brand-600">
-            VSM Builder
-          </span>
-          <span>{t('footerTagline')}</span>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-6 py-8 text-sm text-zinc-600">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-semibold uppercase tracking-widest text-brand-600">
+              VSM Builder
+            </span>
+            <span>{t('footerTagline')}</span>
+          </div>
+          {/* Interne Verweise auf die drei oeffentlichen Unterseiten. Eine
+              Seite, auf die nichts zeigt, findet auch keine Suchmaschine. */}
+          <nav className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link href="/pricing" className="hover:text-brand-600 hover:underline">
+              {tNav('pricing')}
+            </Link>
+            <Link href="/demo" className="hover:text-brand-600 hover:underline">
+              {tNav('demo')}
+            </Link>
+            <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
+              {tNav('dataSheet')}
+            </Link>
+          </nav>
         </div>
       </footer>
     </main>
