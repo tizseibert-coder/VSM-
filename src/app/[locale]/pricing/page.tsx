@@ -79,10 +79,12 @@ export default async function PricingPage({
 
   return (
     <main className="bg-white">
-      {/* Nur die kostenlose Stufe traegt einen Betrag, weil nur sie einen hat.
-          Die uebrigen erscheinen ohne `offers` — ein Angebot ohne Preis ist
-          in schema.org kein gueltiges Angebot, und eines mit erfundenem Preis
-          waere schlimmer als keines. */}
+      {/* FREE, STARTER und PROFESSIONAL tragen jetzt einen echten Betrag,
+          seit die Selbstbedienungspreise feststehen (04.09.2026) — vorher
+          stand hier nur FREE, weil ein Angebot ohne Preis in schema.org kein
+          gueltiges Angebot ist und eines mit erfundenem Preis schlimmer waere
+          als keines. ENTERPRISE bleibt ohne Offer: "Preis auf Anfrage" ist
+          weiterhin kein Preis. */}
       <JsonLd
         data={{
           '@context': 'https://schema.org',
@@ -93,14 +95,32 @@ export default async function PricingPage({
           description: t('metaDescription'),
           url: localizedUrl(locale, '/'),
           inLanguage: locale,
-          offers: {
-            '@type': 'Offer',
-            name: t('tierFREEName'),
-            price: 0,
-            priceCurrency: 'EUR',
-            url: localizedUrl(locale, '/signup'),
-            availability: 'https://schema.org/InStock',
-          },
+          offers: [
+            {
+              '@type': 'Offer',
+              name: t('tierFREEName'),
+              price: 0,
+              priceCurrency: 'EUR',
+              url: localizedUrl(locale, '/signup'),
+              availability: 'https://schema.org/InStock',
+            },
+            {
+              '@type': 'Offer',
+              name: t('tierSTARTERName'),
+              price: 12,
+              priceCurrency: 'EUR',
+              url: `${localizedUrl(locale, '/pricing')}#kontakt`,
+              availability: 'https://schema.org/InStock',
+            },
+            {
+              '@type': 'Offer',
+              name: t('tierPROFESSIONALName'),
+              price: 49,
+              priceCurrency: 'EUR',
+              url: `${localizedUrl(locale, '/pricing')}#kontakt`,
+              availability: 'https://schema.org/InStock',
+            },
+          ],
         }}
       />
       <JsonLd
