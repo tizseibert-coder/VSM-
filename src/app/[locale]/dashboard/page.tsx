@@ -6,6 +6,9 @@ import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
 import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
+import OrgMark from '@/components/org/OrgMark'
+import { loadOrgProfile } from '@/lib/org/orgSettings'
+import { orgLogoUrl } from '@/lib/org/branding'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import { buttonPrimary, buttonPrimaryLg, buttonSecondary } from '@/components/ui/buttons'
 
@@ -46,24 +49,38 @@ export default async function DashboardPage({
   const plan = activeOrg ? await loadPlan(activeOrg.organizationId) : null
   const usage = activeOrg && plan ? await loadPlanUsage(activeOrg.organizationId, plan) : null
 
+  // Das Firmenprofil. Ohne Zeile ergibt es den Namen aus dem gemeinsamen Login
+  // und kein Bild — derselbe Kopf wie bisher, nur mit dem Platz, an dem das
+  // Logo stehen wird.
+  const profile = activeOrg
+    ? await loadOrgProfile(activeOrg.organizationId, activeOrg.organizationName)
+    : null
+  const logoUrl =
+    profile?.hasLogo ? orgLogoUrl(profile.organizationId, profile.logoVersion) : null
+
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
-              VSM Builder
-            </p>
-            <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              {t('signedInAs', { email: claims?.email ?? '' })}
-              {activeOrg && (
-                <>
-                  {' '}
-                  · {activeOrg.organizationName} ({activeOrg.role})
-                </>
-              )}
-            </p>
+          <div className="flex min-w-0 items-start gap-3">
+            {activeOrg && profile && (
+              <OrgMark logoUrl={logoUrl} name={profile.displayName} />
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
+                VSM Builder
+              </p>
+              <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
+              <p className="mt-1 text-sm text-zinc-600">
+                {t('signedInAs', { email: claims?.email ?? '' })}
+                {activeOrg && (
+                  <>
+                    {' '}
+                    · {profile?.displayName ?? activeOrg.organizationName} ({activeOrg.role})
+                  </>
+                )}
+              </p>
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {staff && (
@@ -71,6 +88,9 @@ export default async function DashboardPage({
                 {t('admin')}
               </Link>
             )}
+            <Link href="/settings" className={buttonSecondary}>
+              {t('settings')}
+            </Link>
             <Link
               href="/team"
               className={buttonSecondary}

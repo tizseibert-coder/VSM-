@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ACTIVE_ORG_COOKIE, getActiveOrg, loadMemberships } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
 import { noteUserActivity } from '@/lib/crm/leads'
+import { projectDefaults } from '@/lib/org/orgSettings'
 
 export async function signOut() {
   const supabase = await createClient()
@@ -19,14 +20,16 @@ export async function signOut() {
 // jemand in zwei Organisationen ist, der Fehler wurde verschluckt und der
 // Nutzer sah "Keine Organisation gefunden". Die Auswahl liegt jetzt in
 // lib/org/activeOrg.ts; hier bleibt nur die Anmelde-Weiche.
-async function currentUserOrgId(): Promise<{ orgId: string } | { error: string }> {
+async function currentUserOrgId(): Promise<
+  { orgId: string; orgName: string } | { error: string }
+> {
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
   if (!data?.claims?.sub) redirect('/login')
 
   const result = await getActiveOrg()
   if ('error' in result) return result
-  return { orgId: result.active.organizationId }
+  return { orgId: result.active.organizationId, orgName: result.active.organizationName }
 }
 
 // Wechselt die aktive Organisation. Nur Benutzerfuehrung — RLS gaebe fremde
@@ -72,10 +75,16 @@ export async function createProject(formData: FormData) {
     redirect('/dashboard?error=' + encodeURIComponent(limitError))
   }
 
+  // Waehrung, Firmenname und verfuegbare Minuten aus dem Firmenprofil, soweit
+  // dort gesetzt. Der Unterschied zwischen "einmal einstellen" und "bei jedem
+  // Wertstrom wieder eintippen" ist das erste, was ein Erprober bemerkt —
+  // und was nicht gesetzt ist, bleibt bei den Vorgaben der Tabelle.
+  const defaults = await projectDefaults(orgResult.orgId, orgResult.orgName)
+
   const supabase = await createClient()
   const { data: project, error } = await supabase
     .from('projects')
-    .insert({ organization_id: orgResult.orgId, name })
+    .insert({ organization_id: orgResult.orgId, name, ...defaults })
     .select('id')
     .single()
 
@@ -128,6 +137,10 @@ export async function createExampleProject() {
   // gleich; nur die Woerter folgen der Sprache, in der er anlegt.
   const tEx = await getTranslations('Example')
 
+  // Dasselbe Firmenprofil wie beim leeren Projekt: Das Beispiel ist ein
+  // Projekt wie jedes andere, es faellt nur schneller vom Himmel.
+  const exampleDefaults = await projectDefaults(orgResult.orgId, orgResult.orgName)
+
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .insert({
@@ -135,6 +148,7 @@ export async function createExampleProject() {
       name: tEx('projectName'),
       description: tEx('description'),
       annual_throughput: 50000,
+      ...exampleDefaults,
     })
     .select('id')
     .single()

@@ -1753,6 +1753,50 @@ export type Database = {
           },
         ]
       }
+      vsm_invite_settings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          invitee_company: string | null
+          invitee_name: string | null
+          label: string | null
+          organization_id: string
+          show_branding: boolean
+          token_hash: string
+          welcome_message: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          invitee_company?: string | null
+          invitee_name?: string | null
+          label?: string | null
+          organization_id: string
+          show_branding?: boolean
+          token_hash: string
+          welcome_message?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          invitee_company?: string | null
+          invitee_name?: string | null
+          label?: string | null
+          organization_id?: string
+          show_branding?: boolean
+          token_hash?: string
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vsm_invite_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vsm_lead_events: {
         Row: {
           actor_user_id: string | null
@@ -1878,6 +1922,77 @@ export type Database = {
             foreignKeyName: "vsm_leads_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vsm_org_settings: {
+        Row: {
+          brand_color: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          default_available_minutes: number | null
+          default_currency: string | null
+          default_locale: string | null
+          display_name: string | null
+          industry: string | null
+          legal_name: string | null
+          logo_data: string | null
+          logo_file_name: string | null
+          logo_mime: string | null
+          logo_updated_at: string | null
+          organization_id: string
+          report_footer: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          brand_color?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          default_available_minutes?: number | null
+          default_currency?: string | null
+          default_locale?: string | null
+          display_name?: string | null
+          industry?: string | null
+          legal_name?: string | null
+          logo_data?: string | null
+          logo_file_name?: string | null
+          logo_mime?: string | null
+          logo_updated_at?: string | null
+          organization_id: string
+          report_footer?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          brand_color?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          default_available_minutes?: number | null
+          default_currency?: string | null
+          default_locale?: string | null
+          display_name?: string | null
+          industry?: string | null
+          legal_name?: string | null
+          logo_data?: string | null
+          logo_file_name?: string | null
+          logo_mime?: string | null
+          logo_updated_at?: string | null
+          organization_id?: string
+          report_footer?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vsm_org_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },

@@ -4,7 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { revokeInvite } from './actions'
 import InviteCreator from '@/components/team/InviteCreator'
-import { buttonDangerSm } from '@/components/ui/buttons'
+import OrgMark from '@/components/org/OrgMark'
+import { loadOrgProfile } from '@/lib/org/orgSettings'
+import { orgLogoUrl } from '@/lib/org/branding'
+import { buttonDangerSm, buttonSecondarySm } from '@/components/ui/buttons'
 
 // Zuordnung Rolle/Status -> Uebersetzungsschluessel; die Texte stehen im
 // Namensraum `Team`.
@@ -71,10 +74,30 @@ export default async function TeamPage({
   const { data: invitations } = isOwner
     ? await supabase
         .from('organization_invitations')
-        .select('id, role, created_at, expires_at, revoked_at, accepted_at')
+        .select('id, role, created_at, expires_at, revoked_at, accepted_at, token_hash')
         .eq('organization_id', active.organizationId)
         .order('created_at', { ascending: false })
     : { data: null }
+
+  // Die eigenen Angaben zu diesen Einladungen liegen in einer zweiten Tabelle
+  // (`organization_invitations` gehoert Prisma, siehe supabase/README.md) und
+  // haengen am selben Token-Hash. Eine Abfrage ueber die Organisation statt
+  // eine je Zeile: Es sind eine Handvoll offener Einladungen, kein Bestand.
+  const { data: inviteSettings } = isOwner
+    ? await supabase
+        .from('vsm_invite_settings')
+        .select('token_hash, label, invitee_name, invitee_company')
+        .eq('organization_id', active.organizationId)
+    : { data: null }
+
+  const settingsByHash = new Map((inviteSettings ?? []).map((row) => [row.token_hash, row]))
+
+  // Das Firmenprofil steht hier zweimal: als Zeichen ueber der Liste (damit
+  // sichtbar ist, was der Eingeladene sehen wird) und als Antwort auf die
+  // Frage, ob es ueberhaupt eines gibt — ein „Logo mitschicken" anzubieten,
+  // wo keines hinterlegt ist, waere ein leeres Versprechen.
+  const profile = await loadOrgProfile(active.organizationId, active.organizationName)
+  const logoUrl = profile.hasLogo ? orgLogoUrl(profile.organizationId, profile.logoVersion) : null
 
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
@@ -125,10 +148,31 @@ export default async function TeamPage({
                 {t('inviteHeading')}
               </h2>
               <p className="mt-1 text-sm text-zinc-600">
-                {t('inviteBody', { org: active.organizationName })}
+                {t('inviteBody', { org: profile.displayName })}
               </p>
+
+              {/* Was der Eingeladene zu sehen bekommt, steht hier neben dem
+                  Formular, das den Link erzeugt — sonst merkt niemand, dass
+                  die Einladung unter dem Namen aus der Registrierung
+                  hinausgeht ("Max Muster's Organization"), bis der Empfaenger
+                  nachfragt. */}
+              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-surface border border-zinc-200 bg-white px-4 py-3">
+                <OrgMark logoUrl={logoUrl} name={profile.displayName} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-zinc-950">
+                    {profile.displayName}
+                  </div>
+                  <div className="text-xs text-zinc-500">
+                    {profile.hasLogo ? t('brandingReady') : t('brandingMissing')}
+                  </div>
+                </div>
+                <Link href="/settings" className={buttonSecondarySm}>
+                  {t('editBranding')}
+                </Link>
+              </div>
+
               <div className="mt-4">
-                <InviteCreator />
+                <InviteCreator hasBranding={profile.hasLogo} />
               </div>
             </section>
 
@@ -145,9 +189,19 @@ export default async function TeamPage({
                   {invitations.map((inv) => {
                     const status = inviteStatus(inv)
                     const canRevoke = !inv.accepted_at && !inv.revoked_at
+                    const custom = settingsByHash.get(inv.token_hash)
+                    // Der Empfaenger zuerst, die Rolle danach: Fuenf offene
+                    // Einladungen unterschieden sich vorher nur im Datum, und
+                    // niemand wusste mehr, welcher Link an wen ging.
+                    const who =
+                      custom?.label ??
+                      [custom?.invitee_name, custom?.invitee_company].filter(Boolean).join(' · ')
                     return (
                       <li key={inv.id} className="flex items-center justify-between gap-3 px-5 py-3">
                         <div className="min-w-0">
+                          {who && (
+                            <div className="truncate text-sm font-medium text-zinc-950">{who}</div>
+                          )}
                           <div className="text-sm text-zinc-800">
                             {ROLE_KEY[inv.role] ? t(ROLE_KEY[inv.role]) : inv.role} ·{' '}
                             <span className={status.tone}>{t(status.key)}</span>
