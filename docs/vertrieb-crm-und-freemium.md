@@ -137,14 +137,21 @@ der niemandem etwas wegnimmt.
   `FAQPage` auf der Preisseite) enthalten ausschliesslich, was auf der Seite
   auch sichtbar steht.
 
-**Ein Punkt braucht eine Entscheidung:** Die Preise stehen nicht fest. Auf der
-Preisseite steht deshalb „Preis auf Anfrage", und das JSON-LD nennt nur die
-eine Zahl, die belegt ist — die kostenlose Stufe kostet null. Sobald Betraege
-feststehen, gehoeren sie nach `messages/{de,en}.json` unter
-`Pricing.tier*Price`; das JSON-LD in `app/[locale]/pricing/page.tsx` braucht
-dann je Stufe ein eigenes `Offer` mit `price` und `priceCurrency`. Eine
-erfundene Zahl waere kein Platzhalter, sondern eine Falschangabe im
-Suchergebnis.
+**Seit 04.09.2026 stehen echte Selbstbedienungspreise:** Starter 12&nbsp;€/Monat,
+Professional 49&nbsp;€/Monat, in `messages/{de,en}.json` unter
+`Pricing.tier*Price` und als eigenes `Offer` je Stufe im JSON-LD von
+`app/[locale]/pricing/page.tsx`. Enterprise bleibt bei „Preis auf Anfrage" —
+die einzige Stufe, die ein Verkaufsgespräch braucht.
+
+Wichtig: Es gibt noch **keinen Checkout**. Der Knopf hinter Starter/Professional
+führt weiterhin zum Kontaktformular (`ctaContact`, jetzt „Zugang anfragen"
+statt „Angebot anfragen" — der Preis steht ja schon fest, nur die Freischaltung
+ist noch manuell). Ein Stripe-Checkout, der den Tarif in
+`organization_entitlements` automatisch setzt, ist der naechste Schritt, wenn
+sich die Preise in der Praxis bestaetigen. Die Zahlen selbst sind ein
+Vorschlag aus einer Erfahrungsregel (Selbstbedienungsschwelle in deutschen
+Mittelstandsbetrieben, keine getestete Zahlungsbereitschaft) — siehe
+`VSM Builder Wachstumskonzept`.
 
 ## Was bewusst fehlt
 
