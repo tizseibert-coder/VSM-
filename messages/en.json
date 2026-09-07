@@ -775,7 +775,11 @@
     "settingsOwnersOnly": "Only owners can change the company settings.",
     "logoTooLarge": "The logo is too large. Please choose a file under 200 kB.",
     "logoType": "A logo can be PNG, JPEG or WebP.",
-    "logoEmpty": "The chosen file is empty."
+    "logoEmpty": "The chosen file is empty.",
+    "checkoutFailed": "The payment process could not be started. Please try again.",
+    "checkoutNotOwner": "Only owners can start a subscription.",
+    "checkoutNoOrg": "No organization found.",
+    "checkoutNotConfigured": "Purchasing is not available right now. Please contact us."
   },
   "DataSheet": {
     "metaTitle": "Data collection sheet",
@@ -891,12 +895,13 @@
       },
       {
         "question": "How do I change plan?",
-        "answer": "By asking us. The plan applies to the organisation, not to individual accounts — every colleague in it gets it at the same time."
+        "answer": "You can subscribe to Starter and Professional directly, no request needed — the button on this page takes you to Stripe and back. Enterprise still runs through a request to us. The change applies to the organisation, not to individual accounts — every colleague in it gets it at the same time."
       }
     ],
     "contactTitle": "Request a quote",
     "contactBody": "Tell us how many value streams and how many colleagues — you get a price back, not a brochure.",
-    "ctaTitle": "Starting without asking works too."
+    "ctaTitle": "Starting without asking works too.",
+    "ctaSubscribe": "Subscribe now"
   },
   "Admin": {
     "title": "Admin",

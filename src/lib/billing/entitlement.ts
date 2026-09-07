@@ -11,6 +11,7 @@
 // derselben Firma sagt nichts darueber, was hier erlaubt ist.
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { isTier, limitsFor, quota, type PlanLimits, type Quota, type Tier } from './plans'
 
 export type Plan = {
@@ -124,4 +125,61 @@ export async function loadPlanUsage(organizationId: string, plan: Plan): Promise
 export function mayAdd(plan: Plan, used: number, limit: number | null): boolean {
   if (!plan.enforced) return true
   return quota(used, limit).allowed
+}
+
+/**
+ * Zieht die aktuell gewaehrte Stufe zurueck, ohne eine neue zu vergeben.
+ *
+ * Der Normalfall danach ist FREE — nicht durch eine eingetragene FREE-Zeile,
+ * sondern weil `loadPlan()` ohne aktive Zeile ohnehin dorthin faellt (siehe
+ * dort). Eine FREE-Zeile eigens einzutragen wuerde nur dieselbe Aussage ein
+ * zweites Mal treffen.
+ *
+ * Ueber den Service-Role-Client aus demselben Grund wie in `grantEntitlement`
+ * — `organization_entitlements` gehoert Prisma, welche Policies dort haengen,
+ * entscheidet das andere Repository.
+ */
+export async function revokeActiveEntitlement(organizationId: string): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('organization_entitlements')
+    .update({ status: 'REVOKED' })
+    .eq('organization_id', organizationId)
+    .eq('product', 'VSM_BUILDER')
+    .eq('status', 'ACTIVE')
+
+  if (error) {
+    throw new Error(`revokeActiveEntitlement failed: ${error.message}`)
+  }
+}
+
+/**
+ * Vergibt einer Organisation eine Stufe — die einzige Stelle, die das tut.
+ *
+ * Vorher stand dieser Vorgang zweimal im Quelltext: einmal in
+ * `admin/actions.ts` fuer die Vergabe von Hand, und (seit Stripe) ein zweites
+ * Mal im Webhook. Zwei Kopien derselben "erst zurueckziehen, dann neu
+ * eintragen"-Logik waeren zwei Stellen, die auseinanderlaufen koennen — genau
+ * die Art Fehler, die erst auffaellt, wenn eine Kundin bezahlt hat und ihr
+ * Tarif trotzdem nicht stimmt.
+ *
+ * Ein `update` auf der vorhandenen Zeile waere kuerzer, wuerde aber die
+ * Geschichte ueberschreiben — und "seit wann ist das Haus auf PROFESSIONAL?"
+ * ist genau die Frage, die spaeter gestellt wird.
+ */
+export async function grantEntitlement(organizationId: string, tier: Tier): Promise<void> {
+  await revokeActiveEntitlement(organizationId)
+
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('organization_entitlements').insert({
+    organization_id: organizationId,
+    product: 'VSM_BUILDER',
+    tier,
+    status: 'ACTIVE',
+    granted_at: new Date().toISOString(),
+  })
+
+  if (error) {
+    throw new Error(`grantEntitlement failed: ${error.message}`)
+  }
 }

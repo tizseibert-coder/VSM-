@@ -775,7 +775,11 @@
     "settingsOwnersOnly": "Nur Inhaber können die Firmeneinstellungen ändern.",
     "logoTooLarge": "Das Logo ist zu groß. Bitte eine Datei unter 200 kB wählen.",
     "logoType": "Als Logo sind PNG, JPEG und WebP möglich.",
-    "logoEmpty": "Die gewählte Datei ist leer."
+    "logoEmpty": "Die gewählte Datei ist leer.",
+    "checkoutFailed": "Der Zahlungsvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+    "checkoutNotOwner": "Nur Inhaber können ein Abo abschließen.",
+    "checkoutNoOrg": "Keine Organisation gefunden.",
+    "checkoutNotConfigured": "Der Kauf ist derzeit nicht verfügbar. Bitte kontaktieren Sie uns."
   },
   "DataSheet": {
     "metaTitle": "Erhebungsbogen",
@@ -891,12 +895,13 @@
       },
       {
         "question": "Wie wechsle ich den Tarif?",
-        "answer": "Über eine Anfrage an uns. Der Wechsel gilt für die Organisation, nicht für einzelne Konten — alle Kollegen darin bekommen ihn gleichzeitig."
+        "answer": "Starter und Professional können Sie direkt abonnieren, ohne Anfrage — der Knopf auf dieser Seite führt zu Stripe und zurück. Enterprise läuft weiterhin über eine Anfrage an uns. Der Wechsel gilt für die Organisation, nicht für einzelne Konten — alle Kollegen darin bekommen ihn gleichzeitig."
       }
     ],
     "contactTitle": "Angebot anfragen",
     "contactBody": "Sagen Sie uns, wie viele Wertströme und wie viele Kollegen — dann kommt ein Preis zurück, keine Broschüre.",
-    "ctaTitle": "Ohne Anfrage anfangen geht auch."
+    "ctaTitle": "Ohne Anfrage anfangen geht auch.",
+    "ctaSubscribe": "Jetzt abonnieren"
   },
   "Admin": {
     "title": "Verwaltung",

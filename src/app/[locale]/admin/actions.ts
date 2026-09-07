@@ -7,6 +7,7 @@ import { createAdminClient, hasAdminCredentials } from '@/lib/supabase/admin'
 import { requireAdmin, requireStaff } from '@/lib/crm/staff'
 import { isStage } from '@/lib/crm/queries'
 import { isTier } from '@/lib/billing/plans'
+import { grantEntitlement } from '@/lib/billing/entitlement'
 
 /**
  * Setzt die Trichterstufe eines Interessenten.
@@ -124,10 +125,11 @@ export async function claimLead(leadId: string, release: boolean) {
  *
  * `organization_entitlements` gehoert Prisma/LeanPulse Industrial (siehe
  * supabase/README.md). Taktane legt dort *Zeilen* an, keine Objekte —
- * das ist gewoehnliche Nutzung, keine Eigentumsverletzung. Ueber den
- * Service-Role-Client, weil unbekannt ist, welche Policies dort haengen und
- * ob sie sich morgen aendern: Ein Tarifwechsel, der stillschweigend an einer
- * fremden Policy scheitert, waere schlimmer als gar keiner.
+ * das ist gewoehnliche Nutzung, keine Eigentumsverletzung. Das eigentliche
+ * Schreiben steckt in `grantEntitlement()` (lib/billing/entitlement.ts) —
+ * seit Stripe ist diese Funktion hier nicht mehr die einzige Aufruferin, und
+ * zwei Kopien derselben "erst zurueckziehen, dann neu eintragen"-Logik
+ * waeren zwei Stellen, die auseinanderlaufen koennen.
  *
  * Nur `admin`, nicht `sales`: Das hier kostet Geld.
  */
@@ -142,37 +144,14 @@ export async function grantTier(organizationId: string, formData: FormData) {
     redirect('/admin/organizations?error=notConfigured')
   }
 
+  try {
+    await grantEntitlement(organizationId, tier)
+  } catch (err) {
+    console.error('grantTier failed:', err instanceof Error ? err.message : err)
+    redirect('/admin/organizations?error=save')
+  }
+
   const supabase = createAdminClient()
-  const now = new Date().toISOString()
-
-  // Erst die bisherige Vergabe zurueckziehen, dann die neue eintragen. Ein
-  // `update` auf der vorhandenen Zeile waere kuerzer, wuerde aber die
-  // Geschichte ueberschreiben — und die Frage "seit wann ist das Haus auf
-  // PROFESSIONAL?" ist genau die, die spaeter gestellt wird.
-  const { error: revokeError } = await supabase
-    .from('organization_entitlements')
-    .update({ status: 'REVOKED' })
-    .eq('organization_id', organizationId)
-    .eq('product', 'VSM_BUILDER')
-    .eq('status', 'ACTIVE')
-
-  if (revokeError) {
-    console.error('grantTier (revoke) failed:', revokeError.message)
-    redirect('/admin/organizations?error=save')
-  }
-
-  const { error } = await supabase.from('organization_entitlements').insert({
-    organization_id: organizationId,
-    product: 'VSM_BUILDER',
-    tier,
-    status: 'ACTIVE',
-    granted_at: now,
-  })
-
-  if (error) {
-    console.error('grantTier failed:', error.message)
-    redirect('/admin/organizations?error=save')
-  }
 
   // Wenn zu diesem Haus ein Interessent gehoert, bekommt seine Chronik den
   // Tarifwechsel. Ohne Treffer passiert nichts.
