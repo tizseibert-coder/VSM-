@@ -54,6 +54,10 @@ export async function updateSession(request: NextRequest, baseResponse: NextResp
   const isProtectedRoute =
     pathWithoutLocale.startsWith('/dashboard') ||
     pathWithoutLocale.startsWith('/editor') ||
+    // Die Firmeneinstellungen. Wie beim Team-Bereich entscheidet danach die
+    // Rolle, ob jemand aendern darf — hier geht es nur darum, dass ein
+    // Nichtangemeldeter zur Anmeldung kommt statt in eine leere Seite.
+    pathWithoutLocale.startsWith('/settings') ||
     // Der Verwaltungsbereich. Angemeldet zu sein reicht dafuer nicht — wer
     // nicht in `vsm_staff` steht, bekommt dort 404 (siehe lib/crm/staff.ts).
     // Diese Weiche erspart dem Nichtangemeldeten nur den Umweg ueber ein 404,

@@ -54,6 +54,11 @@ psql "$URL" -tAc "
 psql "$URL" -tAc "
   select 'Vertriebstabellen: '||count(*) from pg_tables
   where schemaname='public' and tablename in ('vsm_staff','vsm_leads','vsm_lead_events');"
+# Aus demselben Grund noch einmal getrennt: Das Firmenprofil ist die dritte
+# Schicht, und wer die Zahlen gegen README.md haelt, soll sehen, welche fehlt.
+psql "$URL" -tAc "
+  select 'Profiltabellen: '||count(*) from pg_tables
+  where schemaname='public' and tablename in ('vsm_org_settings','vsm_invite_settings');"
 psql "$URL" -tAc "select 'Policies: '||count(*) from pg_policy;"
 psql "$URL" -tAc "select 'Referenzwerte: '||count(*) from benchmark_reference;"
 echo "Durchgelaufen."

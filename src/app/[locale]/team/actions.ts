@@ -9,11 +9,20 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan } from '@/lib/billing/entitlement'
 import { quota } from '@/lib/billing/plans'
+import { MAX_WELCOME_LENGTH, inviteDays } from '@/lib/org/invites'
 
-/** Gueltigkeitsdauer einer Einladung. Kurz genug, dass ein vergessener Link nicht ewig offen steht. */
-const INVITE_DAYS = 7
+/** Leeres Feld heisst „nichts hinterlegt", nicht „leerer Text". */
+function textOrNull(formData: FormData, key: string, maxLength: number): string | null {
+  const raw = formData.get(key)
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  return trimmed.length === 0 ? null : trimmed.slice(0, maxLength)
+}
 
-export type CreateInviteResult = { ok: true; url: string } | { ok: false; error: string } | null
+export type CreateInviteResult =
+  | { ok: true; url: string; days: number }
+  | { ok: false; error: string }
+  | null
 
 /**
  * Legt eine Einladung an und gibt den fertigen Link *einmalig* zurueck.
@@ -57,7 +66,8 @@ export async function createInvite(
   const token = randomBytes(32).toString('base64url')
   const tokenHash = createHash('sha256').update(token, 'utf8').digest('hex')
 
-  const expiresAt = new Date(Date.now() + INVITE_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const days = inviteDays(formData.get('valid_days'))
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
 
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
@@ -75,6 +85,31 @@ export async function createInvite(
     return { ok: false, error: await tErr('inviteCreate') }
   }
 
+  // Was ueber die Einladung hinaus zu ihr gehoert — fuer wen sie gedacht war,
+  // was der Empfaenger lesen soll, ob er dabei das Logo der Firma sieht.
+  // Zweite Tabelle, weil `organization_invitations` Prisma gehoert (siehe
+  // supabase/README.md) und wir dort keine Spalten anhaengen; verknuepft ueber
+  // denselben Hash.
+  //
+  // Ein Fehler hier bricht die Einladung *nicht* ab: Der Link ist erzeugt und
+  // funktioniert, es fehlt nur die Anrede. Ihn zurueckzuziehen, weil eine
+  // Begruessung nicht gespeichert werden konnte, waere die schlechtere Wahl —
+  // der Nutzer haette einen gueltigen Link in der Hand, den die Oberflaeche
+  // als gescheitert meldet.
+  const { error: settingsError } = await supabase.from('vsm_invite_settings').insert({
+    token_hash: tokenHash,
+    organization_id: orgResult.active.organizationId,
+    label: textOrNull(formData, 'label', 120),
+    invitee_name: textOrNull(formData, 'invitee_name', 120),
+    invitee_company: textOrNull(formData, 'invitee_company', 160),
+    welcome_message: textOrNull(formData, 'welcome_message', MAX_WELCOME_LENGTH),
+    show_branding: formData.get('show_branding') !== '0',
+    created_by: claims?.claims?.sub ?? null,
+  })
+  if (settingsError) {
+    console.error('createInvite (settings) failed:', settingsError.message)
+  }
+
   const headerList = await headers()
   const host = headerList.get('host')
   const origin =
@@ -84,7 +119,7 @@ export async function createInvite(
     'http://localhost:3000'
 
   revalidatePath('/team')
-  return { ok: true, url: `${origin}/invite/${token}` }
+  return { ok: true, url: `${origin}/invite/${token}`, days }
 }
 
 /**

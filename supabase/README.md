@@ -18,6 +18,7 @@ und es ist bis zum 30.08. niemandem aufgefallen.
 | `handle_new_user()`, `has_org_role()` + deren Policies | Prisma | dito |
 | `projects`, `processes`, `inventory_buffers`, `scenarios`, `spaghetti_layouts`, `reports`, `historical_metrics`, `benchmark_data`, `benchmark_reference`, `activity_logs` | VSM Builder | `supabase/migrations/` (hier) |
 | `vsm_staff`, `vsm_leads`, `vsm_lead_events` | VSM Builder | dito |
+| `vsm_org_settings`, `vsm_invite_settings` | VSM Builder | dito |
 | `project_org_id()`, `set_updated_at()`, `is_vsm_staff()`, `is_vsm_admin()` + die Policies auf obigen Tabellen | VSM Builder | dito |
 | `consulting_leads` | Landing-Page | `D:\LeanPulse Landing` |
 
@@ -69,6 +70,17 @@ naechsten Prisma-Migration jemandem auffallen:
   Geschrieben wird nur ueber den Verwaltungsbereich (`/admin/organizations`,
   Rolle `admin`), und zwar mit Service-Role — welche Policies dort haengen,
   entscheidet das andere Repository.
+- **`organization_invitations`** traegt die Einladungen; der VSM Builder legt
+  dort Zeilen an und zieht sie zurueck. Seit dem 05.09. haengt an jeder
+  Einladung optional eine Zeile in `vsm_invite_settings` — Empfaenger,
+  Begruessung, ob das Logo mitgeht.
+  Verknuepft ist sie ueber den **sha256-Hash des Einladungstokens**, nicht
+  ueber `organization_invitations.id`, und zwar aus zwei Gruenden: Ein
+  Fremdschluessel auf eine fremde Tabelle waere eine weitere Abhaengigkeit,
+  und die Einladungsseite muss die Angaben zeigen, *bevor* der Empfaenger
+  angemeldet ist — mit dem Hash als Schluessel genuegt dafuer eine Abfrage in
+  einer Tabelle, die uns gehoert. Den Hash schreibt `createInvite`
+  (`src/app/[locale]/team/actions.ts`) in beide Tabellen.
 - **`auth.users`** wird ueber die Admin-API gelesen, nicht ueber PostgREST.
   Eine gespiegelte `profiles`-Tabelle braeuchte einen Trigger auf `auth.users`,
   wo schon `handle_new_user()` von Prisma haengt — ein zweiter Trigger auf einer
@@ -126,6 +138,16 @@ Enthalten:
   anfuegende Chronik), dazu `is_vsm_staff()`/`is_vsm_admin()` und die Policies.
   Legt bewusst **keine** eigene Tarif-Tabelle an — siehe „Was der VSM Builder
   von fremden Tabellen liest".
+- `migrations/20260905170000_vsm_org_branding_and_invite_settings.sql` — das
+  Firmenprofil: `vsm_org_settings` (Logo, Firmenangaben, Vorgaben fuer neue
+  Wertstroeme) und `vsm_invite_settings` (was an einer Einladung haengt).
+  Beide liegen **neben** `organizations` bzw. `organization_invitations` und
+  nicht darin — die gehoeren Prisma. Das Logo steht als base64 in der Zeile
+  und nicht im Storage: Ein Bucket braeuchte Policies auf `storage.objects`,
+  einer Tabelle, die Supabase gehoert, und waere ein Einrichtungsschritt, den
+  niemand sieht, bis das erste Logo nicht hochlaedt. Bei einem Logo je Firma
+  und 200 kB Obergrenze ist das die billigere Rechnung; bei Bildern im
+  Wertstrom waere sie es nicht.
 - `seed.sql` — die Referenzwerte des Branchenvergleichs.
 - `tests/` — die nachgebildeten fremden Objekte und das Pruefskript. Keine
   Migrationen; siehe "Pruefen" unten.
@@ -180,8 +202,8 @@ Migrationen, dann den Seed, und zaehlt am Ende nach. Es braucht weder Docker
 noch die Supabase-CLI, nur ein `psql`. Auf eine Supabase-URL zu zeigen lehnt es
 ab.
 
-Stand 04.09.2026, gegen Postgres 16.13: 10 Tabellen des Baselines, 3
-Vertriebstabellen, 24 Policies, 6 Referenzwerte. Spalten (alle 113), Typen, NOT-NULL-Flags, Vorgabewerte,
+Stand 05.09.2026, gegen Postgres 16.13: 10 Tabellen des Baselines, 3
+Vertriebstabellen, 2 Profiltabellen, 28 Policies, 6 Referenzwerte. Spalten (alle 113), Typen, NOT-NULL-Flags, Vorgabewerte,
 Fremdschluessel, Indizes sowie RLS und Policy-Zahl je Tabelle stimmen mit der
 Produktion ueberein.
 

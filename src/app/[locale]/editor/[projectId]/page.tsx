@@ -7,6 +7,9 @@ import ScenarioSwitcher from '@/components/VSMEditor/ScenarioSwitcher'
 import ScenarioMetaPanel from '@/components/VSMEditor/ScenarioMetaPanel'
 import { buttonSecondary } from '@/components/ui/buttons'
 import type { ComparisonState } from '@/lib/vsm/scenarioComparison'
+import { loadMemberships } from '@/lib/org/activeOrg'
+import { loadOrgProfile } from '@/lib/org/orgSettings'
+import { orgLogoUrl, type PdfBranding } from '@/lib/org/branding'
 
 export default async function EditorPage({
   params,
@@ -87,6 +90,25 @@ export default async function EditorPage({
 
   const { data: benchmarkReferences } = await supabase.from('benchmark_reference').select('*')
 
+  // Der Briefkopf des Blatts.
+  //
+  // Ueber `project.organization_id` und nicht ueber die aktive Organisation:
+  // Wer in zwei Haeusern ist und einem Link in ein Projekt des anderen folgt,
+  // bekaeme sonst das Logo der Firma aufs Blatt, die mit diesem Wertstrom
+  // nichts zu tun hat. Den Namen liefert die Mitgliedschaftsliste mit —
+  // `loadOrgProfile` braucht ihn nur als Rueckfallwert, falls im Profil kein
+  // eigener steht.
+  const memberships = await loadMemberships()
+  const owningOrgName =
+    memberships.find((m) => m.organizationId === project.organization_id)?.organizationName ?? ''
+  const profile = await loadOrgProfile(project.organization_id, owningOrgName)
+  const branding: PdfBranding = {
+    companyName: profile.displayName,
+    logoUrl: profile.hasLogo ? orgLogoUrl(profile.organizationId, profile.logoVersion) : null,
+    brandColor: profile.brandColor,
+    reportFooter: profile.reportFooter,
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50">
       {/* [Live-Test 2026-08-16, Smartphone] Ohne flex-wrap standen Titel und
@@ -156,6 +178,7 @@ export default async function EditorPage({
         initialBuffers={buffers}
         benchmarkReferences={benchmarkReferences ?? []}
         comparisonStates={comparisonStates}
+        branding={branding}
       />
     </div>
   )

@@ -48,6 +48,12 @@ import { splitSegmentAroundGap, zigzagPoints, type Point } from '@/lib/vsm/geome
 import { computeAutoFitScale, clampScale, MIN_READABLE_SCALE } from '@/lib/vsm/viewport'
 import { checkCapacity } from '@/lib/vsm/capacity'
 import { formatCurrency, tiedUpCapital, SUPPORTED_CURRENCIES } from '@/lib/vsm/capital'
+import {
+  DEFAULT_BRAND_COLOR,
+  hexToRgb,
+  pdfImageFormat,
+  type PdfBranding,
+} from '@/lib/org/branding'
 import { formatCount, formatDecimal, formatPlain } from '@/lib/vsm/numberFormat'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
@@ -248,6 +254,43 @@ interface Props {
    * einseitig. Die oeffentliche Demo laeuft ohne.
    */
   comparisonStates?: ComparisonState[]
+  /**
+   * Firmenprofil fuers Blatt: Logo, Name, Akzentfarbe, Fusszeile.
+   *
+   * Nur der PDF-Export benutzt es — die Zeichenflaeche bleibt schwarzweiss.
+   * Das ist keine Sparsamkeit: Der Canvas *ist* die Strichzeichnung, die
+   * gedruckt wird, und eine Akzentfarbe darin wuerde mit den semantischen
+   * Farben streiten (Rot = Engpass, Bernstein = Hinweis). Der Briefkopf
+   * darum herum ist der richtige Ort dafuer. Die oeffentliche Demo laeuft
+   * ohne.
+   */
+  branding?: PdfBranding | null
+}
+
+/**
+ * Holt das Firmenlogo als `data:`-Adresse — die Form, die jsPDF abnimmt.
+ *
+ * Modulweit und nicht in der Komponente, weil sie nichts aus ihr braucht.
+ * Fehler werden verschluckt und ergeben null: Ein Logo, das gerade nicht
+ * erreichbar ist, kostet den Briefkopf, nicht das Blatt. Genau hier ist das
+ * die richtige Reihenfolge — der Export laeuft mitten im Workshop, und ein
+ * Ausdruck ohne Logo ist unendlich viel besser als kein Ausdruck.
+ */
+async function fetchLogoDataUrl(url: string | null): Promise<string | null> {
+  if (!url) return null
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const blob = await response.blob()
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -270,6 +313,7 @@ export default function VSMCanvas({
   initialBuffers,
   benchmarkReferences = [],
   comparisonStates = [],
+  branding = null,
 }: Props) {
   const locale = useLocale()
   // [Bedienbarkeitsprüfung 2026-09-03, B9] Kurz, weil sie oft vorkommen: Jede
@@ -812,10 +856,15 @@ export default function VSMCanvas({
   // prompt (that's its own future pass). Client-side only: Konva's own
   // toDataURL() rasterizes exactly what's on screen, no server round-trip
   // or separate re-render needed.
-  function handleExportPdf() {
+  // Asynchron, seit der Briefkopf das Firmenlogo holt (siehe
+  // fetchLogoDataUrl). Der Nebeneffekt ist ein Gewinn: Vorher lief der Export
+  // in einem Zug durch, und "Exportiere…" auf dem Knopf war ein Zustand, den
+  // der Browser nie zu zeichnen kam.
+  async function handleExportPdf() {
     const stage = stageRef.current
     if (!stage) return
     setIsExportingPdf(true)
+    setError(null)
     try {
       // [Fehlerbericht 31.08.2026, iPhone 16] Der Export zeigte nur einen
       // Ausschnitt: ERP, "Montieren", "Verpacken" — Zeitleiter und halbe Kette
@@ -878,28 +927,93 @@ export default function VSMCanvas({
       // Das Blatt verlässt die Anwendung und landet bei Leuten, die sie nie
       // öffnen werden. Es muss deshalb aus sich heraus sagen, was es ist, von
       // welchem Zustand es spricht und woher es stammt.
-      pdf.setFontSize(7.5)
-      pdf.setTextColor(15, 90, 82) // brand-600
-      pdf.text('VSM BUILDER', margin, margin)
+      //
+      // Seit dem Firmenprofil steht rechts, von *wem* es stammt: Logo und
+      // Name des Hauses. Der Unterschied ist im Gremium keine Kosmetik — ein
+      // Blatt mit fremdem Briefkopf liest sich als Zulieferung eines
+      // Werkzeugs, eines mit dem eigenen als Arbeitsergebnis des Hauses.
+      //
+      // Als Funktion, aus demselben Grund wie drawFooter() weiter unten: Das
+      // Blatt kann seit dem Szenarienvergleich zwei Seiten haben, und eine
+      // zweite Seite mit anderem Briefkopf als die erste ist im Gremium ein
+      // loses Blatt ohne Herkunft.
+      const accent = hexToRgb(branding?.brandColor ?? DEFAULT_BRAND_COLOR)
+      // Das Bild wird erst hier geholt, nicht mit der Seite mitgeliefert —
+      // siehe PdfBranding. Scheitert es (abgemeldet, Netz weg, Logo eben
+      // geloescht), bleibt das Blatt ohne Logo, statt gar nicht zu entstehen.
+      const logoDataUrl = await fetchLogoDataUrl(branding?.logoUrl ?? null)
+      const logoFormat = pdfImageFormat(logoDataUrl)
 
-      pdf.setFontSize(15)
-      pdf.setTextColor(24, 24, 27) // INK
-      pdf.text(buildPdfTitle(project.name, tPdf('documentTitle')), margin, margin + 18)
+      const drawHeader = (subtitle: string) => {
+        pdf.setFontSize(7.5)
+        pdf.setTextColor(15, 90, 82) // brand-600
+        pdf.text('VSM BUILDER', margin, margin)
 
-      pdf.setFontSize(9.5)
-      pdf.setTextColor(82, 82, 91) // zinc-600
-      pdf.text(
+        // Das Logo oben rechts, in die Kopfzeile eingepasst: hoechstens 26 pt
+        // hoch und 110 pt breit, damit ein sehr breiter Schriftzug den
+        // Projektnamen links nicht erreicht.
+        if (logoDataUrl && logoFormat) {
+          try {
+            const logoProps = pdf.getImageProperties(logoDataUrl)
+            const maxLogoHeight = 26
+            const maxLogoWidth = 110
+            let logoHeight = maxLogoHeight
+            let logoWidth = (logoProps.width / logoProps.height) * logoHeight
+            if (logoWidth > maxLogoWidth) {
+              logoWidth = maxLogoWidth
+              logoHeight = (logoProps.height / logoProps.width) * logoWidth
+            }
+            pdf.addImage(
+              logoDataUrl,
+              logoFormat,
+              pageWidth - margin - logoWidth,
+              margin - 8,
+              logoWidth,
+              logoHeight,
+              undefined,
+              'FAST'
+            )
+          } catch (logoError) {
+            // Ein Logo, das jsPDF nicht lesen kann, darf den Export nicht
+            // kosten. Das Blatt ohne Briefkopf ist brauchbar, kein Blatt nicht.
+            console.error('PDF-Export: Logo konnte nicht eingebettet werden.', logoError)
+          }
+        }
+
+        if (branding?.companyName) {
+          pdf.setFontSize(9.5)
+          pdf.setTextColor(accent.r, accent.g, accent.b)
+          pdf.text(branding.companyName, pageWidth - margin, margin + 32, { align: 'right' })
+        }
+
+        pdf.setFontSize(15)
+        pdf.setTextColor(24, 24, 27) // INK
+        pdf.text(buildPdfTitle(project.name, tPdf('documentTitle')), margin, margin + 18)
+
+        pdf.setFontSize(9.5)
+        pdf.setTextColor(82, 82, 91) // zinc-600
+        pdf.text(subtitle, margin, margin + 32)
+
+        // Die Trennlinie traegt die Farbe des Hauses, wenn eine hinterlegt ist
+        // — der einzige Ort auf dem Blatt, an dem die Akzentfarbe Flaeche
+        // bekommt. Alles Weitere bliebe nicht mehr die Strichzeichnung, die
+        // gedruckt und an die Wand gehaengt wird.
+        if (branding?.brandColor) {
+          pdf.setDrawColor(accent.r, accent.g, accent.b)
+          pdf.setLineWidth(1)
+        } else {
+          pdf.setDrawColor(212, 212, 216) // zinc-300
+          pdf.setLineWidth(0.5)
+        }
+        pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
+      }
+
+      drawHeader(
         buildPdfSubtitle(scenarioName, {
           currentState: tPdf('currentState'),
           futureState: (name) => tPdf('futureState', { name }),
-        }),
-        margin,
-        margin + 32
+        })
       )
-
-      pdf.setDrawColor(212, 212, 216) // zinc-300
-      pdf.setLineWidth(0.5)
-      pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
 
       // --- Diagramm -------------------------------------------------------
       const imgProps = pdf.getImageProperties(dataUrl)
@@ -1028,6 +1142,12 @@ export default function VSMCanvas({
           margin,
           footerY
         )
+        // Vertraulichkeitsvermerk oder Aktenzeichen des Hauses, mittig
+        // zwischen Datum und Projektname. Manche Werke duerfen ein Blatt ohne
+        // diese Zeile gar nicht aus dem Besprechungsraum tragen.
+        if (branding?.reportFooter) {
+          pdf.text(branding.reportFooter, pageWidth / 2, footerY, { align: 'center' })
+        }
         pdf.text(project.name, pageWidth - margin, footerY, { align: 'right' })
       }
       drawFooter()
@@ -1090,21 +1210,7 @@ export default function VSMCanvas({
 
         pdf.addPage()
 
-        pdf.setFontSize(7.5)
-        pdf.setTextColor(15, 90, 82)
-        pdf.text('VSM BUILDER', margin, margin)
-
-        pdf.setFontSize(15)
-        pdf.setTextColor(24, 24, 27)
-        pdf.text(buildPdfTitle(project.name, tPdf('documentTitle')), margin, margin + 18)
-
-        pdf.setFontSize(9.5)
-        pdf.setTextColor(82, 82, 91)
-        pdf.text(tPdf('comparisonSubtitle'), margin, margin + 32)
-
-        pdf.setDrawColor(212, 212, 216)
-        pdf.setLineWidth(0.5)
-        pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
+        drawHeader(tPdf('comparisonSubtitle'))
 
         // Erste Spalte breiter: Dort stehen ganze Begriffe ("Gebundenes
         // Kapital"), in den uebrigen nur Zahlen mit Einheit.
@@ -1152,6 +1258,13 @@ export default function VSMCanvas({
       }
 
       pdf.save(`${project.name || 'vsm'}.pdf`)
+    } catch (exportError) {
+      // Vorher gab es hier kein catch, weil die Funktion synchron lief und ein
+      // Fehler in der Fehleranzeige von React landete. Bei einer asynchronen
+      // waere daraus eine unbehandelte Zusage geworden — der Knopf saehe aus,
+      // als sei nichts passiert.
+      console.error('PDF-Export fehlgeschlagen:', exportError)
+      setError(t('errorExportPdf'))
     } finally {
       setIsExportingPdf(false)
     }

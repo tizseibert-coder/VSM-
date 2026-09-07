@@ -71,6 +71,12 @@ export const config = {
   matcher: [
     // Skip static assets and image optimization files; run on everything else.
     //
+    // `api` steht mit in der Ausnahmeliste, seit es unter `/api/org-logo/…`
+    // eine Route gibt, die ein Bild ausliefert. Ohne sie greift die
+    // Sprachweiche von next-intl auch dort und antwortet mit einer Umleitung
+    // auf `/de/api/org-logo/…` — eine Adresse, die es nicht gibt, und ein
+    // <img>, das leer bleibt. Dieselbe Falle wie bei robots.txt unten.
+    //
     // `robots.txt` und `sitemap.xml` stehen seit dem SEO-Ausbau mit in dieser
     // Ausnahmeliste, und das ist keine Kosmetik: Ohne sie greift die
     // Sprachweiche von next-intl auch auf sie zu und antwortet mit einer
@@ -79,6 +85,6 @@ export const config = {
     // haette damit weder die Sitemap noch die Ausschlussregeln gefunden.
     // Nachgeprueft mit `curl` gegen `next start`: vorher `/de/sitemap.xml`,
     // jetzt das XML.
-    '/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
