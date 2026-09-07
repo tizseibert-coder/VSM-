@@ -10,6 +10,18 @@
 import { routing } from '@/i18n/routing'
 
 /**
+ * Der Produktname, an einer Stelle.
+ *
+ * [Umbenennung 2026-09-07, VSM Builder -> Taktane] Vorher stand die
+ * Zeichenkette einzeln in neun Seiten, der Kopfzeile, dem PDF-Export und dem
+ * Vorschaubild — LocaleSwitcher.tsx wies selbst darauf hin: "jede Seite baut
+ * ihre eigene VSM-BUILDER-Zeile selbst". Genau das machte diese Umbenennung
+ * teurer, als sie sein musste. Eine Konstante behebt das nicht rueckwirkend,
+ * aber ein naechstes Mal.
+ */
+export const SITE_NAME = 'Taktane'
+
+/**
  * Die oeffentliche Adresse ohne abschliessenden Schraegstrich.
  *
  * Der lokale Rueckfall ist kein Versehen: Ohne ihn faellt jeder Bau ohne
@@ -82,7 +94,7 @@ export function pageMetadata(options: {
       type: 'website' as const,
       url,
       locale: options.ogLocale,
-      siteName: 'VSM Builder',
+      siteName: SITE_NAME,
       title: options.title,
       description: options.description,
     },

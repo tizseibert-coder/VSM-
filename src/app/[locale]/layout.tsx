@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
+import { SITE_NAME } from "@/lib/seo/site";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -39,14 +40,14 @@ export async function generateMetadata(): Promise<Metadata> {
     // zwanzig anderen steht.
     title: {
       default: t("title"),
-      template: "%s · VSM Builder",
+      template: `%s · ${SITE_NAME}`,
     },
     description: t("description"),
-    applicationName: "VSM Builder",
+    applicationName: SITE_NAME,
     openGraph: {
       type: "website",
       locale: t("ogLocale"),
-      siteName: "VSM Builder",
+      siteName: SITE_NAME,
       title: t("ogTitle"),
       description: t("ogDescription"),
     },
