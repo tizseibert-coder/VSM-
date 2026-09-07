@@ -66,6 +66,7 @@ import {
 } from '@/lib/vsm/pdfSummary'
 import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
 import { buildComparisonMetrics } from '@/lib/vsm/comparisonTable'
+import { SITE_NAME } from '@/lib/seo/site'
 import jsPDF from 'jspdf'
 import {
   customerCloudPosition,
@@ -947,7 +948,7 @@ export default function VSMCanvas({
       const drawHeader = (subtitle: string) => {
         pdf.setFontSize(7.5)
         pdf.setTextColor(15, 90, 82) // brand-600
-        pdf.text('VSM BUILDER', margin, margin)
+        pdf.text(SITE_NAME.toUpperCase(), margin, margin)
 
         // Das Logo oben rechts, in die Kopfzeile eingepasst: hoechstens 26 pt
         // hoch und 110 pt breit, damit ein sehr breiter Schriftzug den

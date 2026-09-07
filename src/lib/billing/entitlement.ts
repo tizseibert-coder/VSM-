@@ -2,7 +2,7 @@
 //
 // Die Quelle ist `organization_entitlements` — eine Tabelle der gemeinsamen
 // Datenbank, die Prisma/LeanPulse Industrial gehoert (siehe
-// supabase/README.md). Der VSM Builder liest sie und schreibt sie nur ueber
+// supabase/README.md). Taktane liest sie und schreibt sie nur ueber
 // den Verwaltungsbereich; eine eigene Tarif-Tabelle daneben waere eine zweite
 // Wahrheit ueber denselben Kunden.
 //

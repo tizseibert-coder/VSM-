@@ -197,7 +197,7 @@ export type AdminUser = {
  *
  * Ueber die Admin-API, nicht ueber PostgREST: `auth.users` ist dort nicht
  * lesbar, und ein Spiegel in `public` braeuchte einen zweiten Trigger auf
- * einer Tabelle, die dem VSM Builder nicht gehoert (siehe
+ * einer Tabelle, die Taktane nicht gehoert (siehe
  * supabase/README.md).
  */
 export async function listUsers(page = 1, perPage = 50): Promise<{

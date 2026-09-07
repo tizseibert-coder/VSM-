@@ -123,7 +123,7 @@ export async function claimLead(leadId: string, release: boolean) {
  * Vergibt einem Haus einen Tarif.
  *
  * `organization_entitlements` gehoert Prisma/LeanPulse Industrial (siehe
- * supabase/README.md). Der VSM Builder legt dort *Zeilen* an, keine Objekte —
+ * supabase/README.md). Taktane legt dort *Zeilen* an, keine Objekte —
  * das ist gewoehnliche Nutzung, keine Eigentumsverletzung. Ueber den
  * Service-Role-Client, weil unbekannt ist, welche Policies dort haengen und
  * ob sie sich morgen aendern: Ein Tarifwechsel, der stillschweigend an einer

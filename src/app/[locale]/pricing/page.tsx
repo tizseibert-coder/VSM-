@@ -4,7 +4,7 @@ import { Link } from '@/i18n/navigation'
 import JsonLd from '@/components/seo/JsonLd'
 import LeadForm from '@/components/marketing/LeadForm'
 import { PLANS, PUBLIC_TIERS, tierRank, type Tier } from '@/lib/billing/plans'
-import { localizedUrl, pageMetadata } from '@/lib/seo/site'
+import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import {
   buttonPrimary,
   buttonPrimaryLg,
@@ -89,7 +89,7 @@ export default async function PricingPage({
         data={{
           '@context': 'https://schema.org',
           '@type': 'SoftwareApplication',
-          name: 'VSM Builder',
+          name: SITE_NAME,
           applicationCategory: 'BusinessApplication',
           operatingSystem: 'Web',
           description: t('metaDescription'),
@@ -141,7 +141,7 @@ export default async function PricingPage({
             href="/"
             className="whitespace-nowrap text-sm font-semibold uppercase tracking-widest text-brand-600"
           >
-            VSM Builder
+            {SITE_NAME}
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>

@@ -1,6 +1,6 @@
 # Datenbank: wer besitzt was
 
-Der VSM Builder teilt sich **eine** Postgres-Datenbank und **ein** `public`-Schema
+Taktane teilt sich **eine** Postgres-Datenbank und **ein** `public`-Schema
 mit zwei anderen Produkten. Das ist eine bewusste Entscheidung vom 16.08.2026
 (gemeinsames Login fuers Freemium-Modell, ein Supabase-Projekt statt drei), aber
 es bedeutet: zwei Migrationssysteme arbeiten auf demselben Schema.
@@ -16,10 +16,10 @@ und es ist bis zum 30.08. niemandem aufgefallen.
 | `organizations`, `organization_members`, `organization_entitlements` | Prisma | `D:\LeanPulse Industrial\apps\api\prisma\migrations\` |
 | Alle PascalCase-Tabellen (`Machine`, `TrackingLog`, `User`, …) | Prisma | dito |
 | `handle_new_user()`, `has_org_role()` + deren Policies | Prisma | dito |
-| `projects`, `processes`, `inventory_buffers`, `scenarios`, `spaghetti_layouts`, `reports`, `historical_metrics`, `benchmark_data`, `benchmark_reference`, `activity_logs` | VSM Builder | `supabase/migrations/` (hier) |
-| `vsm_staff`, `vsm_leads`, `vsm_lead_events` | VSM Builder | dito |
-| `vsm_org_settings`, `vsm_invite_settings` | VSM Builder | dito |
-| `project_org_id()`, `set_updated_at()`, `is_vsm_staff()`, `is_vsm_admin()` + die Policies auf obigen Tabellen | VSM Builder | dito |
+| `projects`, `processes`, `inventory_buffers`, `scenarios`, `spaghetti_layouts`, `reports`, `historical_metrics`, `benchmark_data`, `benchmark_reference`, `activity_logs` | Taktane | `supabase/migrations/` (hier) |
+| `vsm_staff`, `vsm_leads`, `vsm_lead_events` | Taktane | dito |
+| `vsm_org_settings`, `vsm_invite_settings` | Taktane | dito |
+| `project_org_id()`, `set_updated_at()`, `is_vsm_staff()`, `is_vsm_admin()` + die Policies auf obigen Tabellen | Taktane | dito |
 | `consulting_leads` | Landing-Page | `D:\LeanPulse Landing` |
 
 Faustregel: **Wer die Tabelle besitzt, besitzt alles, was an ihr haengt** —
@@ -53,7 +53,7 @@ die sie lesen.
    select version, name from supabase_migrations.schema_migrations order by version;
    ```
 
-## Was der VSM Builder von fremden Tabellen liest
+## Was Taktane von fremden Tabellen liest
 
 Regel 1 verbietet, ein fremdes **Objekt** anzufassen — also Spalten, Policies,
 Trigger. Sie verbietet nicht, fremde **Zeilen** zu lesen und zu schreiben; das
@@ -63,14 +63,14 @@ naechsten Prisma-Migration jemandem auffallen:
 
 - **`organization_entitlements`** traegt je Organisation und Produkt
   (`AppProduct`) eine Stufe aus `Tier`. Das ist das Freemium-Rueckgrat aller
-  drei Produkte, und der VSM Builder leitet seine Grenzen daraus ab
+  drei Produkte, und Taktane leitet seine Grenzen daraus ab
   (`src/lib/billing/entitlement.ts`). Eine eigene Tarif-Tabelle daneben waere
   eine zweite Wahrheit ueber denselben Kunden gewesen. Gelesen wird mit
   `product = 'VSM_BUILDER'` und `status = 'ACTIVE'`; ohne Zeile gilt FREE.
   Geschrieben wird nur ueber den Verwaltungsbereich (`/admin/organizations`,
   Rolle `admin`), und zwar mit Service-Role — welche Policies dort haengen,
   entscheidet das andere Repository.
-- **`organization_invitations`** traegt die Einladungen; der VSM Builder legt
+- **`organization_invitations`** traegt die Einladungen; Taktane legt
   dort Zeilen an und zieht sie zurueck. Seit dem 05.09. haengt an jeder
   Einladung optional eine Zeile in `vsm_invite_settings` — Empfaenger,
   Begruessung, ob das Logo mitgeht.
@@ -86,7 +86,7 @@ naechsten Prisma-Migration jemandem auffallen:
   wo schon `handle_new_user()` von Prisma haengt — ein zweiter Trigger auf einer
   fremden Tabelle ist genau die Konstellation vom 16.08.
 
-Wer auf der Prisma-Seite `Tier` oder `AppProduct` erweitert: Der VSM Builder
+Wer auf der Prisma-Seite `Tier` oder `AppProduct` erweitert: Taktane
 faellt bei unbekannten Stufen auf FREE zurueck (`limitsFor()` in
 `src/lib/billing/plans.ts`, dort getestet), sperrt sich also nicht aus. Er
 zeigt die neue Stufe aber auch nicht an, bis sie dort eingetragen ist.
@@ -113,7 +113,7 @@ Adresse geraten hat.
 
 ## Stand dieses Verzeichnisses
 
-Angelegt am 30.08.2026 — vorher hatte der VSM Builder **gar keine** Migrationen,
+Angelegt am 30.08.2026 — vorher hatte Taktane **gar keine** Migrationen,
 das komplette Schema existierte nur in der Produktivdatenbank.
 
 Enthalten:
@@ -124,7 +124,7 @@ Enthalten:
   "Von Null aufbauen" unten.
 - `migrations/20260830160000_vsm_authorization_layer.sql` — Hilfsfunktionen,
   RLS und alle Policies der VSM-Tabellen, plus die `updated_at`-Trigger. Das
-  ist der Teil, dessen Verlust am teuersten waere: der VSM Builder greift
+  ist der Teil, dessen Verlust am teuersten waere: Taktane greift
   ausschliesslich als `authenticated` ueber PostgREST zu und hat keine API mit
   Owner-Rechten, die RLS umgehen koennte. Ohne Policies ist die Anwendung nicht
   unsicher, sondern funktionslos.
@@ -136,7 +136,7 @@ Enthalten:
   `vsm_staff` (wer den Verwaltungsbereich sieht), `vsm_leads` (Interessenten
   mit ihrer Herkunft und ihrer Einwilligung) und `vsm_lead_events` (die
   anfuegende Chronik), dazu `is_vsm_staff()`/`is_vsm_admin()` und die Policies.
-  Legt bewusst **keine** eigene Tarif-Tabelle an — siehe „Was der VSM Builder
+  Legt bewusst **keine** eigene Tarif-Tabelle an — siehe „Was Taktane
   von fremden Tabellen liest".
 - `migrations/20260905170000_vsm_org_branding_and_invite_settings.sql` — das
   Firmenprofil: `vsm_org_settings` (Logo, Firmenangaben, Vorgaben fuer neue

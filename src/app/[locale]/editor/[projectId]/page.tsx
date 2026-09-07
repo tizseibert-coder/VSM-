@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { SITE_NAME } from '@/lib/seo/site'
 import { getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import VSMCanvasLoader from '@/components/VSMEditor/VSMCanvasLoader'
@@ -122,7 +123,7 @@ export default async function EditorPage({
           </Link>
           <span className="mx-1.5 text-xs text-zinc-600">·</span>
           <span className="text-xs font-semibold uppercase tracking-widest text-brand-600">
-            VSM Builder
+            {SITE_NAME}
           </span>
           <h1 className="text-lg font-semibold text-zinc-950">{project.name}</h1>
         </div>

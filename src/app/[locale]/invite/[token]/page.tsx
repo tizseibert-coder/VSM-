@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
+import { SITE_NAME } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
 import { loadInviteBranding } from '@/lib/org/inviteBranding'
 import { DEFAULT_BRAND_COLOR, readableTextOn } from '@/lib/org/branding'
@@ -63,7 +64,7 @@ export default async function InvitePage({
           {invitingOrg && <OrgMark logoUrl={branding?.logoDataUrl ?? null} name={invitingOrg} />}
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-widest opacity-80">
-              VSM Builder
+              {SITE_NAME}
             </p>
             {invitingOrg && (
               <p className="truncate text-base font-semibold leading-tight">{invitingOrg}</p>

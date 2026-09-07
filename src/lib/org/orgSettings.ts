@@ -1,6 +1,6 @@
 // Das Firmenprofil aus der Datenbank — Lesen und Schreiben.
 //
-// Die Tabelle `vsm_org_settings` gehoert dem VSM Builder und liegt neben
+// Die Tabelle `vsm_org_settings` gehoert Taktane und liegt neben
 // `organizations`, nicht darin: Die gehoert Prisma / LeanPulse Industrial
 // (supabase/README.md). Ohne Zeile gilt das leere Profil, und das ist der
 // Zustand jeder bestehenden Firma — deshalb darf nichts hier von einer

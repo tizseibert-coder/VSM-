@@ -4,7 +4,7 @@ import { Link } from '@/i18n/navigation'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import LeadForm from '@/components/marketing/LeadForm'
 import JsonLd from '@/components/seo/JsonLd'
-import { localizedUrl, pageMetadata } from '@/lib/seo/site'
+import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import { PUBLIC_TIERS } from '@/lib/billing/plans'
 import {
   buttonPrimary,
@@ -90,7 +90,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         data={{
           '@context': 'https://schema.org',
           '@type': 'SoftwareApplication',
-          name: 'VSM Builder',
+          name: SITE_NAME,
           applicationCategory: 'BusinessApplication',
           operatingSystem: 'Web',
           description: t('heroBody'),
@@ -108,7 +108,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             seit jeher richtig; hier fehlte flex-wrap. */}
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-6 py-5">
           <span className="whitespace-nowrap text-sm font-semibold uppercase tracking-widest text-brand-600">
-            VSM Builder
+            {SITE_NAME}
           </span>
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>
@@ -349,7 +349,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-6 py-8 text-sm text-zinc-600">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="font-semibold uppercase tracking-widest text-brand-600">
-              VSM Builder
+              {SITE_NAME}
             </span>
             <span>{t('footerTagline')}</span>
           </div>

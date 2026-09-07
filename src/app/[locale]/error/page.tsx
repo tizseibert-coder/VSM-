@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
+import { SITE_NAME } from '@/lib/seo/site'
 import { buttonPrimary, buttonSecondary } from '@/components/ui/buttons'
 
 /**
@@ -20,7 +21,7 @@ export default async function ErrorPage() {
         {/* Der Produktname bleibt unuebersetzt — eine Wortmarke wird nicht
             lokalisiert. */}
         <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
-          VSM Builder
+          {SITE_NAME}
         </p>
         <h1 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950">
           {t('title')}

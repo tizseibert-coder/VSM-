@@ -9,7 +9,7 @@ import { routing } from '@/i18n/routing'
  * Die Sprachumschaltung, als Fusszeile jeder Seite.
  *
  * Es gibt keinen gemeinsamen Kopfbereich, den alle vierzehn Seiten teilen —
- * jede baut ihre eigene "VSM BUILDER"-Zeile selbst, und fuenf (Anmelden,
+ * jede baut ihre eigene "TAKTANE"-Zeile selbst, und fuenf (Anmelden,
  * Registrieren, Bestaetigung, Einladung, Vergleich) haben ueberhaupt keine
  * Kopfzeile. Deshalb steht der Umschalter weiterhin im Root-Layout.
  *
