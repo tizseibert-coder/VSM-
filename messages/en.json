@@ -159,6 +159,25 @@
     "heading": "Demo · Musterwerk Machine Shop",
     "noticeStrong": "Everything is editable.",
     "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo.",
+    "noticeKeptStrong": "Your changes stay.",
+    "noticeKeptBody": "They live in this browser, not with us — reloading no longer resets the demo. When you sign up we carry the value stream into your account and clear the local copy.",
+    "outcome": {
+      "headline": "You took {metric} from {before} to {after} {unit}.",
+      "metricLeadTime": "lead time",
+      "metricValueAddedRatio": "the value-added ratio",
+      "metricExitRate": "actual output",
+      "metricsCaption": "Against the state the demo opened in.",
+      "toWord": "to",
+      "change": "{value} %",
+      "bodyImproved": "That is exactly what a future-state scenario is. In the tool the changed chain sits next to the original one — with investment, payback and risk in the same table.",
+      "bodyWorsened": "That is a result too. The tool computes against the expectation in the room and names the station that sets the number — often a different one from the station being worked on.",
+      "note": "The demo does not keep these figures. The free tier computes one complete value stream with one future-state scenario — two seats, no credit card.",
+      "ctaPricing": "See plans",
+      "closingTitle": "What an account adds",
+      "closingBody": "The demo draws and computes in full — it just keeps nothing. With an account the value stream stays, and the future-state scenario joins it: the same chain a second time, computed against the first.",
+      "ctaTakeOver": "Take this value stream with me",
+      "noteKept": "Your changes live in this browser and are carried into your account when you sign up. The free tier computes one complete value stream with one future-state scenario — two seats, no credit card."
+    },
     "data": {
       "projectName": "Musterwerk Machine Shop",
       "description": "Public demo. Changes stay in your browser and are not saved.",
@@ -191,7 +210,8 @@
     "passwordHint": "At least 8 characters.",
     "submit": "Create account",
     "hasAccount": "Already have an account?",
-    "loginLink": "Sign in"
+    "loginLink": "Sign in",
+    "subtitleFromDemo": "Your value stream from the demo will be carried into your new account — with every figure you changed."
   },
   "CheckEmail": {
     "title": "Almost there",
@@ -617,7 +637,11 @@
     "planUsageUnlimited": "{used} value streams",
     "planCompare": "Compare plans",
     "planUpgrade": "Unlock more value streams",
-    "settings": "Company"
+    "settings": "Company",
+    "demoImportTitle": "Your value stream from the demo is ready",
+    "demoImportBody": "“{name}” with {count} stations. So far it only lives in this browser. Take it over and it belongs to your account — the local copy is then cleared.",
+    "demoImportAccept": "Take it over",
+    "demoImportDiscard": "Discard"
   },
   "Team": {
     "title": "Team",
@@ -779,7 +803,9 @@
     "checkoutFailed": "The payment process could not be started. Please try again.",
     "checkoutNotOwner": "Only owners can start a subscription.",
     "checkoutNoOrg": "No organization found.",
-    "checkoutNotConfigured": "Purchasing is not available right now. Please contact us."
+    "checkoutNotConfigured": "Purchasing is not available right now. Please contact us.",
+    "demoImportUnreadable": "The value stream from the demo is no longer readable or too old. Please build it again.",
+    "demoImportFailed": "The value stream from the demo could not be imported."
   },
   "DataSheet": {
     "metaTitle": "Data collection sheet",

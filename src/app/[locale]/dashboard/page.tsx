@@ -7,6 +7,7 @@ import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
 import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
+import DemoImportBanner from '@/components/dashboard/DemoImportBanner'
 import OrgMark from '@/components/org/OrgMark'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl } from '@/lib/org/branding'
@@ -137,6 +138,11 @@ export default async function DashboardPage({
             ))}
           </div>
         )}
+
+        {/* [Marketing-Audit 2026-09-07, A2] Ueber dem Tarifstreifen und ueber
+            der Projektliste: Wer gerade aus der Demo kommt, soll das als
+            Erstes sehen. Zeichnet nichts, wenn im Browser nichts liegt. */}
+        <DemoImportBanner />
 
         {plan && usage && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-zinc-200 bg-white px-5 py-3">

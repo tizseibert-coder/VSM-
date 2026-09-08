@@ -6,7 +6,7 @@
   },
   "Metadata": {
     "title": "Taktane — Wertstromanalyse mit Live-Berechnung",
-    "description": "Wertstromdiagramme nach Rother/Shook zeichnen, Durchlaufzeit, Taktzeit und Wertschoepfungsanteil live berechnen, Future-State-Szenarien gegeneinander rechnen.",
+    "description": "Wertstromdiagramme nach Rother/Shook zeichnen, Durchlaufzeit, Taktzeit und Wertschöpfungsanteil live berechnen, Future-State-Szenarien gegeneinander rechnen.",
     "ogTitle": "Taktane — Wertstromanalyse mit Live-Berechnung",
     "ogDescription": "Wertstromdiagramme nach Rother/Shook zeichnen, Kennzahlen live berechnen, Future-State-Szenarien vergleichen.",
     "ogLocale": "de_DE"
@@ -159,6 +159,25 @@
     "heading": "Demo · Dreherei Musterwerk",
     "noticeStrong": "Alles ist bedienbar.",
     "noticeBody": "Ändern Sie eine Zykluszeit, verschieben Sie einen Prozess, setzen Sie einen Bestand — die Kennzahlen rechnen live mit. Nichts davon wird gespeichert; ein Neuladen setzt die Demo zurück.",
+    "noticeKeptStrong": "Ihre Änderungen bleiben.",
+    "noticeKeptBody": "Sie liegen in diesem Browser, nicht bei uns — ein Neuladen setzt die Demo nicht mehr zurück. Bei der Anmeldung übernehmen wir den Wertstrom in Ihr Konto; danach wird der Zwischenstand gelöscht.",
+    "outcome": {
+      "headline": "Sie haben {metric} von {before} auf {after} {unit} gerechnet.",
+      "metricLeadTime": "die Durchlaufzeit",
+      "metricValueAddedRatio": "den Wertschöpfungsanteil",
+      "metricExitRate": "die Ist-Ausbringung",
+      "metricsCaption": "Gegenüber dem Zustand, in dem Sie die Demo geöffnet haben.",
+      "toWord": "auf",
+      "change": "{value} %",
+      "bodyImproved": "Genau das ist ein Future-State-Szenario. Im Werkzeug steht die geänderte Kette neben der ursprünglichen — mit Investition, Amortisation und Risiko in derselben Tabelle.",
+      "bodyWorsened": "Auch das ist ein Ergebnis. Das Werkzeug rechnet gegen die Erwartung im Raum und nennt die Station, die die Zahl bestimmt — im Zweifel eine andere als die, an der gerade gearbeitet wurde.",
+      "note": "Die Demo behält diese Zahlen nicht. Die kostenlose Stufe rechnet einen vollständigen Wertstrom mit einem Future-State-Szenario — zwei Plätze, ohne Kreditkarte.",
+      "ctaPricing": "Tarife ansehen",
+      "closingTitle": "Was mit einem Konto dazukommt",
+      "closingBody": "Die Demo zeichnet und rechnet vollständig — sie behält nur nichts. Mit einem Konto bleibt der Wertstrom erhalten, und daneben tritt das Future-State-Szenario: dieselbe Kette ein zweites Mal, gegen die erste gerechnet.",
+      "ctaTakeOver": "Diesen Wertstrom übernehmen",
+      "noteKept": "Ihre Änderungen liegen in diesem Browser und werden bei der Anmeldung in Ihr Konto übernommen. Die kostenlose Stufe rechnet einen vollständigen Wertstrom mit einem Future-State-Szenario — zwei Plätze, ohne Kreditkarte."
+    },
     "data": {
       "projectName": "Dreherei Musterwerk",
       "description": "Öffentliche Demo. Änderungen bleiben im Browser und werden nicht gespeichert.",
@@ -191,7 +210,8 @@
     "passwordHint": "Mindestens 8 Zeichen.",
     "submit": "Konto erstellen",
     "hasAccount": "Bereits ein Konto?",
-    "loginLink": "Anmelden"
+    "loginLink": "Anmelden",
+    "subtitleFromDemo": "Ihr Wertstrom aus der Demo wird nach der Anmeldung übernommen — mit allen Zahlen, die Sie geändert haben."
   },
   "CheckEmail": {
     "title": "Fast geschafft",
@@ -617,7 +637,11 @@
     "planUsageUnlimited": "{used} Wertströme",
     "planCompare": "Tarife vergleichen",
     "planUpgrade": "Mehr Wertströme freischalten",
-    "settings": "Firma"
+    "settings": "Firma",
+    "demoImportTitle": "Ihr Wertstrom aus der Demo liegt bereit",
+    "demoImportBody": "„{name}“ mit {count} Stationen. Er liegt bisher nur in diesem Browser. Übernehmen Sie ihn, dann gehört er Ihrem Konto — und der Zwischenstand wird gelöscht.",
+    "demoImportAccept": "Übernehmen",
+    "demoImportDiscard": "Verwerfen"
   },
   "Team": {
     "title": "Team",
@@ -752,8 +776,8 @@
   "Errors": {
     "projectNameEmpty": "Projektname darf nicht leer sein.",
     "projectCreate": "Projekt konnte nicht erstellt werden.",
-    "projectDelete": "Projekt konnte nicht geloescht werden.",
-    "projectNotFound": "Projekt nicht gefunden oder keine Berechtigung zum Loeschen.",
+    "projectDelete": "Projekt konnte nicht gelöscht werden.",
+    "projectNotFound": "Projekt nicht gefunden oder keine Berechtigung zum Löschen.",
     "exampleCreate": "Beispiel konnte nicht erstellt werden.",
     "exampleProcesses": "Beispiel-Prozesse konnten nicht angelegt werden.",
     "exampleBuffers": "Beispiel-Puffer konnten nicht angelegt werden.",
@@ -779,7 +803,9 @@
     "checkoutFailed": "Der Zahlungsvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
     "checkoutNotOwner": "Nur Inhaber können ein Abo abschließen.",
     "checkoutNoOrg": "Keine Organisation gefunden.",
-    "checkoutNotConfigured": "Der Kauf ist derzeit nicht verfügbar. Bitte kontaktieren Sie uns."
+    "checkoutNotConfigured": "Der Kauf ist derzeit nicht verfügbar. Bitte kontaktieren Sie uns.",
+    "demoImportUnreadable": "Der Wertstrom aus der Demo ist nicht mehr lesbar oder zu alt. Bitte legen Sie ihn neu an.",
+    "demoImportFailed": "Der Wertstrom aus der Demo konnte nicht übernommen werden."
   },
   "DataSheet": {
     "metaTitle": "Erhebungsbogen",

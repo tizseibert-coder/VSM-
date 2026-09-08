@@ -11,16 +11,17 @@ import type { ComparisonState } from '@/lib/vsm/scenarioComparison'
 import { loadMemberships } from '@/lib/org/activeOrg'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl, type PdfBranding } from '@/lib/org/branding'
+import ClearDemoTransfer from '@/components/dashboard/ClearDemoTransfer'
 
 export default async function EditorPage({
   params,
   searchParams,
 }: {
   params: Promise<{ projectId: string }>
-  searchParams: Promise<{ scenario?: string; error?: string }>
+  searchParams: Promise<{ scenario?: string; error?: string; demoImported?: string }>
 }) {
   const { projectId } = await params
-  const { scenario: scenarioParam, error } = await searchParams
+  const { scenario: scenarioParam, error, demoImported } = await searchParams
   const t = await getTranslations('Editor')
   const tNav = await getTranslations('Nav')
   const tWizard = await getTranslations('Wizard')
@@ -112,6 +113,10 @@ export default async function EditorPage({
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      {/* [Marketing-Audit 2026-09-07, A2] Zeichnet nichts: raeumt nur den
+          uebernommenen Zwischenstand aus dem Browser, damit das Dashboard
+          denselben Wertstrom nicht ein zweites Mal anbietet. */}
+      {demoImported === '1' && <ClearDemoTransfer />}
       {/* [Live-Test 2026-08-16, Smartphone] Ohne flex-wrap standen Titel und
           die beiden Aktions-Links zwingend in einer Zeile — auf 375 px lief
           "Szenarien vergleichen" aus dem Bild. Umbruch statt Verkleinern:

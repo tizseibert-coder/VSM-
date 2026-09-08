@@ -32,13 +32,14 @@ export async function generateMetadata({
  *
  * Der staerkste Verkaufshebel lag bisher hinter der Registrierung: Ein Black
  * Belt gibt seine Firmenadresse nicht heraus, um herauszufinden, ob ein
- * Werkzeug seine Symbolik beherrscht. Hier ist alles bedienbar, nichts wird
- * gespeichert, und es gibt keinen Datenbankzugriff — also auch nichts, was
- * jemand missbrauchen koennte.
+ * Werkzeug seine Symbolik beherrscht. Hier ist alles bedienbar, und es gibt
+ * keinen Datenbankzugriff — also auch nichts, was jemand missbrauchen
+ * koennte.
  */
 export default async function DemoPage() {
   const t = await getTranslations('Demo')
   const tNav = await getTranslations('Nav')
+  const tHome = await getTranslations('Home')
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -66,16 +67,39 @@ export default async function DemoPage() {
         </div>
       </header>
 
-      {/* Der Hinweis steht oben und nicht als Fusszeile: Wer gleich Zahlen
-          aendert, soll vorher wissen, dass sie nicht bleiben. */}
-      <div className="border-b border-zinc-200 bg-brand-50">
-        <p className="mx-auto max-w-6xl px-6 py-3 text-sm text-zinc-700">
-          <span className="font-medium text-zinc-950">{t('noticeStrong')}</span>{' '}
-          {t('noticeBody')}
-        </p>
-      </div>
-
+      {/* Hinweisbalken und Abschluss haengen beide an DemoCanvas: Der eine
+          muss sagen, ob schon etwas im Browser liegt, der andere nennt die
+          Zahlen des Lesers — beide brauchen dessen Zustand. */}
       <DemoCanvas />
+
+      {/* [Marketing-Audit 2026-09-07, A1] Die Seite endete bisher mit der
+          Zeichenflaeche: kein Verweis, der weiterfuehrt, und damit eine
+          Sackgasse — fuer den Leser wie fuer eine Suchmaschine, die von hier
+          aus keine der oeffentlichen Unterseiten mehr erreicht. */}
+      <footer className="border-t border-zinc-200 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-6 py-8 text-sm text-zinc-600">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <Link
+              href="/"
+              className="font-semibold uppercase tracking-widest text-brand-600 hover:underline"
+            >
+              {SITE_NAME}
+            </Link>
+            <span>{tHome('footerTagline')}</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link href="/pricing" className="hover:text-brand-600 hover:underline">
+              {tNav('pricing')}
+            </Link>
+            <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
+              {tNav('dataSheet')}
+            </Link>
+            <Link href="/login" className="hover:text-brand-600 hover:underline">
+              {tNav('login')}
+            </Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   )
 }
