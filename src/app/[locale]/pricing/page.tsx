@@ -4,7 +4,9 @@ import { Link } from '@/i18n/navigation'
 import JsonLd from '@/components/seo/JsonLd'
 import LeadForm from '@/components/marketing/LeadForm'
 import { PLANS, PUBLIC_TIERS, tierRank, type Tier } from '@/lib/billing/plans'
-import { localizedUrl, pageMetadata } from '@/lib/seo/site'
+import { isPurchasableTier, isTierPurchasable } from '@/lib/billing/stripe'
+import { startCheckout } from './actions'
+import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import {
   buttonPrimary,
   buttonPrimaryLg,
@@ -49,12 +51,31 @@ const ORDERED: readonly Tier[] = [...PUBLIC_TIERS].sort((a, b) => tierRank(a) - 
  */
 export default async function PricingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
   const { locale } = await params
+  const { error } = await searchParams
   const t = await getTranslations('Pricing')
   const tNav = await getTranslations('Nav')
+  const tErr = await getTranslations('Errors')
+
+  // Die drei Faelle, die startCheckout() ueber die Weiterleitung meldet
+  // (siehe pricing/actions.ts) — kein generisches "error", weil "Sie sind
+  // nicht Inhaber dieser Organisation" etwas anderes bedeutet als ein
+  // fehlgeschlagener Zahlungsanbieter.
+  const errorMessage =
+    error === 'notOwner'
+      ? tErr('checkoutNotOwner')
+      : error === 'noOrg'
+        ? tErr('checkoutNoOrg')
+        : error === 'notConfigured'
+          ? tErr('checkoutNotConfigured')
+          : error
+            ? decodeURIComponent(error)
+            : null
 
   const featureRows = [
     { key: 'maxProjects', value: (tier: Tier) => numberOrInfinity(PLANS[tier].maxProjects) },
@@ -89,7 +110,7 @@ export default async function PricingPage({
         data={{
           '@context': 'https://schema.org',
           '@type': 'SoftwareApplication',
-          name: 'VSM Builder',
+          name: SITE_NAME,
           applicationCategory: 'BusinessApplication',
           operatingSystem: 'Web',
           description: t('metaDescription'),
@@ -141,7 +162,7 @@ export default async function PricingPage({
             href="/"
             className="whitespace-nowrap text-sm font-semibold uppercase tracking-widest text-brand-600"
           >
-            VSM Builder
+            {SITE_NAME}
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>
@@ -165,6 +186,11 @@ export default async function PricingPage({
           {t('title')}
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-700">{t('body')}</p>
+        {errorMessage && (
+          <p className="mt-4 max-w-2xl rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
+            {errorMessage}
+          </p>
+        )}
 
         <div className="mt-10 grid gap-px overflow-hidden rounded-surface border border-zinc-200 bg-zinc-200 lg:grid-cols-4">
           {ORDERED.map((tier) => (
@@ -176,12 +202,31 @@ export default async function PricingPage({
               <p className="mt-3 flex-1 text-sm leading-relaxed text-zinc-600">
                 {t(`tier${tier}Body`)}
               </p>
-              <Link
-                href={tier === 'FREE' ? '/signup' : '#kontakt'}
-                className={`${tier === 'FREE' ? buttonPrimary : buttonSecondary} mt-5 text-center`}
-              >
-                {tier === 'FREE' ? t('ctaFree') : t('ctaContact')}
-              </Link>
+              {tier === 'FREE' ? (
+                <Link href="/signup" className={`${buttonPrimary} mt-5 text-center`}>
+                  {t('ctaFree')}
+                </Link>
+              ) : isPurchasableTier(tier) && isTierPurchasable(tier) ? (
+                // Serverseitiges Formular statt eines Links: Ein Kauf ist
+                // eine Handlung mit Nebenwirkung (er legt einen Stripe-Kunden
+                // an, wenn noch keiner existiert) und gehoert deshalb hinter
+                // ein POST, nicht hinter ein GET, das ein Vorschau-Roboter
+                // oder ein Wiederholen der Adresse versehentlich ausloesen
+                // koennte.
+                <form action={startCheckout.bind(null, tier)} className="mt-5">
+                  <button type="submit" className={`${buttonSecondary} w-full`}>
+                    {t('ctaSubscribe')}
+                  </button>
+                </form>
+              ) : (
+                // Ohne eingerichtetes Stripe (lokale Entwicklung, oder bevor
+                // die Preis-Ids gesetzt sind) faellt die Stufe auf denselben
+                // Anfrage-Weg zurueck wie ENTERPRISE — kein kaputter Knopf,
+                // nur ein Weg, der laenger dauert.
+                <Link href="#kontakt" className={`${buttonSecondary} mt-5 text-center`}>
+                  {t('ctaContact')}
+                </Link>
+              )}
             </div>
           ))}
         </div>

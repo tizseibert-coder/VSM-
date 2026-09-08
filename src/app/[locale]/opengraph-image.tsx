@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { getTranslations } from 'next-intl/server'
+import { SITE_NAME } from '@/lib/seo/site'
 
 /**
  * Das Bild, das erscheint, wenn jemand den Link in Teams, LinkedIn oder
@@ -30,7 +31,7 @@ export const contentType = 'image/png'
  * anzeigen. Deutsch, weil es die Standardsprache ist.
  */
 export const alt =
-  'VSM Builder — Wertstromanalyse mit Live-Berechnung: Wertstromdiagramm mit drei Prozessen, Bestandsdreiecken und Zeitleiter'
+  `${SITE_NAME} — Wertstromanalyse mit Live-Berechnung: Wertstromdiagramm mit drei Prozessen, Bestandsdreiecken und Zeitleiter`
 
 const INK = '#18191a'
 const MUTED = '#52525b'
@@ -139,7 +140,7 @@ export default async function OpengraphImage({
               color: BRAND,
             }}
           >
-            VSM BUILDER
+            {SITE_NAME.toUpperCase()}
           </div>
 
           <div

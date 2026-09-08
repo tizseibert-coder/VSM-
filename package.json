@@ -1,5 +1,5 @@
 {
-  "name": "vsm-builder",
+  "name": "taktane",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,7 +19,8 @@
     "next-intl": "^4.14.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-konva": "^19.2.5"
+    "react-konva": "^19.2.5",
+    "stripe": "^22.6.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

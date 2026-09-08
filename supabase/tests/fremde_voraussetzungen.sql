@@ -1,4 +1,4 @@
--- Testvorrichtung: die fremden Objekte, die der VSM Builder voraussetzt.
+-- Testvorrichtung: die fremden Objekte, die Taktane voraussetzt.
 --
 -- **Keine Migration.** Diese Datei gehoert nicht in `migrations/` und wird
 -- nie gegen die Produktion ausgefuehrt. Sie existiert einzig, damit sich der

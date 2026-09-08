@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import DemoCanvas from '@/components/VSMEditor/DemoCanvas'
 import { buttonPrimary, buttonSecondary } from '@/components/ui/buttons'
-import { pageMetadata } from '@/lib/seo/site'
+import { pageMetadata, SITE_NAME } from '@/lib/seo/site'
 
 // Statt einer festen `metadata`-Konstante: Titel und Beschreibung haengen
 // jetzt an der Sprache, muessen also pro Anfrage aufgeloest werden. Dazu die
@@ -49,7 +49,7 @@ export default async function DemoPage() {
               href="/"
               className="text-xs font-semibold uppercase tracking-widest text-brand-600 hover:underline"
             >
-              VSM Builder
+              {SITE_NAME}
             </Link>
             <h1 className="text-lg font-semibold tracking-tight text-zinc-950">
               {t('heading')}

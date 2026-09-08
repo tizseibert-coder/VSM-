@@ -5,9 +5,9 @@
     "en": "English"
   },
   "Metadata": {
-    "title": "VSM Builder — Value Stream Mapping That Calculates",
+    "title": "Taktane — Value Stream Mapping That Calculates",
     "description": "Draw value stream maps to Rother/Shook conventions, calculate lead time, takt time and process cycle efficiency live, and compare future-state scenarios against each other.",
-    "ogTitle": "VSM Builder — Value Stream Mapping That Calculates",
+    "ogTitle": "Taktane — Value Stream Mapping That Calculates",
     "ogDescription": "Draw value stream maps to Rother/Shook conventions, calculate metrics live, compare future-state scenarios.",
     "ogLocale": "en_US"
   },
@@ -176,7 +176,7 @@
   },
   "Login": {
     "title": "Sign in",
-    "subtitle": "Welcome back to VSM Builder.",
+    "subtitle": "Welcome back to Taktane.",
     "emailLabel": "Email",
     "submit": "Sign in",
     "noAccount": "No account yet?",
@@ -211,7 +211,7 @@
     "hint": "If the error keeps happening, signing in again usually helps: expired sessions are the most common cause."
   },
   "OgImage": {
-    "alt": "VSM Builder — value stream mapping with live calculation: a value stream map with three processes, inventory triangles and timeline",
+    "alt": "Taktane — value stream mapping with live calculation: a value stream map with three processes, inventory triangles and timeline",
     "headline": "Value stream mapping with live calculation",
     "subline": "Drawn to Rother/Shook — lead time, takt time and process cycle efficiency calculate along.",
     "kpi1Label": "Lead time",
@@ -544,7 +544,7 @@
     "documentTitle": "Value stream map",
     "currentState": "Current state",
     "futureState": "Future state: {name}",
-    "footer": "Created with VSM Builder on {date}",
+    "footer": "Created with Taktane on {date}",
     "methodCheckHeading": "METHOD CHECK",
     "comparisonSubtitle": "Scenario comparison",
     "comparisonNote": "All states computed against the same customer demand."
@@ -775,13 +775,17 @@
     "settingsOwnersOnly": "Only owners can change the company settings.",
     "logoTooLarge": "The logo is too large. Please choose a file under 200 kB.",
     "logoType": "A logo can be PNG, JPEG or WebP.",
-    "logoEmpty": "The chosen file is empty."
+    "logoEmpty": "The chosen file is empty.",
+    "checkoutFailed": "The payment process could not be started. Please try again.",
+    "checkoutNotOwner": "Only owners can start a subscription.",
+    "checkoutNoOrg": "No organization found.",
+    "checkoutNotConfigured": "Purchasing is not available right now. Please contact us."
   },
   "DataSheet": {
     "metaTitle": "Data collection sheet",
     "metaDescription": "Printable sheet for recording data at the line: cycle time, changeover, OEE, operators and inventory per station.",
     "title": "Value stream data collection sheet",
-    "intro": "Take it to the line, fill it in, then enter it in VSM Builder. One row per station, in the order the part passes through them.",
+    "intro": "Take it to the line, fill it in, then enter it in Taktane. One row per station, in the order the part passes through them.",
     "print": "Print",
     "back": "← Back",
     "project": "Project / product",
@@ -805,8 +809,8 @@
     "howOee": "OEE: the share of planned time in which the station really produces good parts. From the machine report, otherwise estimated — entering 100 % means “no losses known”.",
     "howOperators": "Operators: how many people work at this station at the same time.",
     "howWip": "Inventory after: everything waiting behind this station for the next one — on pallets, on racks, in the buffer store. Count it, do not estimate: this number drives the lead time.",
-    "footer": "VSM Builder data collection sheet",
-    "footerWithUrl": "VSM Builder data collection sheet · Enter the filled-in values at {url}"
+    "footer": "Taktane data collection sheet",
+    "footerWithUrl": "Taktane data collection sheet · Enter the filled-in values at {url}"
   },
   "Example": {
     "projectName": "Example: value stream of a machine shop",
@@ -875,7 +879,7 @@
       },
       {
         "question": "Do I need to install anything?",
-        "answer": "No. The VSM Builder runs in the browser. For recording data on the line there is also a printable data sheet."
+        "answer": "No. Taktane runs in the browser. For recording data on the line there is also a printable data sheet."
       },
       {
         "question": "Can I take the result with me?",
@@ -891,12 +895,13 @@
       },
       {
         "question": "How do I change plan?",
-        "answer": "By asking us. The plan applies to the organisation, not to individual accounts — every colleague in it gets it at the same time."
+        "answer": "You can subscribe to Starter and Professional directly, no request needed — the button on this page takes you to Stripe and back. Enterprise still runs through a request to us. The change applies to the organisation, not to individual accounts — every colleague in it gets it at the same time."
       }
     ],
     "contactTitle": "Request a quote",
     "contactBody": "Tell us how many value streams and how many colleagues — you get a price back, not a brochure.",
-    "ctaTitle": "Starting without asking works too."
+    "ctaTitle": "Starting without asking works too.",
+    "ctaSubscribe": "Subscribe now"
   },
   "Admin": {
     "title": "Admin",
@@ -1007,7 +1012,7 @@
   },
   "Settings": {
     "title": "Company settings",
-    "intro": "How your company appears in VSM Builder — on the dashboard, on your invitations and on every sheet you export. Signed in at {org}.",
+    "intro": "How your company appears in Taktane — on the dashboard, on your invitations and on every sheet you export. Signed in at {org}.",
     "saved": "Saved.",
     "ownersOnly": "Only owners can change the company settings. You can see what is on file here.",
     "sectionIdentity": "Your company",

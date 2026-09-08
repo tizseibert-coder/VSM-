@@ -4,7 +4,7 @@ import type { Database } from '@/types/database'
 /**
  * Der einzige Zugang mit Eigentuemerrechten im ganzen Projekt.
  *
- * Alles andere im VSM Builder greift als `authenticated` ueber PostgREST zu
+ * Alles andere in Taktane greift als `authenticated` ueber PostgREST zu
  * und faellt damit unter RLS — das ist der Grund, warum ein Fehler in einer
  * Policy die Anwendung funktionslos macht statt unsicher. Dieser Client
  * umgeht RLS vollstaendig. Er existiert fuer genau drei Vorgaenge, die anders

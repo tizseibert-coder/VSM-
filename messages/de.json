@@ -5,9 +5,9 @@
     "en": "Englisch"
   },
   "Metadata": {
-    "title": "VSM Builder — Wertstromanalyse mit Live-Berechnung",
+    "title": "Taktane — Wertstromanalyse mit Live-Berechnung",
     "description": "Wertstromdiagramme nach Rother/Shook zeichnen, Durchlaufzeit, Taktzeit und Wertschoepfungsanteil live berechnen, Future-State-Szenarien gegeneinander rechnen.",
-    "ogTitle": "VSM Builder — Wertstromanalyse mit Live-Berechnung",
+    "ogTitle": "Taktane — Wertstromanalyse mit Live-Berechnung",
     "ogDescription": "Wertstromdiagramme nach Rother/Shook zeichnen, Kennzahlen live berechnen, Future-State-Szenarien vergleichen.",
     "ogLocale": "de_DE"
   },
@@ -176,7 +176,7 @@
   },
   "Login": {
     "title": "Anmelden",
-    "subtitle": "Willkommen zurück bei VSM Builder.",
+    "subtitle": "Willkommen zurück bei Taktane.",
     "emailLabel": "E-Mail",
     "submit": "Anmelden",
     "noAccount": "Noch kein Konto?",
@@ -211,7 +211,7 @@
     "hint": "Tritt der Fehler wiederholt auf, hilft meist eine neue Anmeldung: Abgelaufene Sitzungen sind die häufigste Ursache."
   },
   "OgImage": {
-    "alt": "VSM Builder — Wertstromanalyse mit Live-Berechnung: Wertstromdiagramm mit drei Prozessen, Bestandsdreiecken und Zeitleiter",
+    "alt": "Taktane — Wertstromanalyse mit Live-Berechnung: Wertstromdiagramm mit drei Prozessen, Bestandsdreiecken und Zeitleiter",
     "headline": "Wertstromanalyse mit Live-Berechnung",
     "subline": "Zeichnen nach Rother/Shook — Durchlaufzeit, Taktzeit und Wertschöpfungsanteil rechnen mit.",
     "kpi1Label": "Durchlaufzeit",
@@ -544,7 +544,7 @@
     "documentTitle": "Wertstromanalyse",
     "currentState": "Ist-Zustand",
     "futureState": "Future State: {name}",
-    "footer": "Erstellt mit VSM Builder am {date}",
+    "footer": "Erstellt mit Taktane am {date}",
     "methodCheckHeading": "METHODIKPRÜFUNG",
     "comparisonSubtitle": "Szenarienvergleich",
     "comparisonNote": "Alle Zustände gegen denselben Kundenbedarf gerechnet."
@@ -775,13 +775,17 @@
     "settingsOwnersOnly": "Nur Inhaber können die Firmeneinstellungen ändern.",
     "logoTooLarge": "Das Logo ist zu groß. Bitte eine Datei unter 200 kB wählen.",
     "logoType": "Als Logo sind PNG, JPEG und WebP möglich.",
-    "logoEmpty": "Die gewählte Datei ist leer."
+    "logoEmpty": "Die gewählte Datei ist leer.",
+    "checkoutFailed": "Der Zahlungsvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+    "checkoutNotOwner": "Nur Inhaber können ein Abo abschließen.",
+    "checkoutNoOrg": "Keine Organisation gefunden.",
+    "checkoutNotConfigured": "Der Kauf ist derzeit nicht verfügbar. Bitte kontaktieren Sie uns."
   },
   "DataSheet": {
     "metaTitle": "Erhebungsbogen",
     "metaDescription": "Druckbogen für die Datenaufnahme an der Linie: Zykluszeit, Rüstzeit, OEE, Bediener und Bestände je Station.",
     "title": "Erhebungsbogen Wertstromanalyse",
-    "intro": "Mitnehmen an die Linie, ausfüllen, danach im VSM Builder eintragen. Eine Zeile je Station, in der Reihenfolge, in der das Teil sie durchläuft.",
+    "intro": "Mitnehmen an die Linie, ausfüllen, danach in Taktane eintragen. Eine Zeile je Station, in der Reihenfolge, in der das Teil sie durchläuft.",
     "print": "Drucken",
     "back": "← Zurück",
     "project": "Projekt / Produkt",
@@ -805,8 +809,8 @@
     "howOee": "OEE: Anteil der geplanten Zeit, in der die Station wirklich gute Teile produziert. Aus der Anlagenauswertung, sonst geschätzt — 100 % eintragen heißt „keine Verluste bekannt\".",
     "howOperators": "Bediener: Wie viele Personen gleichzeitig an dieser Station arbeiten.",
     "howWip": "Bestand danach: Alles, was hinter dieser Station auf die nächste wartet — auf Paletten, im Regal, im Zwischenlager. Zählen, nicht schätzen: Diese Zahl bestimmt die Durchlaufzeit.",
-    "footer": "Erhebungsbogen VSM Builder",
-    "footerWithUrl": "Erhebungsbogen VSM Builder · Ausgefüllt eintragen unter {url}"
+    "footer": "Erhebungsbogen Taktane",
+    "footerWithUrl": "Erhebungsbogen Taktane · Ausgefüllt eintragen unter {url}"
   },
   "Example": {
     "projectName": "Beispiel: Wertstromanalyse Dreherei",
@@ -875,7 +879,7 @@
       },
       {
         "question": "Muss ich etwas installieren?",
-        "answer": "Nein. Der VSM Builder läuft im Browser. Für die Aufnahme an der Linie gibt es zusätzlich einen Erhebungsbogen zum Ausdrucken."
+        "answer": "Nein. Taktane läuft im Browser. Für die Aufnahme an der Linie gibt es zusätzlich einen Erhebungsbogen zum Ausdrucken."
       },
       {
         "question": "Kann ich das Ergebnis mitnehmen?",
@@ -891,12 +895,13 @@
       },
       {
         "question": "Wie wechsle ich den Tarif?",
-        "answer": "Über eine Anfrage an uns. Der Wechsel gilt für die Organisation, nicht für einzelne Konten — alle Kollegen darin bekommen ihn gleichzeitig."
+        "answer": "Starter und Professional können Sie direkt abonnieren, ohne Anfrage — der Knopf auf dieser Seite führt zu Stripe und zurück. Enterprise läuft weiterhin über eine Anfrage an uns. Der Wechsel gilt für die Organisation, nicht für einzelne Konten — alle Kollegen darin bekommen ihn gleichzeitig."
       }
     ],
     "contactTitle": "Angebot anfragen",
     "contactBody": "Sagen Sie uns, wie viele Wertströme und wie viele Kollegen — dann kommt ein Preis zurück, keine Broschüre.",
-    "ctaTitle": "Ohne Anfrage anfangen geht auch."
+    "ctaTitle": "Ohne Anfrage anfangen geht auch.",
+    "ctaSubscribe": "Jetzt abonnieren"
   },
   "Admin": {
     "title": "Verwaltung",
@@ -1007,7 +1012,7 @@
   },
   "Settings": {
     "title": "Firmeneinstellungen",
-    "intro": "Wie Ihr Haus im VSM Builder auftritt — auf dem Dashboard, auf Ihren Einladungen und auf jedem Blatt, das Sie exportieren. Angemeldet bei {org}.",
+    "intro": "Wie Ihr Haus in Taktane auftritt — auf dem Dashboard, auf Ihren Einladungen und auf jedem Blatt, das Sie exportieren. Angemeldet bei {org}.",
     "saved": "Gespeichert.",
     "ownersOnly": "Nur Inhaber können die Firmeneinstellungen ändern. Sie sehen hier, was hinterlegt ist.",
     "sectionIdentity": "Ihr Unternehmen",

@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
+import { SITE_NAME } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
 import { signOut, createProject, createExampleProject, switchOrg } from './actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
@@ -68,7 +69,7 @@ export default async function DashboardPage({
             )}
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
-                VSM Builder
+                {SITE_NAME}
               </p>
               <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
               <p className="mt-1 text-sm text-zinc-600">
