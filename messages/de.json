@@ -26,6 +26,10 @@
     "heroSignupCta": "Kostenlos starten",
     "heroNote": "Die Demo läuft ohne Anmeldung: ein vollständiger Wertstrom mit fünf Prozessen, Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu, wie die Durchlaufzeit reagiert.",
     "sketchCaption": "Ausschnitt eines Ist-Zustands: Prozessboxen mit C/T und OEE, Bestände als Dreieck, darunter die Zeitleiter aus Warte- und Bearbeitungszeit.",
+    "proofMethod": "Symbolik nach Rother & Shook",
+    "proofKpis": "{count, plural, one {# Kennzahl} other {# Kennzahlen}} mit offenem Rechenweg",
+    "proofGlossary": "{count, plural, one {# Fachbegriff} other {# Fachbegriffe}} erklärt",
+    "proofHosting": "EU-Hosting",
     "kpisTitle": "Jede Zahl zeigt ihren Rechenweg",
     "kpisBody": "Unter jeder Kennzahl steht die Formel mit den Werten, die tatsächlich eingesetzt wurden. Eine überraschende Zahl erklärt sich damit aus ihren eigenen Eingaben, statt wie ein Fehler auszusehen.",
     "kpis": [
@@ -117,7 +121,7 @@
         "body": "Diagramm und Kennzahlen auf A4 quer. Das Blatt, das mit ins Gremium geht."
       },
       {
-        "name": "24 Fachbegriffe im Kontext",
+        "name": "26 Fachbegriffe im Kontext",
         "body": "Schrittmacher, Supermarkt, FIFO, Heijunka, EPEI. Erklärt an der Stelle, an der sie auftauchen, damit Green Belts und Werker mitkommen."
       }
     ],
