@@ -645,7 +645,8 @@
     "demoImportTitle": "Your value stream from the demo is ready",
     "demoImportBody": "“{name}” with {count} stations. So far it only lives in this browser. Take it over and it belongs to your account — the local copy is then cleared.",
     "demoImportAccept": "Take it over",
-    "demoImportDiscard": "Discard"
+    "demoImportDiscard": "Discard",
+    "manageBilling": "Manage subscription"
   },
   "Team": {
     "title": "Team",
@@ -809,7 +810,10 @@
     "checkoutNoOrg": "No organization found.",
     "checkoutNotConfigured": "Purchasing is not available right now. Please contact us.",
     "demoImportUnreadable": "The value stream from the demo is no longer readable or too old. Please build it again.",
-    "demoImportFailed": "The value stream from the demo could not be imported."
+    "demoImportFailed": "The value stream from the demo could not be imported.",
+    "portalNotOwner": "Only owners can manage the subscription.",
+    "portalNoCustomer": "This organisation has no Stripe subscription yet.",
+    "portalFailed": "Account management could not be opened. Please try again."
   },
   "DataSheet": {
     "metaTitle": "Data collection sheet",
@@ -926,6 +930,10 @@
       {
         "question": "How do I change plan?",
         "answer": "You can subscribe to Starter and Professional directly, no request needed — the button on this page takes you to Stripe and back. Enterprise still runs through a request to us. The change applies to the organisation, not to individual accounts — every colleague in it gets it at the same time."
+      },
+      {
+        "question": "How do I cancel?",
+        "answer": "Via “Manage subscription” in the dashboard — that opens Stripe's customer portal, where you can cancel, view invoices and update your payment method. Cancellation takes effect at the end of the paid period; the plan stays active until then."
       }
     ],
     "contactTitle": "Request a quote",

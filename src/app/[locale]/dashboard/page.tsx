@@ -3,8 +3,10 @@ import { Link } from '@/i18n/navigation'
 import { SITE_NAME } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
 import { signOut, createProject, createExampleProject, switchOrg } from './actions'
+import { openBillingPortal } from '@/app/[locale]/pricing/actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
+import { isPurchasableTier } from '@/lib/billing/stripe'
 import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 import DemoImportBanner from '@/components/dashboard/DemoImportBanner'
@@ -159,9 +161,28 @@ export default async function DashboardPage({
                     })}
               </span>
             </div>
-            <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
-              {usage.projects.allowed ? t('planCompare') : t('planUpgrade')}
-            </Link>
+            <div className="flex items-center gap-4">
+              {/* [Marketing-Audit 2026-09-07, B5-Folgefund] Bis hierher gab
+                  es keinen Weg, ein Abo selbst zu verwalten oder zu
+                  kuendigen — nur fuer Inhaber sichtbar (dieselbe Grenze wie
+                  beim Abschluss) und nur bei einem Tarif, der ueberhaupt
+                  ueber Stripe laufen kann. Ein manuell vergebener Tarif ohne
+                  Stripe-Kunden faengt die Server Action selbst ab
+                  (portalNoCustomer). */}
+              {activeOrg?.role === 'owner' && isPurchasableTier(plan.tier) && (
+                <form action={openBillingPortal}>
+                  <button
+                    type="submit"
+                    className="text-sm font-medium text-brand-600 hover:underline"
+                  >
+                    {t('manageBilling')}
+                  </button>
+                </form>
+              )}
+              <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
+                {usage.projects.allowed ? t('planCompare') : t('planUpgrade')}
+              </Link>
+            </div>
           </div>
         )}
 

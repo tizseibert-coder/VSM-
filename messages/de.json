@@ -645,7 +645,8 @@
     "demoImportTitle": "Ihr Wertstrom aus der Demo liegt bereit",
     "demoImportBody": "„{name}“ mit {count} Stationen. Er liegt bisher nur in diesem Browser. Übernehmen Sie ihn, dann gehört er Ihrem Konto — und der Zwischenstand wird gelöscht.",
     "demoImportAccept": "Übernehmen",
-    "demoImportDiscard": "Verwerfen"
+    "demoImportDiscard": "Verwerfen",
+    "manageBilling": "Abo verwalten"
   },
   "Team": {
     "title": "Team",
@@ -809,7 +810,10 @@
     "checkoutNoOrg": "Keine Organisation gefunden.",
     "checkoutNotConfigured": "Der Kauf ist derzeit nicht verfügbar. Bitte kontaktieren Sie uns.",
     "demoImportUnreadable": "Der Wertstrom aus der Demo ist nicht mehr lesbar oder zu alt. Bitte legen Sie ihn neu an.",
-    "demoImportFailed": "Der Wertstrom aus der Demo konnte nicht übernommen werden."
+    "demoImportFailed": "Der Wertstrom aus der Demo konnte nicht übernommen werden.",
+    "portalNotOwner": "Nur Inhaber können das Abo verwalten.",
+    "portalNoCustomer": "Zu dieser Organisation gibt es noch kein Abo bei Stripe.",
+    "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut."
   },
   "DataSheet": {
     "metaTitle": "Erhebungsbogen",
@@ -926,6 +930,10 @@
       {
         "question": "Wie wechsle ich den Tarif?",
         "answer": "Starter und Professional können Sie direkt abonnieren, ohne Anfrage — der Knopf auf dieser Seite führt zu Stripe und zurück. Enterprise läuft weiterhin über eine Anfrage an uns. Der Wechsel gilt für die Organisation, nicht für einzelne Konten — alle Kollegen darin bekommen ihn gleichzeitig."
+      },
+      {
+        "question": "Wie kündige ich?",
+        "answer": "Über „Abo verwalten“ im Dashboard — das öffnet das Kundenportal von Stripe, in dem Sie kündigen, Rechnungen einsehen und Ihr Zahlungsmittel ändern können. Die Kündigung wirkt zum Ende der bezahlten Periode; bis dahin bleibt der Tarif bestehen."
       }
     ],
     "contactTitle": "Angebot anfragen",

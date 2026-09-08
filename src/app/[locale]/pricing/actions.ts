@@ -121,3 +121,73 @@ export async function startCheckout(tier: string) {
 
   redirect(sessionUrl)
 }
+
+/**
+ * Oeffnet das Stripe-Kundenportal, damit ein Inhaber sein Abo selbst
+ * verwaltet — kuendigen eingeschlossen.
+ *
+ * [Marketing-Audit 2026-09-07, B5-Folgefund] Die Preisseite versprach seit
+ * der Risikoumkehr-Zeile "keine Mindestlaufzeit", aber es gab dafuer keinen
+ * Selbstbedienungsweg: kein Kundenportal, keine Funktion im Dashboard, keine
+ * FAQ-Antwort. Wer kuendigen wollte, haette schreiben muessen, ohne zu
+ * wissen, an wen.
+ *
+ * Das Stripe-Portal statt einer eigenen Kuendigungsseite: Es zeigt Rechnungen,
+ * Zahlungsmittel und die Kuendigung selbst in einer von Stripe gepflegten
+ * Oberflaeche, die PCI-Anforderungen bereits erfuellt. Eine eigene Seite
+ * muesste all das nachbauen, um nicht schlechter zu sein — und jede Zeile
+ * davon waere eine Stelle, an der ein Kuendigungswunsch haengen bleiben kann.
+ *
+ * Dieselbe Berechtigungsgrenze wie beim Abschluss (`startCheckout`): nur
+ * `owner`. Wer ein Abo abschliessen darf, soll es auch beenden duerfen — und
+ * nicht mehr als das.
+ */
+export async function openBillingPortal() {
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  if (!claimsData?.claims?.sub) {
+    redirect('/login?next=/dashboard')
+  }
+
+  const orgResult = await getActiveOrg()
+  if ('error' in orgResult) {
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('checkoutNoOrg')))
+  }
+  if (orgResult.active.role !== 'owner') {
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('portalNotOwner')))
+  }
+
+  // `vsm_billing_customers` hat mit Absicht keine Policy fuer `authenticated`
+  // (siehe die Migration) — Service-Role ist hier keine Abkuerzung, sondern
+  // der einzige Weg, der ueberhaupt etwas liefert.
+  const admin = createAdminClient()
+  const { data: customer } = await admin
+    .from('vsm_billing_customers')
+    .select('stripe_customer_id')
+    .eq('organization_id', orgResult.active.organizationId)
+    .maybeSingle()
+
+  if (!customer) {
+    // Der Tarif kann auch von Hand im Verwaltungsbereich vergeben worden
+    // sein (BETA, oder eine Ausnahme) — dann gibt es nie einen Stripe-Kunden,
+    // und das Portal haette nichts zu zeigen.
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('portalNoCustomer')))
+  }
+
+  const locale = await getLocale()
+
+  let portalUrl: string | null = null
+  try {
+    const stripe = stripeClient()
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customer.stripe_customer_id,
+      return_url: localizedUrl(locale, '/dashboard'),
+    })
+    portalUrl = session.url
+  } catch (err) {
+    console.error('openBillingPortal failed:', err instanceof Error ? err.message : err)
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('portalFailed')))
+  }
+
+  redirect(portalUrl)
+}
