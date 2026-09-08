@@ -33,16 +33,23 @@ export async function generateMetadata({
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>
+  searchParams: Promise<{ error?: string; next?: string; from?: string }>
 }) {
-  const { error, next } = await searchParams
+  const { error, next, from } = await searchParams
   const t = await getTranslations('Signup')
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
       <div className="w-full max-w-sm rounded-surface border border-black/10 bg-white p-8">
         <h1 className="text-2xl font-semibold text-zinc-950">{t('title')}</h1>
-        <p className="mt-1 text-sm text-zinc-600">{t('subtitle')}</p>
+        {/* [Marketing-Audit 2026-09-07, A2/C3] Wer aus der Demo kommt, liest
+            hier, was er behaelt — statt der allgemeinen Zeile, die an der
+            Stelle mit der hoechsten Abbruchquote nichts erklaert. Der
+            Zwischenstand liegt in seinem Browser; das Dashboard bietet die
+            Uebernahme danach an. */}
+        <p className="mt-1 text-sm text-zinc-600">
+          {from === 'demo' ? t('subtitleFromDemo') : t('subtitle')}
+        </p>
 
         {error && (
           <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">

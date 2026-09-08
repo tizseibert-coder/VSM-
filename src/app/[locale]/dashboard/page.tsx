@@ -3,10 +3,13 @@ import { Link } from '@/i18n/navigation'
 import { SITE_NAME } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
 import { signOut, createProject, createExampleProject, switchOrg } from './actions'
+import { openBillingPortal } from '@/app/[locale]/pricing/actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
+import { isPurchasableTier } from '@/lib/billing/stripe'
 import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
+import DemoImportBanner from '@/components/dashboard/DemoImportBanner'
 import OrgMark from '@/components/org/OrgMark'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl } from '@/lib/org/branding'
@@ -138,6 +141,11 @@ export default async function DashboardPage({
           </div>
         )}
 
+        {/* [Marketing-Audit 2026-09-07, A2] Ueber dem Tarifstreifen und ueber
+            der Projektliste: Wer gerade aus der Demo kommt, soll das als
+            Erstes sehen. Zeichnet nichts, wenn im Browser nichts liegt. */}
+        <DemoImportBanner />
+
         {plan && usage && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-zinc-200 bg-white px-5 py-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -153,9 +161,28 @@ export default async function DashboardPage({
                     })}
               </span>
             </div>
-            <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
-              {usage.projects.allowed ? t('planCompare') : t('planUpgrade')}
-            </Link>
+            <div className="flex items-center gap-4">
+              {/* [Marketing-Audit 2026-09-07, B5-Folgefund] Bis hierher gab
+                  es keinen Weg, ein Abo selbst zu verwalten oder zu
+                  kuendigen — nur fuer Inhaber sichtbar (dieselbe Grenze wie
+                  beim Abschluss) und nur bei einem Tarif, der ueberhaupt
+                  ueber Stripe laufen kann. Ein manuell vergebener Tarif ohne
+                  Stripe-Kunden faengt die Server Action selbst ab
+                  (portalNoCustomer). */}
+              {activeOrg?.role === 'owner' && isPurchasableTier(plan.tier) && (
+                <form action={openBillingPortal}>
+                  <button
+                    type="submit"
+                    className="text-sm font-medium text-brand-600 hover:underline"
+                  >
+                    {t('manageBilling')}
+                  </button>
+                </form>
+              )}
+              <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
+                {usage.projects.allowed ? t('planCompare') : t('planUpgrade')}
+              </Link>
+            </div>
           </div>
         )}
 

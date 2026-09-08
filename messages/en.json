@@ -26,6 +26,10 @@
     "heroSignupCta": "Get started free",
     "heroNote": "The demo runs without signing up: a complete value stream with five processes, inventory and calculated metrics. Change one cycle time and watch the lead time respond.",
     "sketchCaption": "A section of a current-state map: process boxes with C/T and OEE, inventory as triangles, and the timeline of wait and processing time below.",
+    "proofMethod": "Rother/Shook symbols",
+    "proofKpis": "{count, plural, one {# metric} other {# metrics}} with an open calculation",
+    "proofGlossary": "{count, plural, one {# term} other {# terms}} explained",
+    "proofHosting": "EU hosting",
     "kpisTitle": "Every number shows its own arithmetic",
     "kpisBody": "Under each metric sits the formula with the values actually used. A surprising number therefore explains itself from its own inputs, instead of looking like a defect.",
     "kpis": [
@@ -117,7 +121,7 @@
         "body": "Map and metrics on A4 landscape. The sheet that goes into the committee."
       },
       {
-        "name": "24 terms explained in context",
+        "name": "26 terms explained in context",
         "body": "Pacemaker, supermarket, FIFO, heijunka, EPEI. Explained where they appear, so green belts and operators can follow."
       }
     ],
@@ -159,6 +163,25 @@
     "heading": "Demo · Musterwerk Machine Shop",
     "noticeStrong": "Everything is editable.",
     "noticeBody": "Change a cycle time, move a process, set an inventory level — the metrics recalculate live. None of it is saved; reloading resets the demo.",
+    "noticeKeptStrong": "Your changes stay.",
+    "noticeKeptBody": "They live in this browser, not with us — reloading no longer resets the demo. When you sign up we carry the value stream into your account and clear the local copy.",
+    "outcome": {
+      "headline": "You took {metric} from {before} to {after} {unit}.",
+      "metricLeadTime": "lead time",
+      "metricValueAddedRatio": "the value-added ratio",
+      "metricExitRate": "actual output",
+      "metricsCaption": "Against the state the demo opened in.",
+      "toWord": "to",
+      "change": "{value} %",
+      "bodyImproved": "That is exactly what a future-state scenario is. In the tool the changed chain sits next to the original one — with investment, payback and risk in the same table.",
+      "bodyWorsened": "That is a result too. The tool computes against the expectation in the room and names the station that sets the number — often a different one from the station being worked on.",
+      "note": "The demo does not keep these figures. The free tier computes one complete value stream with one future-state scenario — two seats, no credit card.",
+      "ctaPricing": "See plans",
+      "closingTitle": "What an account adds",
+      "closingBody": "The demo draws and computes in full — it just keeps nothing. With an account the value stream stays, and the future-state scenario joins it: the same chain a second time, computed against the first.",
+      "ctaTakeOver": "Take this value stream with me",
+      "noteKept": "Your changes live in this browser and are carried into your account when you sign up. The free tier computes one complete value stream with one future-state scenario — two seats, no credit card."
+    },
     "data": {
       "projectName": "Musterwerk Machine Shop",
       "description": "Public demo. Changes stay in your browser and are not saved.",
@@ -191,7 +214,8 @@
     "passwordHint": "At least 8 characters.",
     "submit": "Create account",
     "hasAccount": "Already have an account?",
-    "loginLink": "Sign in"
+    "loginLink": "Sign in",
+    "subtitleFromDemo": "Your value stream from the demo will be carried into your new account — with every figure you changed."
   },
   "CheckEmail": {
     "title": "Almost there",
@@ -617,7 +641,12 @@
     "planUsageUnlimited": "{used} value streams",
     "planCompare": "Compare plans",
     "planUpgrade": "Unlock more value streams",
-    "settings": "Company"
+    "settings": "Company",
+    "demoImportTitle": "Your value stream from the demo is ready",
+    "demoImportBody": "“{name}” with {count} stations. So far it only lives in this browser. Take it over and it belongs to your account — the local copy is then cleared.",
+    "demoImportAccept": "Take it over",
+    "demoImportDiscard": "Discard",
+    "manageBilling": "Manage subscription"
   },
   "Team": {
     "title": "Team",
@@ -779,7 +808,12 @@
     "checkoutFailed": "The payment process could not be started. Please try again.",
     "checkoutNotOwner": "Only owners can start a subscription.",
     "checkoutNoOrg": "No organization found.",
-    "checkoutNotConfigured": "Purchasing is not available right now. Please contact us."
+    "checkoutNotConfigured": "Purchasing is not available right now. Please contact us.",
+    "demoImportUnreadable": "The value stream from the demo is no longer readable or too old. Please build it again.",
+    "demoImportFailed": "The value stream from the demo could not be imported.",
+    "portalNotOwner": "Only owners can manage the subscription.",
+    "portalNoCustomer": "This organisation has no Stripe subscription yet.",
+    "portalFailed": "Account management could not be opened. Please try again."
   },
   "DataSheet": {
     "metaTitle": "Data collection sheet",
@@ -896,12 +930,17 @@
       {
         "question": "How do I change plan?",
         "answer": "You can subscribe to Starter and Professional directly, no request needed — the button on this page takes you to Stripe and back. Enterprise still runs through a request to us. The change applies to the organisation, not to individual accounts — every colleague in it gets it at the same time."
+      },
+      {
+        "question": "How do I cancel?",
+        "answer": "Via “Manage subscription” in the dashboard — that opens Stripe's customer portal, where you can cancel, view invoices and update your payment method. Cancellation takes effect at the end of the paid period; the plan stays active until then."
       }
     ],
     "contactTitle": "Request a quote",
     "contactBody": "Tell us how many value streams and how many colleagues — you get a price back, not a brochure.",
     "ctaTitle": "Starting without asking works too.",
-    "ctaSubscribe": "Subscribe now"
+    "ctaSubscribe": "Subscribe now",
+    "riskReversal": "Billed monthly, no minimum term · no setup fee · your value streams stay readable after a change"
   },
   "Admin": {
     "title": "Admin",

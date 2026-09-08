@@ -243,6 +243,21 @@ export default async function PricingPage({
             </div>
           ))}
         </div>
+
+        {/* [Marketing-Audit 2026-09-07, B5] Fehlte bisher vollstaendig: Fuer
+            12 EUR bzw. 49 EUR im Monat stand kein einziger risikomindernder
+            Satz auf der Seite. Direkt unter den Knoepfen, dorthin, wo die
+            Hand zoegert — nicht in der FAQ darunter, wo sie erst nach dem
+            Scrollen an der Entscheidung vorbei sichtbar wird.
+
+            Bewusst *nicht* "monatlich kuendbar": Es gibt aktuell keinen
+            Selbstbedienungsweg zur Kuendigung (kein Kundenportal, keine
+            Funktion im Dashboard) — dieser Satz waere eine Zusage ohne
+            Deckung gewesen, genau die Sorte Fehler, die dieses Audit an
+            anderer Stelle kritisiert. "Keine Mindestlaufzeit" ist die
+            Aussage, die der Checkout tatsaechlich traegt: mode: 'subscription'
+            ohne Bindungsklausel (siehe pricing/actions.ts). */}
+        <p className="mt-4 text-sm text-zinc-600">{t('riskReversal')}</p>
       </section>
 
       <section className="border-t border-zinc-200 bg-zinc-50">

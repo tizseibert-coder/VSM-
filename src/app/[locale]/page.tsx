@@ -6,6 +6,7 @@ import LeadForm from '@/components/marketing/LeadForm'
 import JsonLd from '@/components/seo/JsonLd'
 import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import { PUBLIC_TIERS } from '@/lib/billing/plans'
+import { GLOSSARY_KEYS } from '@/lib/vsm/glossary'
 import { tierPriceParams, visitorCurrency } from '@/lib/billing/currency'
 import {
   buttonPrimary,
@@ -80,6 +81,19 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const comparison = t.raw('comparison') as ComparisonRow[]
   const workshop = t.raw('workshop') as WorkshopItem[]
   const hosting = t.raw('hosting') as HostingItem[]
+
+  // [Marketing-Audit 2026-09-07, A4] Die Zahl im Beweisstreifen kommt live
+  // aus GLOSSARY_KEYS, nicht als eigene, irgendwann veraltende Zeichenkette
+  // daneben. Das war noetig, nicht nur ordentlich: Der Workshop-Abschnitt
+  // weiter unten nannte seit jeher "24 Fachbegriffe im Kontext" als festen
+  // Text. Zwei Fehler steckten darin — GLOSSARY_KEYS zaehlt inzwischen 26,
+  // nicht 24; und die messages/*.json-Fassung von Glossary hat 27 Eintraege,
+  // nicht 26, weil dort zusaetzlich `tooltipAria` steht, ein
+  // Barrierefreiheits-Label und kein Fachbegriff. Die Quelle hier ist deshalb
+  // ausdruecklich die Schluesselliste im Code, nicht `Object.keys()` auf dem
+  // Uebersetzungsnamensraum — sonst waere die naechste falsche Zahl schon die
+  // Korrektur dieser.
+  const glossaryCount = GLOSSARY_KEYS.length
 
   return (
     <main className="bg-white">
@@ -163,6 +177,29 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
               {t('sketchCaption')}
             </p>
           </div>
+        </div>
+
+        {/* [Marketing-Audit 2026-09-07, A4] Der Beweisstreifen. Vier
+            Tatsachen, keine Behauptung — jede davon steht auch anderswo auf
+            der Seite oder ergibt sich unmittelbar aus dem Produkt, nichts
+            hier ist neu erfunden fuer diese eine Zeile. Direkt unter dem
+            Hero, weil die Frage "kennen die das Fach?" in dieser Zielgruppe
+            vor jeder anderen kommt — noch vor den Kennzahlen, der
+            Methodikpruefung oder dem Preis. */}
+        <div className="mt-10 border-t border-zinc-200 pt-6 sm:mt-12">
+          <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 text-sm">
+            <span className="font-medium text-zinc-950">{t('proofMethod')}</span>
+            <span aria-hidden className="text-zinc-300">·</span>
+            <span className="font-medium text-zinc-950">
+              {t('proofKpis', { count: kpis.length })}
+            </span>
+            <span aria-hidden className="text-zinc-300">·</span>
+            <span className="font-medium text-zinc-950">
+              {t('proofGlossary', { count: glossaryCount })}
+            </span>
+            <span aria-hidden className="text-zinc-300">·</span>
+            <span className="font-medium text-zinc-950">{t('proofHosting')}</span>
+          </p>
         </div>
       </section>
 

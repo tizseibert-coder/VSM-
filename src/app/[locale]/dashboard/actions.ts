@@ -9,6 +9,7 @@ import { ACTIVE_ORG_COOKIE, getActiveOrg, loadMemberships } from '@/lib/org/acti
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
 import { noteUserActivity } from '@/lib/crm/leads'
 import { projectDefaults } from '@/lib/org/orgSettings'
+import { parseSerializedTransfer } from '@/lib/vsm/demoTransfer'
 
 export async function signOut() {
   const supabase = await createClient()
@@ -207,6 +208,151 @@ export async function createExampleProject() {
   }
 
   redirect(`/editor/${project.id}`)
+}
+
+/**
+ * Uebernimmt den Wertstrom aus der Demo in ein eigenes Projekt.
+ *
+ * [Marketing-Audit 2026-09-07, A2] Die Demo verwarf ihren Zustand beim
+ * Neuladen. Damit ging genau die Investition verloren, die den Anmeldegrund
+ * traegt: Wer zehn Minuten an einem Wertstrom gearbeitet hat, meldet sich
+ * an, um ihn zu behalten — nicht wegen einer Funktionsliste.
+ *
+ * Der Zustand kommt aus dem `localStorage` des Nutzers und damit als
+ * **fremde Eingabe** an den Server, auch wenn wir ihn selbst geschrieben
+ * haben. `parseSerializedTransfer` prueft ihn vollstaendig (Groesse vor dem
+ * Parsen, Fassung, Ablauf, Wertebereiche) und gibt entweder etwas
+ * Vollstaendiges zurueck oder nichts — siehe lib/vsm/demoTransfer.ts.
+ *
+ * Dieselbe Tarifgrenze wie beim leeren Projekt: Ein uebernommener Wertstrom
+ * ist ein Projekt wie jedes andere.
+ *
+ * Firmenprofil und Uebernahme koennen sich widersprechen, und dann gilt eine
+ * Reihenfolge: Der Firmenname aus einem gesetzten Profil hat Vorrang vor dem
+ * Namen aus der Demo-Beschriftung ("Musterwerk GmbH") — der gehoert nicht auf
+ * das Blatt eines echten Kunden. Waehrung und Schichtzeit dagegen bleiben die
+ * des Nutzers aus der Demo: Das sind Rechenparameter, mit denen er gerade
+ * experimentiert hat, und die im Abschluss unter der Demo genannten Zahlen
+ * gelten fuer genau diese Werte — sie stillschweigend zu aendern wuerde das
+ * uebernommene Projekt von dem loesen, was er gesehen hat.
+ */
+export async function importDemoProject(formData: FormData) {
+  const orgResult = await currentUserOrgId()
+  if ('error' in orgResult) {
+    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+  }
+
+  const transfer = parseSerializedTransfer(formData.get('transfer') as string | null)
+  if (!transfer) {
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('demoImportUnreadable')))
+  }
+
+  const limitError = await projectLimitError(orgResult.orgId)
+  if (limitError) {
+    redirect('/dashboard?error=' + encodeURIComponent(limitError))
+  }
+
+  const defaults = await projectDefaults(orgResult.orgId, orgResult.orgName)
+  const supabase = await createClient()
+
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .insert({
+      organization_id: orgResult.orgId,
+      name: transfer.projectName,
+      description: transfer.description,
+      company: defaults.company ?? transfer.company,
+      product_name: transfer.productName,
+      customer_name: transfer.customerName,
+      supplier_name: transfer.supplierName,
+      erp_label: transfer.erpLabel,
+      annual_throughput: transfer.annualThroughput,
+      available_minutes_per_day: transfer.availableMinutesPerDay,
+      piece_value: transfer.pieceValue,
+      currency: transfer.currency,
+    })
+    .select('id')
+    .single()
+
+  if (projectError || !project) {
+    if (projectError) console.error('importDemoProject (project) failed:', projectError.message)
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('demoImportFailed')))
+  }
+
+  // Wie beim Beispielprojekt: kein .order() auf dem RETURNING — PostgREST
+  // lehnt eine Sortierung nach einer Spalte ausserhalb der .select()-Liste ab.
+  // Die Reihenfolge eines mehrzeiligen INSERT bleibt erhalten, und genau die
+  // brauchen wir, um die Bestaende ueber ihre Position zuzuordnen.
+  const { data: insertedProcesses, error: processesError } = await supabase
+    .from('processes')
+    .insert(
+      transfer.processes.map((p) => ({
+        project_id: project.id,
+        name: p.name,
+        cycle_time: p.cycleTime,
+        changeover_time: p.changeoverTime,
+        oee: p.oee,
+        operator_count: p.operatorCount,
+        wip: p.wip,
+        lane: p.lane,
+        is_pacemaker: p.isPacemaker,
+        has_heijunka: p.hasHeijunka,
+        classification: p.classification,
+        x: p.x,
+        y: p.y,
+      }))
+    )
+    .select('id')
+
+  if (processesError || !insertedProcesses) {
+    if (processesError) {
+      console.error('importDemoProject (processes) failed:', processesError.message)
+    }
+    redirect('/dashboard?error=' + encodeURIComponent(await tErr('demoImportFailed')))
+  }
+
+  const idAt = (index: number | null): string | null =>
+    index === null ? null : (insertedProcesses[index]?.id ?? null)
+
+  if (transfer.buffers.length > 0) {
+    const { error: bufferError } = await supabase.from('inventory_buffers').insert(
+      transfer.buffers.map((b) => ({
+        project_id: project.id,
+        from_process_id: idAt(b.fromIndex),
+        to_process_id: idAt(b.toIndex),
+        wip_count: b.wipCount,
+        buffer_type: b.bufferType,
+        flow_style: b.flowStyle,
+        kanban_type: b.kanbanType,
+        x: b.x,
+        y: b.y,
+      }))
+    )
+
+    if (bufferError) {
+      // Das Projekt und seine Stationen stehen schon. Ein Wertstrom ohne
+      // Bestandsdreiecke ist unvollstaendig, aber brauchbar — ihn deswegen
+      // wieder zu loeschen waere die schlechtere Antwort.
+      console.error('importDemoProject (buffers) failed:', bufferError.message)
+    }
+  }
+
+  // Das erste angelegte Projekt ist im Vertrieb das aussagekraeftigste
+  // Signal ueberhaupt — dieselbe Zeile wie bei createProject.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  if (claimsData?.claims?.sub) {
+    await noteUserActivity(claimsData.claims.sub, 'project_created', {
+      projectId: project.id,
+      organizationId: orgResult.orgId,
+      source: 'demo',
+    })
+  }
+
+  // `demoImported` sagt der Editor-Seite, dass sie den Zwischenstand im
+  // Browser wegraeumen soll — eine Server Action kann das nicht selbst, sie
+  // laeuft nicht dort. Erst hier, nicht schon beim Absenden: Scheitert die
+  // Uebernahme oben, ist der Zwischenstand noch da.
+  redirect(`/editor/${project.id}?demoImported=1`)
 }
 
 // Loescht ein VSM samt allem, was daran haengt. Die Kindtabellen (processes,
