@@ -158,26 +158,33 @@ export async function revokeActiveEntitlement(organizationId: string): Promise<v
  *
  * Vorher stand dieser Vorgang zweimal im Quelltext: einmal in
  * `admin/actions.ts` fuer die Vergabe von Hand, und (seit Stripe) ein zweites
- * Mal im Webhook. Zwei Kopien derselben "erst zurueckziehen, dann neu
- * eintragen"-Logik waeren zwei Stellen, die auseinanderlaufen koennen — genau
- * die Art Fehler, die erst auffaellt, wenn eine Kundin bezahlt hat und ihr
- * Tarif trotzdem nicht stimmt.
+ * Mal im Webhook. Zwei Kopien derselben Logik waeren zwei Stellen, die
+ * auseinanderlaufen koennen — genau die Art Fehler, die erst auffaellt, wenn
+ * eine Kundin bezahlt hat und ihr Tarif trotzdem nicht stimmt.
  *
- * Ein `update` auf der vorhandenen Zeile waere kuerzer, wuerde aber die
- * Geschichte ueberschreiben — und "seit wann ist das Haus auf PROFESSIONAL?"
- * ist genau die Frage, die spaeter gestellt wird.
+ * Ein `upsert` auf `(organization_id, product)`, nicht "erst zurueckziehen,
+ * dann neu eintragen": Die Tabelle traegt eine eindeutige Einschraenkung
+ * genau auf dieser Spaltenkombination (`organization_entitlements_org_
+ * product_key`) — pro Organisation und Produkt darf es, unabhaengig vom
+ * Status, nur eine einzige Zeile geben. Der urspruengliche Plan, die
+ * Geschichte ueber mehrere Zeilen zu bewahren ("seit wann ist das Haus auf
+ * PROFESSIONAL?"), scheiterte deshalb beim zweiten Aufruf fuer dieselbe
+ * Organisation an genau dieser Schranke — nicht theoretisch, sondern beim
+ * ersten echten Testkauf. Die Tabelle gehoert Prisma; ihre Einschraenkung zu
+ * ignorieren ist keine Option, also folgt dieser Code ihr.
  */
 export async function grantEntitlement(organizationId: string, tier: Tier): Promise<void> {
-  await revokeActiveEntitlement(organizationId)
-
   const supabase = createAdminClient()
-  const { error } = await supabase.from('organization_entitlements').insert({
-    organization_id: organizationId,
-    product: 'VSM_BUILDER',
-    tier,
-    status: 'ACTIVE',
-    granted_at: new Date().toISOString(),
-  })
+  const { error } = await supabase.from('organization_entitlements').upsert(
+    {
+      organization_id: organizationId,
+      product: 'VSM_BUILDER',
+      tier,
+      status: 'ACTIVE',
+      granted_at: new Date().toISOString(),
+    },
+    { onConflict: 'organization_id,product' }
+  )
 
   if (error) {
     throw new Error(`grantEntitlement failed: ${error.message}`)
