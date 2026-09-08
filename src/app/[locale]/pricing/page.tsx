@@ -62,6 +62,7 @@ export default async function PricingPage({
   const { error } = await searchParams
   const t = await getTranslations('Pricing')
   const tNav = await getTranslations('Nav')
+  const tHome = await getTranslations('Home')
   const tErr = await getTranslations('Errors')
   const currency = await visitorCurrency()
 
@@ -337,6 +338,36 @@ export default async function PricingPage({
           </Link>
         </div>
       </section>
+
+      {/* [Marketing-Audit 2026-09-07, C7] Die Seite endete bisher mit der
+          Abschluss-Zeile: kein Verweis, der weiterfuehrt. Wer hier zoegert,
+          hatte nur die Zurueck-Taste — und eine Suchmaschine keinen Pfad zu
+          Demo oder Erhebungsbogen von hier aus. Derselbe Fussbereich wie auf
+          Startseite und Demo. */}
+      <footer className="border-t border-zinc-200">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-6 py-8 text-sm text-zinc-600">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <Link
+              href="/"
+              className="font-semibold uppercase tracking-widest text-brand-600 hover:underline"
+            >
+              {SITE_NAME}
+            </Link>
+            <span>{tHome('footerTagline')}</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link href="/demo" className="hover:text-brand-600 hover:underline">
+              {tNav('demo')}
+            </Link>
+            <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
+              {tNav('dataSheet')}
+            </Link>
+            <Link href="/login" className="hover:text-brand-600 hover:underline">
+              {tNav('login')}
+            </Link>
+          </nav>
+        </div>
+      </footer>
     </main>
   )
 }

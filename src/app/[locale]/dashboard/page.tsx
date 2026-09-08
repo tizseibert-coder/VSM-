@@ -23,6 +23,7 @@ export default async function DashboardPage({
 }) {
   const { error } = await searchParams
   const t = await getTranslations('Dashboard')
+  const tNav = await getTranslations('Nav')
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims
@@ -281,6 +282,28 @@ export default async function DashboardPage({
             </ul>
           )}
         </div>
+
+        {/* [Marketing-Audit 2026-09-07, C4/C7] Von hier aus gab es keinen Weg
+            zurueck ins Marketing — kein Link auf Demo, Erhebungsbogen oder
+            Startseite. Wer testen will, ob eine Formel sich seit der Demo
+            geaendert hat, oder den Erhebungsbogen fuer eine Kollegin braucht,
+            musste die Adresse von Hand eintippen. Der Tarif selbst bleibt im
+            Streifen oben verlinkt (planCompare/planUpgrade) und steht hier
+            nicht noch einmal. */}
+        <footer className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-zinc-200 pt-6 text-sm text-zinc-600">
+          <Link
+            href="/"
+            className="font-semibold uppercase tracking-widest text-brand-600 hover:underline"
+          >
+            {SITE_NAME}
+          </Link>
+          <Link href="/demo" className="hover:text-brand-600 hover:underline">
+            {tNav('demo')}
+          </Link>
+          <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
+            {tNav('dataSheet')}
+          </Link>
+        </footer>
       </div>
     </div>
   )
