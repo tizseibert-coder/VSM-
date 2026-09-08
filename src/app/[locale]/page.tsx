@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import LeadForm from '@/components/marketing/LeadForm'
 import JsonLd from '@/components/seo/JsonLd'
+import HeaderLocaleSwitcher from '@/components/HeaderLocaleSwitcher'
 import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import { PUBLIC_TIERS } from '@/lib/billing/plans'
 import { GLOSSARY_KEYS } from '@/lib/vsm/glossary'
@@ -145,6 +146,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             <Link href="/signup" className={buttonPrimary}>
               {tNav('signup')}
             </Link>
+            <HeaderLocaleSwitcher />
           </div>
         </div>
       </header>

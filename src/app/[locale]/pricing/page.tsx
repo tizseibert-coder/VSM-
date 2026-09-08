@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import JsonLd from '@/components/seo/JsonLd'
 import LeadForm from '@/components/marketing/LeadForm'
+import HeaderLocaleSwitcher from '@/components/HeaderLocaleSwitcher'
 import { PLANS, PUBLIC_TIERS, tierRank, type Tier } from '@/lib/billing/plans'
 import { isPurchasableTier, isTierPurchasable } from '@/lib/billing/stripe'
 import { tierPriceParams, visitorCurrency } from '@/lib/billing/currency'
@@ -188,6 +189,7 @@ export default async function PricingPage({
             <Link href="/signup" className={buttonPrimary}>
               {tNav('signup')}
             </Link>
+            <HeaderLocaleSwitcher />
           </div>
         </div>
       </header>
