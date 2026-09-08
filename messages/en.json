@@ -931,7 +931,8 @@
     "contactTitle": "Request a quote",
     "contactBody": "Tell us how many value streams and how many colleagues — you get a price back, not a brochure.",
     "ctaTitle": "Starting without asking works too.",
-    "ctaSubscribe": "Subscribe now"
+    "ctaSubscribe": "Subscribe now",
+    "riskReversal": "Billed monthly, no minimum term · no setup fee · your value streams stay readable after a change"
   },
   "Admin": {
     "title": "Admin",
