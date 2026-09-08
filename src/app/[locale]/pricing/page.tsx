@@ -5,6 +5,7 @@ import JsonLd from '@/components/seo/JsonLd'
 import LeadForm from '@/components/marketing/LeadForm'
 import { PLANS, PUBLIC_TIERS, tierRank, type Tier } from '@/lib/billing/plans'
 import { isPurchasableTier, isTierPurchasable } from '@/lib/billing/stripe'
+import { tierPriceParams, visitorCurrency } from '@/lib/billing/currency'
 import { startCheckout } from './actions'
 import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import {
@@ -61,6 +62,7 @@ export default async function PricingPage({
   const t = await getTranslations('Pricing')
   const tNav = await getTranslations('Nav')
   const tErr = await getTranslations('Errors')
+  const currency = await visitorCurrency()
 
   // Die drei Faelle, die startCheckout() ueber die Weiterleitung meldet
   // (siehe pricing/actions.ts) — kein generisches "error", weil "Sie sind
@@ -105,7 +107,16 @@ export default async function PricingPage({
           stand hier nur FREE, weil ein Angebot ohne Preis in schema.org kein
           gueltiges Angebot ist und eines mit erfundenem Preis schlimmer waere
           als keines. ENTERPRISE bleibt ohne Offer: "Preis auf Anfrage" ist
-          weiterhin kein Preis. */}
+          weiterhin kein Preis.
+
+          Bewusst weiterhin EUR, nicht die Waehrung dieser Anfrage: Googlebot
+          crawlt von einem festen Standort aus, nicht von jedem Besucherland
+          einzeln — ein personalisiertes Angebot hier waere fuer die
+          Suchmaschine kein zusaetzlich richtiger Wert, sondern ein
+          zufaelliger. Die sichtbare Seite darunter zeigt dagegen Franken,
+          wenn die Anfrage aus der Schweiz kommt (siehe billing/currency.ts)
+          — beides real angebotene Preise, nur an unterschiedliche Adressaten
+          gerichtet. */}
       <JsonLd
         data={{
           '@context': 'https://schema.org',
@@ -198,7 +209,9 @@ export default async function PricingPage({
               <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
                 {t(`tier${tier}Name`)}
               </h2>
-              <p className="mt-1 text-sm text-brand-700">{t(`tier${tier}Price`)}</p>
+              <p className="mt-1 text-sm text-brand-700">
+                {t(`tier${tier}Price`, tierPriceParams(tier, currency, locale))}
+              </p>
               <p className="mt-3 flex-1 text-sm leading-relaxed text-zinc-600">
                 {t(`tier${tier}Body`)}
               </p>
