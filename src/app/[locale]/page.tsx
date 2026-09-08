@@ -6,6 +6,7 @@ import LeadForm from '@/components/marketing/LeadForm'
 import JsonLd from '@/components/seo/JsonLd'
 import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import { PUBLIC_TIERS } from '@/lib/billing/plans'
+import { tierPriceParams, visitorCurrency } from '@/lib/billing/currency'
 import {
   buttonPrimary,
   buttonPrimaryLg,
@@ -72,6 +73,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const t = await getTranslations('Home')
   const tNav = await getTranslations('Nav')
   const tPricing = await getTranslations('Pricing')
+  const currency = await visitorCurrency()
 
   const kpis = t.raw('kpis') as Kpi[]
   const checks = t.raw('checks') as Check[]
@@ -318,7 +320,9 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             {PUBLIC_TIERS.map((tier) => (
               <div key={tier} className="bg-white px-5 py-5">
                 <dt className="font-medium text-zinc-950">{tPricing(`tier${tier}Name`)}</dt>
-                <dd className="mt-1 text-sm text-brand-700">{tPricing(`tier${tier}Price`)}</dd>
+                <dd className="mt-1 text-sm text-brand-700">
+                  {tPricing(`tier${tier}Price`, tierPriceParams(tier, currency, locale))}
+                </dd>
                 <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
                   {tPricing(`tier${tier}Body`)}
                 </dd>

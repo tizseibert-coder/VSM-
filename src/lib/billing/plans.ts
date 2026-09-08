@@ -154,4 +154,17 @@ export function lowestTierWith(feature: BooleanFeature): Tier | null {
   return ordered.find((tier) => PLANS[tier][feature]) ?? null
 }
 
+/**
+ * Die runden Monatsbetraege, wie sie auf stripe.com hinterlegt sind — nur
+ * die zwei kaeuflichen Stufen; FREE ist 0, ENTERPRISE „auf Anfrage", beides
+ * ohne Zahl. Ein Betrag, zwei Waehrungen (siehe billing/stripe.ts): Der
+ * Betrieb rechnet in Franken und in Euro denselben Zahlenwert ab, nicht
+ * umgerechnet, sondern doppelt angelegt — deshalb reicht hier eine Zahl je
+ * Stufe statt einer je Stufe *und* Waehrung.
+ */
+export const MONTHLY_AMOUNT: Record<'STARTER' | 'PROFESSIONAL', number> = {
+  STARTER: 12,
+  PROFESSIONAL: 49,
+}
+
 export { PLANS }

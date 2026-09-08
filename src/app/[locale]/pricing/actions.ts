@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { localizedUrl } from '@/lib/seo/site'
 import { isPurchasableTier, priceIdForTier, stripeClient } from '@/lib/billing/stripe'
+import { visitorCurrency } from '@/lib/billing/currency'
 
 /** Uebersetzte Fehlermeldungen fuer die ?error=-Anzeige auf der Preisseite. */
 async function tErr(key: string): Promise<string> {
@@ -57,7 +58,7 @@ export async function startCheckout(tier: string) {
 
   let priceId: string
   try {
-    priceId = priceIdForTier(tier)
+    priceId = priceIdForTier(tier, await visitorCurrency())
   } catch (err) {
     console.error('startCheckout (price) failed:', err instanceof Error ? err.message : err)
     redirect('/pricing?error=notConfigured')
