@@ -125,6 +125,10 @@
         "body": "Schrittmacher, Supermarkt, FIFO, Heijunka, EPEI. Erklärt an der Stelle, an der sie auftauchen, damit Green Belts und Werker mitkommen."
       }
     ],
+    "dataSheetTitle": "Der Erhebungsbogen für die Linie",
+    "dataSheetBody": "Ein druckbarer Aufnahmebogen mit Messanleitung, ungegattert und ohne Anmeldung — für den Moment, in dem die Zahlen an der Maschine entstehen, nicht am Schreibtisch.",
+    "dataSheetTeaserLabel": "Ein Satz aus der Messanleitung:",
+    "dataSheetCta": "Erhebungsbogen ansehen",
     "hostingTitle": "Wo die Daten liegen",
     "hostingBody": "Ein Wertstrom beschreibt Ihre Fertigung: Taktzeiten, Bestände, Engpässe. Wer damit arbeitet, will vorher wissen, wo das gespeichert wird.",
     "hosting": [
@@ -668,6 +672,8 @@
     "emptyTitle": "Mit dem Beispiel-VSM anfangen",
     "emptyBody": "Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu, wie Durchlaufzeit und Taktzeit reagieren.",
     "emptyHint": "Jederzeit löschbar. Oder leg oben ein eigenes Projekt an.",
+    "emptyDataSheetPrefix": "Noch keine Zahlen zur Hand? Der ",
+    "emptyDataSheetSuffix": " hilft beim Aufnehmen an der Linie.",
     "open": "Öffnen →",
     "signedInAs": "Angemeldet als {email}",
     "deleteConfirm": "„{name}“ wirklich löschen?",
@@ -861,6 +867,11 @@
     "metaDescription": "Druckbogen für die Datenaufnahme an der Linie: Zykluszeit, Rüstzeit, OEE, Bediener und Bestände je Station.",
     "title": "Erhebungsbogen Wertstromanalyse",
     "intro": "Mitnehmen an die Linie, ausfüllen, danach in Taktane eintragen. Eine Zeile je Station, in der Reihenfolge, in der das Teil sie durchläuft.",
+    "seoIntro1": "Dieses Datenblatt für die Wertstromaufnahme kommt mit an die Linie: eine Zeile je Prozessschritt, mit derselben Messanleitung, die auch Taktane selbst verwendet.",
+    "seoIntro2": "Ausgefüllt tragen Sie die Zahlen in ein Projekt ein — Durchlaufzeit, Taktzeit und Wertschöpfungsanteil rechnet das Werkzeug dann live weiter.",
+    "seoDemoLinkPrefix": "Wer die Symbolik lieber gleich am Bildschirm ausprobiert, findet in der ",
+    "seoDemoLinkText": "Demo",
+    "seoDemoLinkSuffix": " denselben Wertstrom schon aufgenommen.",
     "print": "Drucken",
     "back": "← Zurück",
     "project": "Projekt / Produkt",

@@ -181,6 +181,16 @@ export default async function PricingPage({
             <Link href="/demo" className={buttonSecondary}>
               {tNav('demo')}
             </Link>
+            {/* [Marketing-Audit 2026-09-07, A6] Bisher nur in der Fusszeile
+                verlinkt — genau der Bogen, der als Suchtreffer die meisten
+                neuen Besucher bringen koennte, war in der Kopfzeile nicht zu
+                finden. */}
+            <Link
+              href="/data-sheet"
+              className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              {tNav('dataSheet')}
+            </Link>
             <Link
               href="/login"
               className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"

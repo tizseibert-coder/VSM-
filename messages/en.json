@@ -125,6 +125,10 @@
         "body": "Pacemaker, supermarket, FIFO, heijunka, EPEI. Explained where they appear, so green belts and operators can follow."
       }
     ],
+    "dataSheetTitle": "The data sheet for the shop floor",
+    "dataSheetBody": "A printable data-collection sheet with measurement instructions, ungated and without sign-up — for the moment the numbers come from the machine, not the desk.",
+    "dataSheetTeaserLabel": "One line from the instructions:",
+    "dataSheetCta": "View the data sheet",
     "hostingTitle": "Where your data lives",
     "hostingBody": "A value stream describes your production: takt times, inventory, bottlenecks. Anyone working with it wants to know up front where that is stored.",
     "hosting": [
@@ -668,6 +672,8 @@
     "emptyTitle": "Start with the example VSM",
     "emptyBody": "A machine shop with five processes, inventory and calculated metrics. Change a cycle time and watch lead time and takt time respond.",
     "emptyHint": "Deletable at any time. Or create your own project above.",
+    "emptyDataSheetPrefix": "Don't have the numbers yet? The ",
+    "emptyDataSheetSuffix": " helps with recording them at the line.",
     "open": "Open →",
     "signedInAs": "Signed in as {email}",
     "deleteConfirm": "Really delete “{name}”?",
@@ -861,6 +867,11 @@
     "metaDescription": "Printable sheet for recording data at the line: cycle time, changeover, OEE, operators and inventory per station.",
     "title": "Value stream data collection sheet",
     "intro": "Take it to the line, fill it in, then enter it in Taktane. One row per station, in the order the part passes through them.",
+    "seoIntro1": "This data sheet for value stream mapping travels to the line with you: one row per process step, using the same measurement instructions Taktane itself relies on.",
+    "seoIntro2": "Once filled in, you enter the numbers into a project — Taktane then calculates lead time, takt time and process cycle efficiency live.",
+    "seoDemoLinkPrefix": "Prefer trying the notation on screen first? The ",
+    "seoDemoLinkText": "demo",
+    "seoDemoLinkSuffix": " has the same value stream already filled in.",
     "print": "Print",
     "back": "← Back",
     "project": "Project / product",

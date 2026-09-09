@@ -241,6 +241,17 @@ export default async function DashboardPage({
                   <p className="mt-3 text-xs text-zinc-600">
                     {t('emptyHint')}
                   </p>
+                  {/* [Marketing-Audit 2026-09-07, A6] Wer gerade ein Projekt
+                      anlegt, braucht als Naechstes Daten von der Linie —
+                      genau der Moment, in dem der Erhebungsbogen etwas nuetzt,
+                      nicht der weit entfernte Link in der Fusszeile. */}
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {t('emptyDataSheetPrefix')}
+                    <Link href="/data-sheet" className="font-medium text-brand-600 hover:underline">
+                      {tNav('dataSheet')}
+                    </Link>
+                    {t('emptyDataSheetSuffix')}
+                  </p>
                 </div>
                 <div className="rounded-control border border-zinc-200 p-4">
                   <VsmSketch />

@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import LeadForm from '@/components/marketing/LeadForm'
+import DataSheetPreview from '@/components/marketing/DataSheetPreview'
 import JsonLd from '@/components/seo/JsonLd'
 import HeaderLocaleSwitcher from '@/components/HeaderLocaleSwitcher'
 import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
@@ -75,6 +76,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const t = await getTranslations('Home')
   const tNav = await getTranslations('Nav')
   const tPricing = await getTranslations('Pricing')
+  const tSheet = await getTranslations('DataSheet')
   const currency = await visitorCurrency()
 
   const kpis = t.raw('kpis') as Kpi[]
@@ -130,6 +132,16 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>
               {tNav('demo')}
+            </Link>
+            {/* [Marketing-Audit 2026-09-07, A6] Bisher nur in der Fusszeile
+                verlinkt — genau der Bogen, der als Suchtreffer die meisten
+                neuen Besucher bringen koennte, war in der Kopfzeile nicht zu
+                finden. */}
+            <Link
+              href="/data-sheet"
+              className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              {tNav('dataSheet')}
             </Link>
             <Link
               href="/pricing"
@@ -309,6 +321,39 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* [Marketing-Audit 2026-09-07, A6] Der Erhebungsbogen ist im
+          klassischen Industrie-B2B das Standard-Einstiegsangebot — das
+          nuetzliche Ding, das jemand mitnimmt und das den Produktnamen an
+          die Linie traegt. Bisher war er nur einmal verlinkt, in der
+          Fusszeile. Eigener Abschnitt statt eines Fussnoten-Links, mit der
+          Messanleitung als Anreisser: Wer diese eine Zeile liest, sieht
+          sofort, dass der Bogen mehr ist als ein leeres Formular. Die Zeile
+          kommt direkt aus DataSheet.howChangeover, nicht als eigene Kopie —
+          zwei Formulierungen derselben Definition liefen sonst irgendwann
+          auseinander. */}
+      <section className="border-t border-zinc-200 py-16">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-center">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
+              {t('dataSheetTitle')}
+            </h2>
+            <p className="mt-3 max-w-xl text-zinc-700">{t('dataSheetBody')}</p>
+            <div className="mt-5 max-w-xl rounded-control border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                {t('dataSheetTeaserLabel')}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-zinc-700">
+                {tSheet('howChangeover')}
+              </p>
+            </div>
+            <Link href="/data-sheet" className={`${buttonSecondary} mt-5 inline-block`}>
+              {t('dataSheetCta')}
+            </Link>
+          </div>
+          <DataSheetPreview />
+        </div>
       </section>
 
       {/* Die Frage, an der eine Beschaffung in der deutschen Industrie
