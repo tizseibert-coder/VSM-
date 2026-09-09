@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { loadInviteBranding } from '@/lib/org/inviteBranding'
 import { DEFAULT_BRAND_COLOR, readableTextOn } from '@/lib/org/branding'
 import OrgMark from '@/components/org/OrgMark'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 import { acceptInvite } from '../actions'
 
 // Fehlertexte in der Sprache des Empfaengers, nicht in der der Datenbank. Der
@@ -104,12 +105,9 @@ export default async function InvitePage({
                   Seitenaufruf: sonst wuerde schon die Linkvorschau eines
                   Chat-Programms die Einladung verbrauchen. */}
               <form action={acceptInvite.bind(null, token)} className="mt-6">
-                <button
-                  type="submit"
-                  className="w-full rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-                >
+                <SubmitButton className="w-full justify-center rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
                   {t('accept')}
-                </button>
+                </SubmitButton>
               </form>
               <p className="mt-4 text-center text-sm">
                 <Link href="/dashboard" className="text-zinc-600 underline">

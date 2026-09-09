@@ -61,6 +61,24 @@ export default async function DataSheetPage() {
           <PrintButton label={t('print')} />
         </div>
 
+        {/* [Marketing-Audit 2026-09-07, A6] Ohne diesen Absatz bestand die
+            Seite fuer eine Suchmaschine praktisch nur aus Tabellenzellen und
+            Labelworten — zu wenig Text, um fuer Anfragen wie „Erhebungsbogen
+            Wertstromanalyse" oder „Vorlage Wertstromaufnahme" zu ranken.
+            print:hidden, weil auf dem Ausdruck an der Linie kein Werbetext
+            steht, sondern nur der Bogen selbst. */}
+        <div className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-600 print:hidden">
+          <p>{t('seoIntro1')}</p>
+          <p className="mt-2">{t('seoIntro2')}</p>
+          <p className="mt-2">
+            {t('seoDemoLinkPrefix')}
+            <Link href="/demo" className="font-medium text-brand-600 hover:underline">
+              {t('seoDemoLinkText')}
+            </Link>
+            {t('seoDemoLinkSuffix')}
+          </p>
+        </div>
+
         <div className="mt-4 rounded-surface border border-zinc-200 bg-white p-8 print:rounded-none print:border-0 print:p-0">
           <h1 className="text-xl font-semibold tracking-tight text-zinc-950">{t('title')}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">{t('intro')}</p>

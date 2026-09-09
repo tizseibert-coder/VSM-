@@ -58,6 +58,7 @@
     "checksBody": "Ein Wertstrom kann methodisch falsch sein und trotzdem gut aussehen. Die Methodikprüfung läuft bei jeder Änderung mit und ordnet nach Schwere: zuerst das, was eine Kennzahl entwertet, danach das, was nur die Darstellung betrifft.",
     "severityCritical": "Kennzahl betroffen",
     "severityWarning": "Methodisch unsauber",
+    "checksLinkText": "Alle Prüfungen in der Demo ansehen →",
     "checks": [
       {
         "title": "Kapazitätsunterdeckung",
@@ -78,6 +79,7 @@
     "comparisonColCurrent": "Ist-Zustand",
     "comparisonColScenario": "Szenario A",
     "comparisonNote": "Beispielwerte zur Veranschaulichung der Spalten.",
+    "comparisonLinkText": "Ein eigenes Szenario kostenlos anlegen →",
     "comparison": [
       {
         "label": "Durchlaufzeit",
@@ -88,6 +90,11 @@
         "label": "Wertschöpfungsanteil",
         "current": "0,41 %",
         "scenario": "0,83 %"
+      },
+      {
+        "label": "Gebundenes Umlaufkapital",
+        "current": "1,4 Mio. €",
+        "scenario": "0,7 Mio. €"
       },
       {
         "label": "Investition",
@@ -125,6 +132,10 @@
         "body": "Schrittmacher, Supermarkt, FIFO, Heijunka, EPEI. Erklärt an der Stelle, an der sie auftauchen, damit Green Belts und Werker mitkommen."
       }
     ],
+    "dataSheetTitle": "Der Erhebungsbogen für die Linie",
+    "dataSheetBody": "Ein druckbarer Aufnahmebogen mit Messanleitung, ungegattert und ohne Anmeldung — für den Moment, in dem die Zahlen an der Maschine entstehen, nicht am Schreibtisch.",
+    "dataSheetTeaserLabel": "Ein Satz aus der Messanleitung:",
+    "dataSheetCta": "Erhebungsbogen ansehen",
     "hostingTitle": "Wo die Daten liegen",
     "hostingBody": "Ein Wertstrom beschreibt Ihre Fertigung: Taktzeiten, Bestände, Engpässe. Wer damit arbeitet, will vorher wissen, wo das gespeichert wird.",
     "hosting": [
@@ -158,7 +169,7 @@
     "minUnit": "min"
   },
   "Demo": {
-    "metaTitle": "Demo",
+    "metaTitle": "Demo — Wertstromanalyse ohne Anmeldung",
     "metaDescription": "Ein vollständiger Wertstrom zum Ausprobieren, ohne Anmeldung. Zykluszeiten ändern und zusehen, wie Durchlaufzeit, Taktzeit und Wertschöpfungsanteil reagieren.",
     "heading": "Demo · Dreherei Musterwerk",
     "noticeStrong": "Alles ist bedienbar.",
@@ -207,7 +218,7 @@
   },
   "Signup": {
     "title": "Konto erstellen",
-    "subtitle": "Beginnen Sie mit Ihrer ersten Wertstromanalyse.",
+    "subtitle": "Kostenlos, ohne Kreditkarte: Ihr erster Wertstrom mit gerechneten Kennzahlen.",
     "orgLabel": "Firma / Team (optional)",
     "orgPlaceholder": "z. B. Muster AG",
     "emailLabel": "E-Mail",
@@ -668,8 +679,18 @@
     "emptyTitle": "Mit dem Beispiel-VSM anfangen",
     "emptyBody": "Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu, wie Durchlaufzeit und Taktzeit reagieren.",
     "emptyHint": "Jederzeit löschbar. Oder leg oben ein eigenes Projekt an.",
+    "emptyDataSheetPrefix": "Noch keine Zahlen zur Hand? Der ",
+    "emptyDataSheetSuffix": " hilft beim Aufnehmen an der Linie.",
     "open": "Öffnen →",
     "signedInAs": "Angemeldet als {email}",
+    "progressTitle": "Ihr erster Wertstrom — Schritt {step} von 4",
+    "progressStepProject": "Projekt angelegt",
+    "progressStepProcesses": "Prozesse erfasst",
+    "progressStepBuffers": "Bestände eingetragen",
+    "progressStepScenario": "Szenario gerechnet",
+    "progressNoteProcesses": "Noch ohne Prozesse: Weder Durchlaufzeit noch Taktzeit lassen sich vorher rechnen.",
+    "progressNoteBuffers": "Noch ohne Bestände: Die Durchlaufzeit lässt sich erst danach rechnen.",
+    "progressNoteScenario": "Noch ohne Szenario: Erst der Vergleich zeigt, was eine Änderung tatsächlich bringt.",
     "deleteConfirm": "„{name}“ wirklich löschen?",
     "delete": "Löschen",
     "admin": "Verwaltung",
@@ -857,10 +878,15 @@
     "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut."
   },
   "DataSheet": {
-    "metaTitle": "Erhebungsbogen",
+    "metaTitle": "Erhebungsbogen Wertstromanalyse",
     "metaDescription": "Druckbogen für die Datenaufnahme an der Linie: Zykluszeit, Rüstzeit, OEE, Bediener und Bestände je Station.",
     "title": "Erhebungsbogen Wertstromanalyse",
     "intro": "Mitnehmen an die Linie, ausfüllen, danach in Taktane eintragen. Eine Zeile je Station, in der Reihenfolge, in der das Teil sie durchläuft.",
+    "seoIntro1": "Dieses Datenblatt für die Wertstromaufnahme kommt mit an die Linie: eine Zeile je Prozessschritt, mit derselben Messanleitung, die auch Taktane selbst verwendet.",
+    "seoIntro2": "Ausgefüllt tragen Sie die Zahlen in ein Projekt ein — Durchlaufzeit, Taktzeit und Wertschöpfungsanteil rechnet das Werkzeug dann live weiter.",
+    "seoDemoLinkPrefix": "Wer die Symbolik lieber gleich am Bildschirm ausprobiert, findet in der ",
+    "seoDemoLinkText": "Demo",
+    "seoDemoLinkSuffix": " denselben Wertstrom schon aufgenommen.",
     "print": "Drucken",
     "back": "← Zurück",
     "project": "Projekt / Produkt",
@@ -915,10 +941,11 @@
     "errorFailed": "Die Anfrage konnte nicht gespeichert werden. Bitte versuchen Sie es später noch einmal."
   },
   "Pricing": {
-    "metaTitle": "Preise",
-    "metaDescription": "Kostenlos einen vollständigen Wertstrom rechnen, mit Szenario und PDF. Was die höheren Tarife zusätzlich umfassen — Wertströme, Szenarien, Plätze, CSV-Import und Branchenvergleich — steht in der Tabelle.",
+    "metaTitle": "Preise — Wertstromanalyse ab 0 €",
+    "metaDescription": "Kostenlos einen vollständigen Wertstrom rechnen, mit Szenario und PDF. Was die höheren Tarife zusätzlich bieten, steht in der Tabelle.",
     "title": "Tarife",
     "body": "Die kostenlose Stufe ist kein beschnittener Rundgang: ein vollständiger Wertstrom, ein Szenario dagegengerechnet, das Ergebnis als PDF. Was darüber liegt, unterscheidet sich in der Breite — wie viele Wertströme, wie viele Kollegen, wie viele Szenarien.",
+    "priceAnchor": "Ein moderierter Wertstrom-Workshop mit externer Begleitung kostet ein Vielfaches eines Jahresbeitrags. Das Werkzeug ersetzt die Moderation nicht — aber die zwei Tage danach, in denen die Zahlen in Excel neu gerechnet werden.",
     "teaserLink": "Alle Tarife im Vergleich →",
     "tierFREEName": "Kostenlos",
     "tierFREEPrice": "{price}",

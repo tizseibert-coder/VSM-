@@ -6,7 +6,7 @@
   },
   "Metadata": {
     "title": "Taktane — Value Stream Mapping That Calculates",
-    "description": "Draw value stream maps to Rother/Shook conventions, calculate lead time, takt time and process cycle efficiency live, and compare future-state scenarios against each other.",
+    "description": "Draw value stream maps to Rother/Shook conventions, calculate lead time, takt time and process cycle efficiency live, and compare future-state scenarios.",
     "ogTitle": "Taktane — Value Stream Mapping That Calculates",
     "ogDescription": "Draw value stream maps to Rother/Shook conventions, calculate metrics live, compare future-state scenarios.",
     "ogLocale": "en_US"
@@ -58,6 +58,7 @@
     "checksBody": "A value stream can be methodologically wrong and still look fine. The method check runs on every change and ranks by severity: first what invalidates a metric, then what only affects the drawing.",
     "severityCritical": "Metric affected",
     "severityWarning": "Methodologically unsound",
+    "checksLinkText": "See every check in the demo →",
     "checks": [
       {
         "title": "Capacity shortfall",
@@ -78,6 +79,7 @@
     "comparisonColCurrent": "Current state",
     "comparisonColScenario": "Scenario A",
     "comparisonNote": "Example values, shown to illustrate the columns.",
+    "comparisonLinkText": "Set up your own scenario for free →",
     "comparison": [
       {
         "label": "Lead time",
@@ -88,6 +90,11 @@
         "label": "Process cycle efficiency",
         "current": "0.41%",
         "scenario": "0.83%"
+      },
+      {
+        "label": "Working capital tied up",
+        "current": "€1.4M",
+        "scenario": "€0.7M"
       },
       {
         "label": "Investment",
@@ -125,6 +132,10 @@
         "body": "Pacemaker, supermarket, FIFO, heijunka, EPEI. Explained where they appear, so green belts and operators can follow."
       }
     ],
+    "dataSheetTitle": "The data sheet for the shop floor",
+    "dataSheetBody": "A printable data-collection sheet with measurement instructions, ungated and without sign-up — for the moment the numbers come from the machine, not the desk.",
+    "dataSheetTeaserLabel": "One line from the instructions:",
+    "dataSheetCta": "View the data sheet",
     "hostingTitle": "Where your data lives",
     "hostingBody": "A value stream describes your production: takt times, inventory, bottlenecks. Anyone working with it wants to know up front where that is stored.",
     "hosting": [
@@ -158,7 +169,7 @@
     "minUnit": "min"
   },
   "Demo": {
-    "metaTitle": "Demo",
+    "metaTitle": "Demo — Value Stream Mapping Without Sign-Up",
     "metaDescription": "A complete value stream to try out, without signing up. Change cycle times and watch lead time, takt time and process cycle efficiency respond.",
     "heading": "Demo · Musterwerk Machine Shop",
     "noticeStrong": "Everything is editable.",
@@ -207,7 +218,7 @@
   },
   "Signup": {
     "title": "Create account",
-    "subtitle": "Start with your first value stream map.",
+    "subtitle": "Free, no credit card: your first value stream with calculated metrics.",
     "orgLabel": "Company / team (optional)",
     "orgPlaceholder": "e.g. Example Ltd",
     "emailLabel": "Email",
@@ -668,8 +679,18 @@
     "emptyTitle": "Start with the example VSM",
     "emptyBody": "A machine shop with five processes, inventory and calculated metrics. Change a cycle time and watch lead time and takt time respond.",
     "emptyHint": "Deletable at any time. Or create your own project above.",
+    "emptyDataSheetPrefix": "Don't have the numbers yet? The ",
+    "emptyDataSheetSuffix": " helps with recording them at the line.",
     "open": "Open →",
     "signedInAs": "Signed in as {email}",
+    "progressTitle": "Your first value stream — step {step} of 4",
+    "progressStepProject": "Project created",
+    "progressStepProcesses": "Processes captured",
+    "progressStepBuffers": "Inventory recorded",
+    "progressStepScenario": "Scenario calculated",
+    "progressNoteProcesses": "No processes yet: neither lead time nor takt time can be calculated before that.",
+    "progressNoteBuffers": "No inventory yet: lead time can only be calculated after that.",
+    "progressNoteScenario": "No scenario yet: only the comparison shows what a change actually achieves.",
     "deleteConfirm": "Really delete “{name}”?",
     "delete": "Delete",
     "admin": "Admin",
@@ -857,10 +878,15 @@
     "portalFailed": "Account management could not be opened. Please try again."
   },
   "DataSheet": {
-    "metaTitle": "Data collection sheet",
+    "metaTitle": "Value stream data collection sheet",
     "metaDescription": "Printable sheet for recording data at the line: cycle time, changeover, OEE, operators and inventory per station.",
     "title": "Value stream data collection sheet",
     "intro": "Take it to the line, fill it in, then enter it in Taktane. One row per station, in the order the part passes through them.",
+    "seoIntro1": "This data sheet for value stream mapping travels to the line with you: one row per process step, using the same measurement instructions Taktane itself relies on.",
+    "seoIntro2": "Once filled in, you enter the numbers into a project — Taktane then calculates lead time, takt time and process cycle efficiency live.",
+    "seoDemoLinkPrefix": "Prefer trying the notation on screen first? The ",
+    "seoDemoLinkText": "demo",
+    "seoDemoLinkSuffix": " has the same value stream already filled in.",
     "print": "Print",
     "back": "← Back",
     "project": "Project / product",
@@ -915,10 +941,11 @@
     "errorFailed": "The enquiry could not be saved. Please try again later."
   },
   "Pricing": {
-    "metaTitle": "Pricing",
-    "metaDescription": "Map and calculate a complete value stream for free, with one scenario and a PDF. What the higher plans add — value streams, scenarios, seats, CSV import and industry benchmark — is in the table.",
+    "metaTitle": "Pricing — Value Stream Mapping From €0",
+    "metaDescription": "Map and calculate a complete value stream for free, with one scenario and a PDF. What the higher plans add is in the table.",
     "title": "Plans",
     "body": "The free plan is not a guided tour with the doors locked: one complete value stream, one scenario calculated against it, the result as a PDF. What sits above differs in breadth — how many value streams, how many colleagues, how many scenarios.",
+    "priceAnchor": "A facilitated value stream workshop with external guidance costs a multiple of a year's subscription. The tool doesn't replace the facilitation — but the two days afterward, spent recalculating the numbers in Excel.",
     "teaserLink": "Compare all plans →",
     "tierFREEName": "Free",
     "tierFREEPrice": "{price}",

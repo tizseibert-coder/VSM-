@@ -10,11 +10,13 @@ import { isPurchasableTier } from '@/lib/billing/stripe'
 import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 import DemoImportBanner from '@/components/dashboard/DemoImportBanner'
+import FirstValueStreamProgress from '@/components/dashboard/FirstValueStreamProgress'
 import OrgMark from '@/components/org/OrgMark'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl } from '@/lib/org/branding'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import { buttonPrimary, buttonPrimaryLg, buttonSecondary } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 export default async function DashboardPage({
   searchParams,
@@ -23,6 +25,7 @@ export default async function DashboardPage({
 }) {
   const { error } = await searchParams
   const t = await getTranslations('Dashboard')
+  const tNav = await getTranslations('Nav')
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims
@@ -102,9 +105,7 @@ export default async function DashboardPage({
               {t('team')}
             </Link>
             <form action={signOut}>
-              <button className={buttonSecondary}>
-                {t('signOut')}
-              </button>
+              <SubmitButton className={buttonSecondary}>{t('signOut')}</SubmitButton>
             </form>
           </div>
         </div>
@@ -125,8 +126,7 @@ export default async function DashboardPage({
             <span className="text-xs text-zinc-500">{t('organisation')}</span>
             {allOrgs.map((org) => (
               <form key={org.organizationId} action={switchOrg.bind(null, org.organizationId)}>
-                <button
-                  type="submit"
+                <SubmitButton
                   aria-current={org.organizationId === activeOrg?.organizationId ? 'true' : undefined}
                   className={
                     org.organizationId === activeOrg?.organizationId
@@ -135,7 +135,7 @@ export default async function DashboardPage({
                   }
                 >
                   {org.organizationName}
-                </button>
+                </SubmitButton>
               </form>
             ))}
           </div>
@@ -145,6 +145,14 @@ export default async function DashboardPage({
             der Projektliste: Wer gerade aus der Demo kommt, soll das als
             Erstes sehen. Zeichnet nichts, wenn im Browser nichts liegt. */}
         <DemoImportBanner />
+
+        {/* [Marketing-Audit 2026-09-07, B3] Nur bei genau einem Projekt: das
+            ist der Moment kurz nach der Anmeldung, den der Fund beschreibt.
+            Zeichnet nichts, sobald ein Szenario steht oder ein zweites
+            Projekt existiert. */}
+        {projects && projects.length === 1 && (
+          <FirstValueStreamProgress projectId={projects[0].id} />
+        )}
 
         {plan && usage && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-zinc-200 bg-white px-5 py-3">
@@ -171,12 +179,9 @@ export default async function DashboardPage({
                   (portalNoCustomer). */}
               {activeOrg?.role === 'owner' && isPurchasableTier(plan.tier) && (
                 <form action={openBillingPortal}>
-                  <button
-                    type="submit"
-                    className="text-sm font-medium text-brand-600 hover:underline"
-                  >
+                  <SubmitButton className="text-sm font-medium text-brand-600 hover:underline">
                     {t('manageBilling')}
-                  </button>
+                  </SubmitButton>
                 </form>
               )}
               <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
@@ -194,12 +199,7 @@ export default async function DashboardPage({
               required
               className="w-full rounded-control border border-zinc-300 px-3 py-2 text-sm sm:w-72"
             />
-            <button
-              type="submit"
-              className={buttonPrimary}
-            >
-              {t('create')}
-            </button>
+            <SubmitButton className={buttonPrimary}>{t('create')}</SubmitButton>
           </form>
 
           {/* Solange die Liste leer ist, traegt der Leerzustand darunter diese
@@ -208,12 +208,7 @@ export default async function DashboardPage({
               beiden Knoepfe Verschiedenes tun. */}
           {projects && projects.length > 0 && (
             <form action={createExampleProject}>
-              <button
-                type="submit"
-                className={buttonSecondary}
-              >
-                {t('loadExample')}
-              </button>
+              <SubmitButton className={buttonSecondary}>{t('loadExample')}</SubmitButton>
             </form>
           )}
         </div>
@@ -230,15 +225,21 @@ export default async function DashboardPage({
                     {t('emptyBody')}
                   </p>
                   <form action={createExampleProject} className="mt-5">
-                    <button
-                      type="submit"
-                      className={buttonPrimaryLg}
-                    >
-                      {t('loadExample')}
-                    </button>
+                    <SubmitButton className={buttonPrimaryLg}>{t('loadExample')}</SubmitButton>
                   </form>
                   <p className="mt-3 text-xs text-zinc-600">
                     {t('emptyHint')}
+                  </p>
+                  {/* [Marketing-Audit 2026-09-07, A6] Wer gerade ein Projekt
+                      anlegt, braucht als Naechstes Daten von der Linie —
+                      genau der Moment, in dem der Erhebungsbogen etwas nuetzt,
+                      nicht der weit entfernte Link in der Fusszeile. */}
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {t('emptyDataSheetPrefix')}
+                    <Link href="/data-sheet" className="font-medium text-brand-600 hover:underline">
+                      {tNav('dataSheet')}
+                    </Link>
+                    {t('emptyDataSheetSuffix')}
                   </p>
                 </div>
                 <div className="rounded-control border border-zinc-200 p-4">
@@ -281,6 +282,28 @@ export default async function DashboardPage({
             </ul>
           )}
         </div>
+
+        {/* [Marketing-Audit 2026-09-07, C4/C7] Von hier aus gab es keinen Weg
+            zurueck ins Marketing — kein Link auf Demo, Erhebungsbogen oder
+            Startseite. Wer testen will, ob eine Formel sich seit der Demo
+            geaendert hat, oder den Erhebungsbogen fuer eine Kollegin braucht,
+            musste die Adresse von Hand eintippen. Der Tarif selbst bleibt im
+            Streifen oben verlinkt (planCompare/planUpgrade) und steht hier
+            nicht noch einmal. */}
+        <footer className="mt-10 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-zinc-200 pt-6 text-sm text-zinc-600">
+          <Link
+            href="/"
+            className="font-semibold uppercase tracking-widest text-brand-600 hover:underline"
+          >
+            {SITE_NAME}
+          </Link>
+          <Link href="/demo" className="hover:text-brand-600 hover:underline">
+            {tNav('demo')}
+          </Link>
+          <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
+            {tNav('dataSheet')}
+          </Link>
+        </footer>
       </div>
     </div>
   )

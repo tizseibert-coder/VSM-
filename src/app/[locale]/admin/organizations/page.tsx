@@ -6,6 +6,7 @@ import { PUBLIC_TIERS, TIERS, limitsFor } from '@/lib/billing/plans'
 import { planEnforcementActive } from '@/lib/billing/entitlement'
 import { grantTier } from '../actions'
 import { buttonPrimarySm, inputSm } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 /**
  * Die Haeuser mit ihrem Tarif.
@@ -127,9 +128,7 @@ export default async function AdminOrganizationsPage({
                               </option>
                             ))}
                           </select>
-                          <button type="submit" className={buttonPrimarySm}>
-                            {t('grantSave')}
-                          </button>
+                          <SubmitButton className={buttonPrimarySm}>{t('grantSave')}</SubmitButton>
                         </form>
                       </td>
                     )}

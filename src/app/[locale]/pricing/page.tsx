@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import JsonLd from '@/components/seo/JsonLd'
 import LeadForm from '@/components/marketing/LeadForm'
+import HeaderLocaleSwitcher from '@/components/HeaderLocaleSwitcher'
 import { PLANS, PUBLIC_TIERS, tierRank, type Tier } from '@/lib/billing/plans'
 import { isPurchasableTier, isTierPurchasable } from '@/lib/billing/stripe'
 import { tierPriceParams, visitorCurrency } from '@/lib/billing/currency'
@@ -14,6 +15,7 @@ import {
   buttonSecondary,
   buttonSecondaryLg,
 } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 export async function generateMetadata({
   params,
@@ -61,6 +63,7 @@ export default async function PricingPage({
   const { error } = await searchParams
   const t = await getTranslations('Pricing')
   const tNav = await getTranslations('Nav')
+  const tHome = await getTranslations('Home')
   const tErr = await getTranslations('Errors')
   const currency = await visitorCurrency()
 
@@ -179,6 +182,16 @@ export default async function PricingPage({
             <Link href="/demo" className={buttonSecondary}>
               {tNav('demo')}
             </Link>
+            {/* [Marketing-Audit 2026-09-07, A6] Bisher nur in der Fusszeile
+                verlinkt — genau der Bogen, der als Suchtreffer die meisten
+                neuen Besucher bringen koennte, war in der Kopfzeile nicht zu
+                finden. */}
+            <Link
+              href="/data-sheet"
+              className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              {tNav('dataSheet')}
+            </Link>
             <Link
               href="/login"
               className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
@@ -188,6 +201,7 @@ export default async function PricingPage({
             <Link href="/signup" className={buttonPrimary}>
               {tNav('signup')}
             </Link>
+            <HeaderLocaleSwitcher />
           </div>
         </div>
       </header>
@@ -197,6 +211,15 @@ export default async function PricingPage({
           {t('title')}
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-700">{t('body')}</p>
+        {/* [Marketing-Audit 2026-09-07, A5] "0 € / 12 € / 49 € / auf Anfrage"
+            hatte keinen Vergleichsmassstab, an dem 49 € guenstig oder teuer
+            waeren. Der Anker liegt bereit und wurde nicht benutzt: Die
+            Alternative zu diesem Werkzeug ist kein anderes Werkzeug, sondern
+            ein externer Lean-Berater (vier- bis fuenfstellig) oder zwei
+            Ingenieurstage in Excel mit Zahlen, die niemand nachrechnen kann.
+            Vor der Tarifleiste, nicht danach: Der Massstab soll stehen, bevor
+            die Zahlen erscheinen, nicht erst danach eingeordnet werden. */}
+        <p className="mt-3 max-w-2xl text-sm text-zinc-600">{t('priceAnchor')}</p>
         {errorMessage && (
           <p className="mt-4 max-w-2xl rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {errorMessage}
@@ -227,9 +250,9 @@ export default async function PricingPage({
                 // oder ein Wiederholen der Adresse versehentlich ausloesen
                 // koennte.
                 <form action={startCheckout.bind(null, tier)} className="mt-5">
-                  <button type="submit" className={`${buttonSecondary} w-full`}>
+                  <SubmitButton className={`${buttonSecondary} w-full justify-center`}>
                     {t('ctaSubscribe')}
-                  </button>
+                  </SubmitButton>
                 </form>
               ) : (
                 // Ohne eingerichtetes Stripe (lokale Entwicklung, oder bevor
@@ -335,6 +358,36 @@ export default async function PricingPage({
           </Link>
         </div>
       </section>
+
+      {/* [Marketing-Audit 2026-09-07, C7] Die Seite endete bisher mit der
+          Abschluss-Zeile: kein Verweis, der weiterfuehrt. Wer hier zoegert,
+          hatte nur die Zurueck-Taste — und eine Suchmaschine keinen Pfad zu
+          Demo oder Erhebungsbogen von hier aus. Derselbe Fussbereich wie auf
+          Startseite und Demo. */}
+      <footer className="border-t border-zinc-200">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-6 py-8 text-sm text-zinc-600">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <Link
+              href="/"
+              className="font-semibold uppercase tracking-widest text-brand-600 hover:underline"
+            >
+              {SITE_NAME}
+            </Link>
+            <span>{tHome('footerTagline')}</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link href="/demo" className="hover:text-brand-600 hover:underline">
+              {tNav('demo')}
+            </Link>
+            <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
+              {tNav('dataSheet')}
+            </Link>
+            <Link href="/login" className="hover:text-brand-600 hover:underline">
+              {tNav('login')}
+            </Link>
+          </nav>
+        </div>
+      </footer>
     </main>
   )
 }

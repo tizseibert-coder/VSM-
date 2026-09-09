@@ -4,6 +4,7 @@ import { updateScenarioMeta } from '@/app/[locale]/editor/[projectId]/scenario-a
 import DeleteScenarioButton from './DeleteScenarioButton'
 import NewScenarioDisclosure from './NewScenarioDisclosure'
 import { buttonPrimary } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 type Scenario = Tables<'scenarios'>
 
@@ -84,12 +85,7 @@ export default async function ScenarioMetaPanel({
             <option value="high">{t('riskHigh')}</option>
           </select>
         </div>
-        <button
-          type="submit"
-          className={buttonPrimary}
-        >
-          {t('save')}
-        </button>
+        <SubmitButton className={buttonPrimary}>{t('save')}</SubmitButton>
       </form>
 
       <NewScenarioDisclosure

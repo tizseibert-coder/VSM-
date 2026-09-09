@@ -33,6 +33,7 @@ import { MethodCheckPanel } from './MethodCheckPanel'
 import { useLocale, useTranslations } from 'next-intl'
 import { rankFindings, type MethodFinding } from '@/lib/vsm/methodCheck'
 import { buttonPrimaryLg, buttonSecondaryLg, inputSm } from '@/components/ui/buttons'
+import { Spinner } from '@/components/ui/Spinner'
 import {
   VsmMutationProvider,
   useVsmMutation,
@@ -3324,7 +3325,8 @@ function ProcessEditPanel({
       )}
 
       <div className="mt-4 flex items-center gap-2">
-        <button type="submit" disabled={isSaving} className={primaryButtonClass}>
+        <button type="submit" disabled={isSaving} className={`${primaryButtonClass} inline-flex items-center gap-2`}>
+          {isSaving && <Spinner />}
           {t('save')}
         </button>
         <button
@@ -3778,7 +3780,8 @@ function BufferEditPanel({
       {error && (
         <p className="rounded-control bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
       )}
-      <button type="submit" disabled={isSaving} className={primaryButtonClass}>
+      <button type="submit" disabled={isSaving} className={`${primaryButtonClass} inline-flex items-center gap-2`}>
+        {isSaving && <Spinner />}
         {t('save')}
       </button>
       <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline">
@@ -3871,7 +3874,8 @@ function AnchorEditPanel({
       {error && (
         <p className="rounded-control bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
       )}
-      <button type="submit" disabled={isSaving} className={primaryButtonClass}>
+      <button type="submit" disabled={isSaving} className={`${primaryButtonClass} inline-flex items-center gap-2`}>
+        {isSaving && <Spinner />}
         {t('save')}
       </button>
       <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline">

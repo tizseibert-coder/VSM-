@@ -3,7 +3,9 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import LeadForm from '@/components/marketing/LeadForm'
+import DataSheetPreview from '@/components/marketing/DataSheetPreview'
 import JsonLd from '@/components/seo/JsonLd'
+import HeaderLocaleSwitcher from '@/components/HeaderLocaleSwitcher'
 import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import { PUBLIC_TIERS } from '@/lib/billing/plans'
 import { GLOSSARY_KEYS } from '@/lib/vsm/glossary'
@@ -74,6 +76,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const t = await getTranslations('Home')
   const tNav = await getTranslations('Nav')
   const tPricing = await getTranslations('Pricing')
+  const tSheet = await getTranslations('DataSheet')
   const currency = await visitorCurrency()
 
   const kpis = t.raw('kpis') as Kpi[]
@@ -116,7 +119,12 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         }}
       />
 
-      <header className="border-b border-zinc-200">
+      {/* [Marketing-Audit 2026-09-07, A7] Bei einer Seite ueber 4.000 px war
+          der Primaerknopf nur ganz oben zu sehen — wer weiter unten
+          ueberzeugt ist, musste erst wieder hochscrollen. sticky mit
+          explizitem bg-white, weil dahinter Abschnitte mit bg-zinc-50
+          durchscheinen wuerden; z-20 haelt sie unter dem Kopf, nicht davor. */}
+      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
         {/* [Bedienbarkeitsprüfung 2026-09-03, B4] Ohne Umbruch braucht diese
             Zeile 435 px — auf einem 390 px breiten Telefon stand "Kostenlos
             starten" zur Hälfte ausserhalb des Bildes, also genau der Knopf, für
@@ -129,6 +137,16 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/demo" className={buttonSecondary}>
               {tNav('demo')}
+            </Link>
+            {/* [Marketing-Audit 2026-09-07, A6] Bisher nur in der Fusszeile
+                verlinkt — genau der Bogen, der als Suchtreffer die meisten
+                neuen Besucher bringen koennte, war in der Kopfzeile nicht zu
+                finden. */}
+            <Link
+              href="/data-sheet"
+              className="rounded-control px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              {tNav('dataSheet')}
             </Link>
             <Link
               href="/pricing"
@@ -145,6 +163,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             <Link href="/signup" className={buttonPrimary}>
               {tNav('signup')}
             </Link>
+            <HeaderLocaleSwitcher />
           </div>
         </div>
       </header>
@@ -255,8 +274,33 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             ))}
           </ul>
         </div>
+        {/* [Marketing-Audit 2026-09-07, A7] Wer an dieser Stelle ueberzeugt
+            ist — der Abschnitt, den das Audit selbst als staerksten der
+            Seite einstuft —, musste bisher vier weitere Abschnitte scrollen,
+            um ueberhaupt handeln zu koennen. Kein zusaetzlicher Knopf, nur
+            ein Textverweis dorthin, wo die Pruefungen tatsaechlich laufen:
+            Die Demo teilt sich denselben Editor-Code, MethodCheckPanel
+            eingeschlossen — keine reduzierte Vorschau. */}
+        <p className="mt-6">
+          <Link href="/demo" className="text-sm font-medium text-brand-600 hover:underline">
+            {t('checksLinkText')}
+          </Link>
+        </p>
       </section>
 
+      {/* [Marketing-Audit 2026-09-07, A8] Die Tabelle zeigte bisher nur
+          Lean-Kennzahlen (Durchlaufzeit, Wertschoepfungsanteil) und rein
+          finanzielle (Investition, Amortisation, Risiko) — aber nicht die
+          Zeile, die beide Seiten verbindet. Eine Durchlaufzeit-Verkuerzung
+          ist gebundenes Kapital, das freiwird; genau das rechnet
+          lib/vsm/capital.ts fuer ein echtes Projekt (Stueckzahl im Bestand
+          mal Stueckwert). Die Beispielzahlen hier folgen derselben
+          Rechnung: 2.000 Stueck Bestand zu 700 € im Ist-Zustand sind
+          1,4 Mio. € gebunden; die Halbierung auf 1.000 Stueck (passend zur
+          Durchlaufzeit-Halbierung eine Zeile darueber, ueber Little's Law
+          durchaus plausibel) setzt 0,7 Mio. € davon frei. Es ist die
+          einzige Zeile der Tabelle, die ein Kaufmann ohne Uebersetzung
+          versteht. */}
       <section className="border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
@@ -291,6 +335,19 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </table>
           </div>
           <p className="mt-3 text-xs text-zinc-600">{t('comparisonNote')}</p>
+          {/* [Marketing-Audit 2026-09-07, A7] Der Wortlaut des Audits schlug
+              hier "Szenariovergleich in der Demo öffnen" vor — das waere eine
+              Falschangabe gewesen: Die Demo uebergibt scenarioId={null} und
+              hat keinen zweiten Zustand, gegen den sie vergleichen koennte
+              (siehe DemoCanvas.tsx). Der Szenariovergleich existiert, aber
+              erst mit einem Konto — und die kostenlose Stufe deckt genau ein
+              Szenario ab (lib/billing/plans.ts, PLANS.FREE), der Link fuehrt
+              also dorthin, nicht in die Demo. */}
+          <p className="mt-4">
+            <Link href="/signup" className="text-sm font-medium text-brand-600 hover:underline">
+              {t('comparisonLinkText')}
+            </Link>
+          </p>
         </div>
       </section>
 
@@ -307,6 +364,39 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* [Marketing-Audit 2026-09-07, A6] Der Erhebungsbogen ist im
+          klassischen Industrie-B2B das Standard-Einstiegsangebot — das
+          nuetzliche Ding, das jemand mitnimmt und das den Produktnamen an
+          die Linie traegt. Bisher war er nur einmal verlinkt, in der
+          Fusszeile. Eigener Abschnitt statt eines Fussnoten-Links, mit der
+          Messanleitung als Anreisser: Wer diese eine Zeile liest, sieht
+          sofort, dass der Bogen mehr ist als ein leeres Formular. Die Zeile
+          kommt direkt aus DataSheet.howChangeover, nicht als eigene Kopie —
+          zwei Formulierungen derselben Definition liefen sonst irgendwann
+          auseinander. */}
+      <section className="border-t border-zinc-200 py-16">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-center">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
+              {t('dataSheetTitle')}
+            </h2>
+            <p className="mt-3 max-w-xl text-zinc-700">{t('dataSheetBody')}</p>
+            <div className="mt-5 max-w-xl rounded-control border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                {t('dataSheetTeaserLabel')}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-zinc-700">
+                {tSheet('howChangeover')}
+              </p>
+            </div>
+            <Link href="/data-sheet" className={`${buttonSecondary} mt-5 inline-block`}>
+              {t('dataSheetCta')}
+            </Link>
+          </div>
+          <DataSheetPreview />
+        </div>
       </section>
 
       {/* Die Frage, an der eine Beschaffung in der deutschen Industrie

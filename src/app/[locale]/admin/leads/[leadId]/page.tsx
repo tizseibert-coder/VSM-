@@ -6,6 +6,7 @@ import { LEAD_STAGES } from '@/lib/crm/leads'
 import { requireStaff } from '@/lib/crm/staff'
 import { addLeadNote, claimLead, setLeadStage } from '../../actions'
 import { buttonPrimary, buttonSecondarySm, inputMd } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 /**
  * Ein Interessent mit seiner Chronik.
@@ -88,9 +89,7 @@ export default async function LeadDetailPage({
                   </option>
                 ))}
               </select>
-              <button type="submit" className={buttonPrimary}>
-                {t('stageSave')}
-              </button>
+              <SubmitButton className={buttonPrimary}>{t('stageSave')}</SubmitButton>
             </form>
 
             <div className="mt-4 border-t border-zinc-100 pt-4">
@@ -102,9 +101,9 @@ export default async function LeadDetailPage({
                   : t('ownerNone')}
               </p>
               <form action={claimLead.bind(null, lead.id, isMine)} className="mt-2">
-                <button type="submit" className={buttonSecondarySm}>
+                <SubmitButton className={buttonSecondarySm}>
                   {isMine ? t('ownerRelease') : t('ownerClaim')}
-                </button>
+                </SubmitButton>
               </form>
             </div>
           </section>
@@ -138,9 +137,7 @@ export default async function LeadDetailPage({
                 placeholder={t('notePlaceholder')}
                 className="w-full rounded-control border border-zinc-300 px-3 py-2 text-sm"
               />
-              <button type="submit" className={`${buttonPrimary} mt-2`}>
-                {t('noteSave')}
-              </button>
+              <SubmitButton className={`${buttonPrimary} mt-2`}>{t('noteSave')}</SubmitButton>
             </form>
           </section>
 

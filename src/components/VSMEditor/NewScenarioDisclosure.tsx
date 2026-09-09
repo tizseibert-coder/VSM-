@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { createScenario } from '@/app/[locale]/editor/[projectId]/scenario-actions'
 import { buttonPrimary } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 // Extracted from ScenarioSwitcher (which stays a plain Server Component) so
 // this one small piece can hold real open/close state — a native <details>
@@ -99,12 +100,7 @@ export default function NewScenarioDisclosure({
             : t('copyFromCurrent')}
         </p>
         <div className="mt-1 flex items-center gap-2">
-          <button
-            type="submit"
-            className={buttonPrimary}
-          >
-            {t('create')}
-          </button>
+          <SubmitButton className={buttonPrimary}>{t('create')}</SubmitButton>
           <button
             type="button"
             onClick={() => setIsOpen(false)}

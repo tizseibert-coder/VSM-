@@ -10,6 +10,7 @@ import {
 } from '@/lib/vsm/demoStorage'
 import { parseSerializedTransfer } from '@/lib/vsm/demoTransfer'
 import { buttonPrimary, buttonSecondary } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 /**
  * „Ihr Wertstrom aus der Demo liegt bereit."
@@ -70,9 +71,7 @@ export default function DemoImportBanner() {
             selbst geschrieben haben. */}
         <form action={importDemoProject}>
           <input type="hidden" name="transfer" value={raw} />
-          <button type="submit" className={buttonPrimary}>
-            {t('demoImportAccept')}
-          </button>
+          <SubmitButton className={buttonPrimary}>{t('demoImportAccept')}</SubmitButton>
         </form>
 
         {/* Verwerfen loescht nur den Zwischenstand im Browser. Absichtlich

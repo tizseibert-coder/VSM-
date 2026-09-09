@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import DemoCanvas from '@/components/VSMEditor/DemoCanvas'
+import HeaderLocaleSwitcher from '@/components/HeaderLocaleSwitcher'
 import { buttonPrimary, buttonSecondary } from '@/components/ui/buttons'
 import { pageMetadata, SITE_NAME } from '@/lib/seo/site'
 
@@ -63,6 +64,7 @@ export default async function DemoPage() {
             <Link href="/signup" className={buttonPrimary}>
               {tNav('signup')}
             </Link>
+            <HeaderLocaleSwitcher />
           </div>
         </div>
       </header>

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { createInvite, type CreateInviteResult } from '@/app/[locale]/team/actions'
 import { INVITE_DAY_CHOICES, INVITE_DAYS_DEFAULT, MAX_WELCOME_LENGTH } from '@/lib/org/invites'
 import { buttonPrimary, inputMd } from '@/components/ui/buttons'
+import { Spinner } from '@/components/ui/Spinner'
 
 // Client-Komponente, weil der fertige Link *einmalig* aus der Action
 // zurueckkommt und angezeigt werden muss. Ueber einen Redirect-Parameter
@@ -46,7 +47,12 @@ export default function InviteCreator({ hasBranding }: { hasBranding: boolean })
             </select>
           </label>
 
-          <button type="submit" disabled={pending} className={buttonPrimary}>
+          <button
+            type="submit"
+            disabled={pending}
+            className={`${buttonPrimary} inline-flex items-center gap-2`}
+          >
+            {pending && <Spinner />}
             {pending ? t('creating') : t('createLink')}
           </button>
         </div>
