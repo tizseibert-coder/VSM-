@@ -463,6 +463,11 @@ export type Database = {
           kanban_type: string | null
           project_id: string
           scenario_id: string | null
+          sizing_adu_per_day: number | null
+          sizing_adu_std_dev: number | null
+          sizing_interval_basis: string | null
+          sizing_interval_days: number | null
+          sizing_plt_days: number | null
           to_process_id: string | null
           wip_count: number
           x: number | null
@@ -477,6 +482,11 @@ export type Database = {
           kanban_type?: string | null
           project_id: string
           scenario_id?: string | null
+          sizing_adu_per_day?: number | null
+          sizing_adu_std_dev?: number | null
+          sizing_interval_basis?: string | null
+          sizing_interval_days?: number | null
+          sizing_plt_days?: number | null
           to_process_id?: string | null
           wip_count: number
           x?: number | null
@@ -491,6 +501,11 @@ export type Database = {
           kanban_type?: string | null
           project_id?: string
           scenario_id?: string | null
+          sizing_adu_per_day?: number | null
+          sizing_adu_std_dev?: number | null
+          sizing_interval_basis?: string | null
+          sizing_interval_days?: number | null
+          sizing_plt_days?: number | null
           to_process_id?: string | null
           wip_count?: number
           x?: number | null

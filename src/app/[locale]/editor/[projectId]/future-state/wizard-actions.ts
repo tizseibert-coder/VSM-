@@ -53,12 +53,11 @@ export async function submitBuffer(
   formData: FormData
 ) {
   const bufferType = (formData.get('bufferType') as string | null) ?? 'standard'
-  // Continuous flow has no buffer by definition (see seed data / existing
-  // convention) — force WIP to 0 whenever it's set, regardless of what the
-  // form submitted, so a stale WIP number can never keep inflating PLT on a
-  // connection the wizard just marked as one-piece flow (Q3's checkbox
-  // form doesn't ask for a WIP value at all).
-  const wipCount = bufferType === 'continuous' ? 0 : Number(formData.get('wipCount')) || 0
+  // Continuous flow has no buffer by definition, so it carries no WIP. The
+  // rule itself now lives in setBufferWip, which enforces it for the canvas
+  // panel too; what stays here is only the parsing, because Q3's checkbox form
+  // doesn't ask for a WIP value at all and Number(null) would be 0 anyway.
+  const wipCount = Number(formData.get('wipCount')) || 0
   await setBufferWip(projectId, scenarioId, { fromProcessId, toProcessId, wipCount, bufferType })
   backToQuestion(projectId, scenarioId, questionId)
 }

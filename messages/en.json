@@ -355,6 +355,22 @@
     "tiedUpCapital": {
       "term": "Tied-up capital",
       "definition": "Inventory times value per piece: the money sitting in the value stream instead of in the bank. Halve the inventory in a scenario and half of it comes back — that is the figure an investment rests on."
+    },
+    "supermarketSizing": {
+      "term": "Supermarket sizing",
+      "definition": "How many pieces a supermarket has to hold: cycle stock (replenishment interval × ADU) plus safety stock (covers variation) plus PLT stock (covers demand during production). Switching from push to pull replaces the stock that simply grew there with this calculated figure."
+    },
+    "adu": {
+      "term": "ADU (Average Daily Usage)",
+      "definition": "The average daily usage of this part at this point, in pieces per day. Not the same as the project's annual demand, which describes what the customer takes at the end of the stream. Read the ADU from a usage extract over a representative period."
+    },
+    "aduStdDev": {
+      "term": "σ (standard deviation of ADU)",
+      "definition": "How far daily usage swings around its mean, in pieces per day. It sets the safety stock. The calculator in the buffer panel works it out together with the ADU from a pasted series of daily usage figures."
+    },
+    "plt": {
+      "term": "PLT (process lead time)",
+      "definition": "The process lead time in days, measured on the value stream. Sizing a supermarket counts the lead time without the share this buffer itself contributes — otherwise its own size would feed into its own precondition."
     }
   },
   "Editor": {
@@ -476,7 +492,32 @@
     "emptyStep3Title": "Customer demand and shift time",
     "emptyStep3Body": "The two fields above. They produce the takt time, and only then can the tool say whether the line covers demand at all.",
     "emptySheetLink": "Data collection sheet for the shop floor →",
-    "emptySheetHint": "To print and take along: one page with every field you record at the line."
+    "emptySheetHint": "To print and take along: one page with every field you record at the line.",
+    "continuousNoStock": "Continuous flow has no buffer and therefore no stock — the WIP count is fixed at 0.",
+    "sizingTitle": "Size the supermarket",
+    "fifoSizingTitle": "Cap the FIFO lane",
+    "aduLabel": "ADU (pcs/day)",
+    "aduStdDevLabel": "σ of ADU (pcs/day)",
+    "measuredPlaceholder": "measured",
+    "intervalBasisLabel": "Interval type",
+    "basisEpei": "EPEI",
+    "basisCti": "CTI",
+    "basisWq": "WQ",
+    "intervalLabel": "Interval (days)",
+    "allowedWaitLabel": "Allowed wait (days)",
+    "sizingPltLabel": "PLT (days)",
+    "calculatorShow": "Work out ADU and σ",
+    "calculatorHide": "Close calculator",
+    "calculatorLabel": "Daily usage, one number per line",
+    "calculatorPlaceholder": "120\n134\n98\n141",
+    "calculatorResult": "ADU {adu} pcs/day, σ {sigma} pcs/day, from {count} days.",
+    "calculatorNeedsTwo": "Enter at least two days — a single one carries no variation to measure.",
+    "calculatorApply": "Use both",
+    "sizingBreakdown": "Cycle stock {cycle} + safety stock {safety} + PLT stock {plt} pcs.",
+    "sizingNeedsInput": "The target size needs ADU, variation, interval and PLT before it can be worked out.",
+    "sizingTarget": "Target size {target} pcs.",
+    "sizingReplaces": "{current} pcs are currently sitting there as unsized stock.",
+    "sizingApply": "Use the target size"
   },
   "Canvas": {
     "bottleneck": "⚠ Bottleneck",

@@ -153,6 +153,84 @@ describe('vsmOperations', () => {
     expect(next.buffers[0].wip_count).toBe(7)
   })
 
+  // Continuous Flow hat keinen Puffer, traegt also keinen Bestand. Ohne diese
+  // Regel blieb die alte Push-Menge stehen und blaehte die Durchlaufzeit
+  // weiter auf, obwohl die Verbindung gerade auf Fluss gestellt wurde.
+  it('drops the stock when a connection is switched to continuous flow', () => {
+    const next = vsmOperations.setBufferWip(start(), {
+      fromProcessId: 'demo-p1',
+      toProcessId: 'demo-p2',
+      wipCount: 3200,
+      bufferType: 'continuous',
+    })
+    const b = next.buffers.find((x) => x.from_process_id === 'demo-p1')
+    expect(b?.wip_count).toBe(0)
+  })
+
+  it('keeps the sizing inputs of a supermarket', () => {
+    const next = vsmOperations.setBufferWip(start(), {
+      fromProcessId: 'demo-p1',
+      toProcessId: 'demo-p2',
+      wipCount: 412,
+      bufferType: 'supermarket',
+      sizingAduPerDay: 100,
+      sizingAduStdDev: 20,
+      sizingIntervalDays: 2,
+      sizingIntervalBasis: 'epei',
+      sizingPltDays: 4,
+    })
+    const b = next.buffers.find((x) => x.from_process_id === 'demo-p1')
+    expect(b?.sizing_adu_per_day).toBe(100)
+    expect(b?.sizing_interval_basis).toBe('epei')
+    expect(b?.wip_count).toBe(412)
+  })
+
+  // Der Wizard speichert eine Verbindung mit Typ und Bestand, ohne von der
+  // Bemessung zu wissen. Wuerde ein fehlendes Feld als "auf null setzen"
+  // gelesen, loeschte ein Speichern dort die Bemessung vom Canvas.
+  it('leaves a stored sizing alone when the caller does not mention it', () => {
+    const sized = vsmOperations.setBufferWip(start(), {
+      fromProcessId: 'demo-p1',
+      toProcessId: 'demo-p2',
+      wipCount: 412,
+      bufferType: 'supermarket',
+      sizingAduPerDay: 100,
+      sizingPltDays: 4,
+    })
+    const next = vsmOperations.setBufferWip(sized, {
+      fromProcessId: 'demo-p1',
+      toProcessId: 'demo-p2',
+      wipCount: 500,
+      bufferType: 'supermarket',
+    })
+    const b = next.buffers.find((x) => x.from_process_id === 'demo-p1')
+    expect(b?.sizing_adu_per_day).toBe(100)
+    expect(b?.sizing_plt_days).toBe(4)
+    expect(b?.wip_count).toBe(500)
+  })
+
+  // Umgekehrt: Ein Typ, der keinen bemessenen Bestand haelt, darf die Zahlen
+  // nicht behalten — sie beschrieben dann nichts mehr.
+  it('clears the sizing when the buffer type stops holding a sized stock', () => {
+    const sized = vsmOperations.setBufferWip(start(), {
+      fromProcessId: 'demo-p1',
+      toProcessId: 'demo-p2',
+      wipCount: 412,
+      bufferType: 'supermarket',
+      sizingAduPerDay: 100,
+      sizingPltDays: 4,
+    })
+    const next = vsmOperations.setBufferWip(sized, {
+      fromProcessId: 'demo-p1',
+      toProcessId: 'demo-p2',
+      wipCount: 412,
+      bufferType: 'standard',
+    })
+    const b = next.buffers.find((x) => x.from_process_id === 'demo-p1')
+    expect(b?.sizing_adu_per_day).toBeNull()
+    expect(b?.sizing_plt_days).toBeNull()
+  })
+
   it('updates the project throughput', () => {
     const next = vsmOperations.updateAnnualThroughput(start(), 12345)
     expect(next.project.annual_throughput).toBe(12345)
