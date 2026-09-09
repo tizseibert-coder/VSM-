@@ -65,7 +65,13 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="flex items-start justify-between gap-4">
+        {/* Am Telefon uebereinander, ab sm nebeneinander. Die Knopfreihe stand
+            auf `shrink-0` und weigerte sich damit zu schrumpfen: Bei vier
+            Knoepfen (Verwaltung, Firma, Team, Abmelden) lief sie rechts aus dem
+            Bild und drueckte die Identitaetsspalte auf fast null Breite — die
+            Anschrift brach dann auf ein Wort je Zeile um, und der Titel lag
+            unter den Knoepfen. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             {activeOrg && profile && (
               <OrgMark logoUrl={logoUrl} name={profile.displayName} />
@@ -75,7 +81,10 @@ export default async function DashboardPage({
                 {SITE_NAME}
               </p>
               <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
-              <p className="mt-1 text-sm text-zinc-600">
+              {/* Eine Anschrift ist ein Wort ohne Trennstellen: Ohne
+                  `break-words` schiebt eine lange Adresse die Spalte breiter,
+                  als der Bildschirm ist, statt umzubrechen. */}
+              <p className="mt-1 break-words text-sm text-zinc-600">
                 {t('signedInAs', { email: claims?.email ?? '' })}
                 {activeOrg && (
                   <>
@@ -86,7 +95,7 @@ export default async function DashboardPage({
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {staff && (
               <Link href="/admin" className={buttonSecondary}>
                 {t('admin')}
