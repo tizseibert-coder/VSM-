@@ -210,6 +210,15 @@ export default async function PricingPage({
           {t('title')}
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-700">{t('body')}</p>
+        {/* [Marketing-Audit 2026-09-07, A5] "0 € / 12 € / 49 € / auf Anfrage"
+            hatte keinen Vergleichsmassstab, an dem 49 € guenstig oder teuer
+            waeren. Der Anker liegt bereit und wurde nicht benutzt: Die
+            Alternative zu diesem Werkzeug ist kein anderes Werkzeug, sondern
+            ein externer Lean-Berater (vier- bis fuenfstellig) oder zwei
+            Ingenieurstage in Excel mit Zahlen, die niemand nachrechnen kann.
+            Vor der Tarifleiste, nicht danach: Der Massstab soll stehen, bevor
+            die Zahlen erscheinen, nicht erst danach eingeordnet werden. */}
+        <p className="mt-3 max-w-2xl text-sm text-zinc-600">{t('priceAnchor')}</p>
         {errorMessage && (
           <p className="mt-4 max-w-2xl rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {errorMessage}

@@ -945,6 +945,7 @@
     "metaDescription": "Map and calculate a complete value stream for free, with one scenario and a PDF. What the higher plans add — value streams, scenarios, seats, CSV import and industry benchmark — is in the table.",
     "title": "Plans",
     "body": "The free plan is not a guided tour with the doors locked: one complete value stream, one scenario calculated against it, the result as a PDF. What sits above differs in breadth — how many value streams, how many colleagues, how many scenarios.",
+    "priceAnchor": "A facilitated value stream workshop with external guidance costs a multiple of a year's subscription. The tool doesn't replace the facilitation — but the two days afterward, spent recalculating the numbers in Excel.",
     "teaserLink": "Compare all plans →",
     "tierFREEName": "Free",
     "tierFREEPrice": "{price}",

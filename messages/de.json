@@ -945,6 +945,7 @@
     "metaDescription": "Kostenlos einen vollständigen Wertstrom rechnen, mit Szenario und PDF. Was die höheren Tarife zusätzlich umfassen — Wertströme, Szenarien, Plätze, CSV-Import und Branchenvergleich — steht in der Tabelle.",
     "title": "Tarife",
     "body": "Die kostenlose Stufe ist kein beschnittener Rundgang: ein vollständiger Wertstrom, ein Szenario dagegengerechnet, das Ergebnis als PDF. Was darüber liegt, unterscheidet sich in der Breite — wie viele Wertströme, wie viele Kollegen, wie viele Szenarien.",
+    "priceAnchor": "Ein moderierter Wertstrom-Workshop mit externer Begleitung kostet ein Vielfaches eines Jahresbeitrags. Das Werkzeug ersetzt die Moderation nicht — aber die zwei Tage danach, in denen die Zahlen in Excel neu gerechnet werden.",
     "teaserLink": "Alle Tarife im Vergleich →",
     "tierFREEName": "Kostenlos",
     "tierFREEPrice": "{price}",
