@@ -16,6 +16,7 @@ import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl } from '@/lib/org/branding'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import { buttonPrimary, buttonPrimaryLg, buttonSecondary } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 export default async function DashboardPage({
   searchParams,
@@ -104,9 +105,7 @@ export default async function DashboardPage({
               {t('team')}
             </Link>
             <form action={signOut}>
-              <button className={buttonSecondary}>
-                {t('signOut')}
-              </button>
+              <SubmitButton className={buttonSecondary}>{t('signOut')}</SubmitButton>
             </form>
           </div>
         </div>
@@ -127,8 +126,7 @@ export default async function DashboardPage({
             <span className="text-xs text-zinc-500">{t('organisation')}</span>
             {allOrgs.map((org) => (
               <form key={org.organizationId} action={switchOrg.bind(null, org.organizationId)}>
-                <button
-                  type="submit"
+                <SubmitButton
                   aria-current={org.organizationId === activeOrg?.organizationId ? 'true' : undefined}
                   className={
                     org.organizationId === activeOrg?.organizationId
@@ -137,7 +135,7 @@ export default async function DashboardPage({
                   }
                 >
                   {org.organizationName}
-                </button>
+                </SubmitButton>
               </form>
             ))}
           </div>
@@ -181,12 +179,9 @@ export default async function DashboardPage({
                   (portalNoCustomer). */}
               {activeOrg?.role === 'owner' && isPurchasableTier(plan.tier) && (
                 <form action={openBillingPortal}>
-                  <button
-                    type="submit"
-                    className="text-sm font-medium text-brand-600 hover:underline"
-                  >
+                  <SubmitButton className="text-sm font-medium text-brand-600 hover:underline">
                     {t('manageBilling')}
-                  </button>
+                  </SubmitButton>
                 </form>
               )}
               <Link href="/pricing" className="text-sm font-medium text-brand-600 hover:underline">
@@ -204,12 +199,7 @@ export default async function DashboardPage({
               required
               className="w-full rounded-control border border-zinc-300 px-3 py-2 text-sm sm:w-72"
             />
-            <button
-              type="submit"
-              className={buttonPrimary}
-            >
-              {t('create')}
-            </button>
+            <SubmitButton className={buttonPrimary}>{t('create')}</SubmitButton>
           </form>
 
           {/* Solange die Liste leer ist, traegt der Leerzustand darunter diese
@@ -218,12 +208,7 @@ export default async function DashboardPage({
               beiden Knoepfe Verschiedenes tun. */}
           {projects && projects.length > 0 && (
             <form action={createExampleProject}>
-              <button
-                type="submit"
-                className={buttonSecondary}
-              >
-                {t('loadExample')}
-              </button>
+              <SubmitButton className={buttonSecondary}>{t('loadExample')}</SubmitButton>
             </form>
           )}
         </div>
@@ -240,12 +225,7 @@ export default async function DashboardPage({
                     {t('emptyBody')}
                   </p>
                   <form action={createExampleProject} className="mt-5">
-                    <button
-                      type="submit"
-                      className={buttonPrimaryLg}
-                    >
-                      {t('loadExample')}
-                    </button>
+                    <SubmitButton className={buttonPrimaryLg}>{t('loadExample')}</SubmitButton>
                   </form>
                   <p className="mt-3 text-xs text-zinc-600">
                     {t('emptyHint')}

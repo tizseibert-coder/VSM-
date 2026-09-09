@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
 import { getTranslations } from 'next-intl/server'
 import { signInWithGoogle, signInWithApple } from '@/app/[locale]/auth/oauth-actions'
+import { OAuthButton } from './OAuthButton'
 
 /**
  * "Mit Apple anmelden" ist ausgeblendet, nicht gelöscht.
@@ -39,18 +39,6 @@ export async function OAuthButtons() {
         )}
       </div>
     </>
-  )
-}
-
-function OAuthButton({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <button
-      type="submit"
-      className="flex w-full items-center justify-center gap-2 rounded-control border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
-    >
-      {icon}
-      {label}
-    </button>
   )
 }
 

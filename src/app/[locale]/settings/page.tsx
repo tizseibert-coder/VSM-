@@ -8,6 +8,7 @@ import { SUPPORTED_CURRENCIES } from '@/lib/vsm/capital'
 import { routing } from '@/i18n/routing'
 import LogoPicker from '@/components/settings/LogoPicker'
 import { buttonPrimary, buttonSecondary, inputMd } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 import { saveOrgProfile } from './actions'
 
 // Das Firmenprofil ist der Aussenauftritt *einer* Firma innerhalb der
@@ -236,9 +237,7 @@ export default async function SettingsPage({
 
             {isOwner && (
               <div className="flex flex-wrap items-center gap-3">
-                <button type="submit" className={buttonPrimary}>
-                  {t('save')}
-                </button>
+                <SubmitButton className={buttonPrimary}>{t('save')}</SubmitButton>
                 <Link href="/team" className={buttonSecondary}>
                   {t('toTeam')}
                 </Link>

@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { useTranslations } from 'next-intl'
 import { submitLead, type LeadFormState } from '@/app/[locale]/lead-actions'
 import { buttonPrimaryLg, inputMd } from '@/components/ui/buttons'
+import { Spinner } from '@/components/ui/Spinner'
 
 /**
  * Das Kontaktformular der Verkaufsseite.
@@ -110,7 +111,12 @@ export default function LeadForm({ source = 'website' }: { source?: 'website' | 
         </p>
       )}
 
-      <button type="submit" disabled={pending} className={`${buttonPrimaryLg} mt-5`}>
+      <button
+        type="submit"
+        disabled={pending}
+        className={`${buttonPrimaryLg} mt-5 inline-flex items-center gap-2`}
+      >
+        {pending && <Spinner />}
         {pending ? t('submitting') : t('submit')}
       </button>
     </form>

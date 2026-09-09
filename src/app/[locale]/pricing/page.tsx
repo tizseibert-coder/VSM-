@@ -15,6 +15,7 @@ import {
   buttonSecondary,
   buttonSecondaryLg,
 } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 export async function generateMetadata({
   params,
@@ -249,9 +250,9 @@ export default async function PricingPage({
                 // oder ein Wiederholen der Adresse versehentlich ausloesen
                 // koennte.
                 <form action={startCheckout.bind(null, tier)} className="mt-5">
-                  <button type="submit" className={`${buttonSecondary} w-full`}>
+                  <SubmitButton className={`${buttonSecondary} w-full justify-center`}>
                     {t('ctaSubscribe')}
-                  </button>
+                  </SubmitButton>
                 </form>
               ) : (
                 // Ohne eingerichtetes Stripe (lokale Entwicklung, oder bevor

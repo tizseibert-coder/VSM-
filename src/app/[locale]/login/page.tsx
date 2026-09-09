@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation'
 import { login } from './actions'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { PasswordField } from '@/components/auth/PasswordField'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 import { pageMetadata, SITE_NAME } from '@/lib/seo/site'
 
 /**
@@ -96,12 +97,12 @@ export default async function LoginPage({
               />
             </div>
             <PasswordField autoComplete="current-password" />
-            <button
+            <SubmitButton
               formAction={login}
-              className="mt-2 rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+              className="mt-2 justify-center rounded-control bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
             >
               {t('submit')}
-            </button>
+            </SubmitButton>
           </form>
 
           <OAuthButtons />

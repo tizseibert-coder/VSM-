@@ -9,6 +9,7 @@ import OrgMark from '@/components/org/OrgMark'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl } from '@/lib/org/branding'
 import { buttonDangerSm, buttonSecondarySm } from '@/components/ui/buttons'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 import { pageMetadata } from '@/lib/seo/site'
 
 /**
@@ -248,12 +249,7 @@ export default async function TeamPage({
                         </div>
                         {canRevoke && (
                           <form action={revokeInvite.bind(null, inv.id)} className="shrink-0">
-                            <button
-                              type="submit"
-                              className={buttonDangerSm}
-                            >
-                              {t('revoke')}
-                            </button>
+                            <SubmitButton className={buttonDangerSm}>{t('revoke')}</SubmitButton>
                           </form>
                         )}
                       </li>

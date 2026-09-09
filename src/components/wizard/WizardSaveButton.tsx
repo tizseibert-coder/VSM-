@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useTranslations } from 'next-intl'
+import { Spinner } from '@/components/ui/Spinner'
 
-const BASE_CLASS = 'rounded-control px-4 py-1.5 text-sm font-medium text-white transition-colors disabled:opacity-70'
+const BASE_CLASS = 'inline-flex items-center gap-2 rounded-control px-4 py-1.5 text-sm font-medium text-white transition-colors disabled:opacity-70'
 const IDLE_CLASS = 'bg-brand-600 hover:bg-brand-700'
 const SAVED_CLASS = 'bg-emerald-600 hover:bg-emerald-700'
 
@@ -76,6 +77,7 @@ export function WizardSaveButton({
       aria-live="polite"
       className={`${BASE_CLASS} ${showSaved ? SAVED_CLASS : IDLE_CLASS} ${className}`}
     >
+      {pending && <Spinner />}
       {pending ? t('saving') : showSaved ? t('savedButton') : (label ?? t('save'))}
     </button>
   )
