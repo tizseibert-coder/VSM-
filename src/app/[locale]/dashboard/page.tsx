@@ -10,6 +10,7 @@ import { isPurchasableTier } from '@/lib/billing/stripe'
 import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 import DemoImportBanner from '@/components/dashboard/DemoImportBanner'
+import FirstValueStreamProgress from '@/components/dashboard/FirstValueStreamProgress'
 import OrgMark from '@/components/org/OrgMark'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl } from '@/lib/org/branding'
@@ -146,6 +147,14 @@ export default async function DashboardPage({
             der Projektliste: Wer gerade aus der Demo kommt, soll das als
             Erstes sehen. Zeichnet nichts, wenn im Browser nichts liegt. */}
         <DemoImportBanner />
+
+        {/* [Marketing-Audit 2026-09-07, B3] Nur bei genau einem Projekt: das
+            ist der Moment kurz nach der Anmeldung, den der Fund beschreibt.
+            Zeichnet nichts, sobald ein Szenario steht oder ein zweites
+            Projekt existiert. */}
+        {projects && projects.length === 1 && (
+          <FirstValueStreamProgress projectId={projects[0].id} />
+        )}
 
         {plan && usage && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border border-zinc-200 bg-white px-5 py-3">
