@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -8,6 +9,38 @@ import OrgMark from '@/components/org/OrgMark'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl } from '@/lib/org/branding'
 import { buttonDangerSm, buttonSecondarySm } from '@/components/ui/buttons'
+import { pageMetadata } from '@/lib/seo/site'
+
+/**
+ * [SEO-Audit 2026-09-09, S1] Anders als `/dashboard`, `/editor`, `/settings`
+ * und `/admin` verlangt diese Seite keine Anmeldung auf Middleware-Ebene —
+ * ein Nichtangemeldeter bekommt hier 200 statt einer Weiterleitung (siehe
+ * `getActiveOrg()`-Fehlerzweig unten), nicht 307. Ohne eigene Metadaten erbte
+ * die Seite Titel und Beschreibung des Root-Layouts — wortgleich die der
+ * Startseite, eine nachweisbare Duplicate-Title-Situation fuer jeden
+ * Crawler, der hierher findet. `noindex` ist der richtige Riegel dafuer,
+ * nicht nur `robots.txt`: Eine bereits verlinkte oder erratene Adresse würde
+ * `robots.txt` ohnehin nur am *Abholen* hindern, nicht an einer Aufnahme in
+ * den Index aus anderen Signalen heraus.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'Team' })
+  const tMeta = await getTranslations({ locale, namespace: 'Metadata' })
+
+  return pageMetadata({
+    locale,
+    path: '/team',
+    title: t('title'),
+    description: t('title'),
+    ogLocale: tMeta('ogLocale'),
+    noindex: true,
+  })
+}
 
 // Zuordnung Rolle/Status -> Uebersetzungsschluessel; die Texte stehen im
 // Namensraum `Team`.

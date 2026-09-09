@@ -6,7 +6,7 @@
   },
   "Metadata": {
     "title": "Taktane — Value Stream Mapping That Calculates",
-    "description": "Draw value stream maps to Rother/Shook conventions, calculate lead time, takt time and process cycle efficiency live, and compare future-state scenarios against each other.",
+    "description": "Draw value stream maps to Rother/Shook conventions, calculate lead time, takt time and process cycle efficiency live, and compare future-state scenarios.",
     "ogTitle": "Taktane — Value Stream Mapping That Calculates",
     "ogDescription": "Draw value stream maps to Rother/Shook conventions, calculate metrics live, compare future-state scenarios.",
     "ogLocale": "en_US"
@@ -169,7 +169,7 @@
     "minUnit": "min"
   },
   "Demo": {
-    "metaTitle": "Demo",
+    "metaTitle": "Demo — Value Stream Mapping Without Sign-Up",
     "metaDescription": "A complete value stream to try out, without signing up. Change cycle times and watch lead time, takt time and process cycle efficiency respond.",
     "heading": "Demo · Musterwerk Machine Shop",
     "noticeStrong": "Everything is editable.",
@@ -878,7 +878,7 @@
     "portalFailed": "Account management could not be opened. Please try again."
   },
   "DataSheet": {
-    "metaTitle": "Data collection sheet",
+    "metaTitle": "Value stream data collection sheet",
     "metaDescription": "Printable sheet for recording data at the line: cycle time, changeover, OEE, operators and inventory per station.",
     "title": "Value stream data collection sheet",
     "intro": "Take it to the line, fill it in, then enter it in Taktane. One row per station, in the order the part passes through them.",
@@ -941,8 +941,8 @@
     "errorFailed": "The enquiry could not be saved. Please try again later."
   },
   "Pricing": {
-    "metaTitle": "Pricing",
-    "metaDescription": "Map and calculate a complete value stream for free, with one scenario and a PDF. What the higher plans add — value streams, scenarios, seats, CSV import and industry benchmark — is in the table.",
+    "metaTitle": "Pricing — Value Stream Mapping From €0",
+    "metaDescription": "Map and calculate a complete value stream for free, with one scenario and a PDF. What the higher plans add is in the table.",
     "title": "Plans",
     "body": "The free plan is not a guided tour with the doors locked: one complete value stream, one scenario calculated against it, the result as a PDF. What sits above differs in breadth — how many value streams, how many colleagues, how many scenarios.",
     "priceAnchor": "A facilitated value stream workshop with external guidance costs a multiple of a year's subscription. The tool doesn't replace the facilitation — but the two days afterward, spent recalculating the numbers in Excel.",

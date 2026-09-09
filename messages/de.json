@@ -169,7 +169,7 @@
     "minUnit": "min"
   },
   "Demo": {
-    "metaTitle": "Demo",
+    "metaTitle": "Demo — Wertstromanalyse ohne Anmeldung",
     "metaDescription": "Ein vollständiger Wertstrom zum Ausprobieren, ohne Anmeldung. Zykluszeiten ändern und zusehen, wie Durchlaufzeit, Taktzeit und Wertschöpfungsanteil reagieren.",
     "heading": "Demo · Dreherei Musterwerk",
     "noticeStrong": "Alles ist bedienbar.",
@@ -878,7 +878,7 @@
     "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut."
   },
   "DataSheet": {
-    "metaTitle": "Erhebungsbogen",
+    "metaTitle": "Erhebungsbogen Wertstromanalyse",
     "metaDescription": "Druckbogen für die Datenaufnahme an der Linie: Zykluszeit, Rüstzeit, OEE, Bediener und Bestände je Station.",
     "title": "Erhebungsbogen Wertstromanalyse",
     "intro": "Mitnehmen an die Linie, ausfüllen, danach in Taktane eintragen. Eine Zeile je Station, in der Reihenfolge, in der das Teil sie durchläuft.",
@@ -941,8 +941,8 @@
     "errorFailed": "Die Anfrage konnte nicht gespeichert werden. Bitte versuchen Sie es später noch einmal."
   },
   "Pricing": {
-    "metaTitle": "Preise",
-    "metaDescription": "Kostenlos einen vollständigen Wertstrom rechnen, mit Szenario und PDF. Was die höheren Tarife zusätzlich umfassen — Wertströme, Szenarien, Plätze, CSV-Import und Branchenvergleich — steht in der Tabelle.",
+    "metaTitle": "Preise — Wertstromanalyse ab 0 €",
+    "metaDescription": "Kostenlos einen vollständigen Wertstrom rechnen, mit Szenario und PDF. Was die höheren Tarife zusätzlich bieten, steht in der Tabelle.",
     "title": "Tarife",
     "body": "Die kostenlose Stufe ist kein beschnittener Rundgang: ein vollständiger Wertstrom, ein Szenario dagegengerechnet, das Ergebnis als PDF. Was darüber liegt, unterscheidet sich in der Breite — wie viele Wertströme, wie viele Kollegen, wie viele Szenarien.",
     "priceAnchor": "Ein moderierter Wertstrom-Workshop mit externer Begleitung kostet ein Vielfaches eines Jahresbeitrags. Das Werkzeug ersetzt die Moderation nicht — aber die zwei Tage danach, in denen die Zahlen in Excel neu gerechnet werden.",
