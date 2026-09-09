@@ -166,6 +166,20 @@ const CANVAS_TEXT = {
 } as const
 
 /**
+ * Der freie Streifen im Prozesskasten, in dem die Engpass-Beschriftung steht.
+ *
+ * Der Datenblock (C/T, C/O, OEE) beginnt bei y=39 und belegt drei Zeilen zu
+ * CANVAS_TEXT.label mit lineHeight 1.5, endet also bei 84; PROCESS_HEIGHT ist
+ * 100. Bleiben 16 Einheiten. Die Beschriftung sitzt in deren Mitte und darf
+ * hoechstens so weit gegenskaliert werden, dass sie den Streifen gerade noch
+ * ausfuellt — sonst waechst sie aus dem Kasten heraus, was sie vor diesen
+ * beiden Konstanten bei jedem Zoom unter 100 % auch tat.
+ */
+const BOTTLENECK_LABEL_STRIP_HEIGHT = 16
+const BOTTLENECK_LABEL_CENTER_Y = 92
+const BOTTLENECK_LABEL_MAX_SCALE = BOTTLENECK_LABEL_STRIP_HEIGHT / CANVAS_TEXT.label
+
+/**
  * Zusaetzliche Trefferflaeche rund um die kleinen Symbole der Zeichenflaeche,
  * in Canvas-Einheiten je Seite.
  *
@@ -3687,11 +3701,25 @@ function ProcessBox({
         // the PLT summary box uses. Shortened to "Engpass" so the label still
         // fits the box width once it stops shrinking with it — the "ggü. Takt"
         // part is spelled out in the Austaktungsdiagramm below the canvas.
-        <Group x={PROCESS_WIDTH / 2} y={86} scaleX={counterScale} scaleY={counterScale}>
+        //
+        // Anchored at the *centre* of the free strip, not at its top, and the
+        // counter-scale is capped: Konva scales a group from its origin, so a
+        // top-anchored label grows downward and left the box entirely as soon
+        // as the stage was zoomed out — at the 60 % auto-fit floor
+        // (MIN_READABLE_SCALE) it already hung below the bottom edge, without
+        // the user having zoomed at all. Centring halves the excursion, the
+        // cap keeps it inside the strip for good.
+        <Group
+          x={PROCESS_WIDTH / 2}
+          y={BOTTLENECK_LABEL_CENTER_Y}
+          scaleX={Math.min(counterScale, BOTTLENECK_LABEL_MAX_SCALE)}
+          scaleY={Math.min(counterScale, BOTTLENECK_LABEL_MAX_SCALE)}
+        >
           <Text
             text={tCanvas('bottleneck')}
             width={PROCESS_WIDTH}
             offsetX={PROCESS_WIDTH / 2}
+            offsetY={CANVAS_TEXT.label / 2}
             align="center"
             fontSize={CANVAS_TEXT.label}
             fontStyle="bold"
