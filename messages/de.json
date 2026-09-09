@@ -194,7 +194,8 @@
       "process2": "Drehen",
       "process3": "Fräsen",
       "process4": "Entgraten",
-      "process5": "Montage"
+      "process5": "Montage",
+      "lineLabel": "Drehlinie 2"
     }
   },
   "Login": {
@@ -371,6 +372,10 @@
     "plt": {
       "term": "PLT (Process Lead Time)",
       "definition": "Die Prozessdurchlaufzeit in Tagen, am Wertstrom gemessen. Für die Bemessung eines Supermarkts zählt der Vorlauf ohne den Beitrag, den dieser Puffer selbst zur Durchlaufzeit leistet — sonst rechnete man die eigene Größe in ihre eigene Voraussetzung hinein."
+    },
+    "shiftModel": {
+      "term": "Schichtmodell",
+      "definition": "Anzahl Schichten pro Tag mal Nettominuten je Schicht, also ohne Pausen. Daraus fallen die verfügbaren Minuten pro Tag, die die Taktzeit bestimmen. Die Angabe ist wichtiger als die Tagessumme allein: 900 Minuten können zwei Schichten zu 450 oder drei zu 300 sein, und im Workshop bedeutet das etwas völlig Verschiedenes. Ein von Hand eingetragener Minutenwert schlägt das Modell und wird als Abweichung angezeigt."
     }
   },
   "Editor": {
@@ -517,7 +522,18 @@
     "sizingNeedsInput": "Sollgröße erst berechenbar, wenn ADU, Streuung, Intervall und PLT eingetragen sind.",
     "sizingTarget": "Sollgröße {target} Stk.",
     "sizingReplaces": "Aktuell stehen {current} Stk. als unbemessener Bestand darin.",
-    "sizingApply": "Sollgröße übernehmen"
+    "sizingApply": "Sollgröße übernehmen",
+    "lineLabelLabel": "Linie/Bereich",
+    "lineLabelPlaceholder": "z. B. Drehlinie 2",
+    "shiftModelLabel": "Schichtmodell",
+    "shiftCountPlaceholder": "2",
+    "shiftMinutesPlaceholder": "450",
+    "shiftCountAria": "Anzahl Schichten pro Tag",
+    "shiftMinutesAria": "Nettominuten je Schicht",
+    "shiftModelDeviation": "Abweichend vom Schichtmodell ({derived} min)",
+    "recordedOnLabel": "Aufgenommen",
+    "recordedByLabel": "Aufgenommen von",
+    "recordedByPlaceholder": "von wem"
   },
   "Canvas": {
     "bottleneck": "⚠ Engpass",
@@ -612,7 +628,9 @@
     "footer": "Erstellt mit Taktane am {date}",
     "methodCheckHeading": "METHODIKPRÜFUNG",
     "comparisonSubtitle": "Szenarienvergleich",
-    "comparisonNote": "Alle Zustände gegen denselben Kundenbedarf gerechnet."
+    "comparisonNote": "Alle Zustände gegen denselben Kundenbedarf gerechnet.",
+    "shiftModel": "{count} × {minutes} min",
+    "recordedOn": "Aufgenommen {date} {by}"
   },
   "CanvasLoader": {
     "loading": "Diagramm wird geladen…"

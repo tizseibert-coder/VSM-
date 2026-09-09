@@ -194,7 +194,8 @@
       "process2": "Turning",
       "process3": "Milling",
       "process4": "Deburring",
-      "process5": "Assembly"
+      "process5": "Assembly",
+      "lineLabel": "Turning line 2"
     }
   },
   "Login": {
@@ -371,6 +372,10 @@
     "plt": {
       "term": "PLT (process lead time)",
       "definition": "The process lead time in days, measured on the value stream. Sizing a supermarket counts the lead time without the share this buffer itself contributes — otherwise its own size would feed into its own precondition."
+    },
+    "shiftModel": {
+      "term": "Shift model",
+      "definition": "Shifts per day times net minutes per shift, breaks excluded. It yields the available minutes per day that set the takt time. The model says more than the daily total alone: 900 minutes can be two shifts of 450 or three of 300, and in a workshop those mean quite different things. A manually entered minute figure overrides the model and is flagged as a deviation."
     }
   },
   "Editor": {
@@ -517,7 +522,18 @@
     "sizingNeedsInput": "The target size needs ADU, variation, interval and PLT before it can be worked out.",
     "sizingTarget": "Target size {target} pcs.",
     "sizingReplaces": "{current} pcs are currently sitting there as unsized stock.",
-    "sizingApply": "Use the target size"
+    "sizingApply": "Use the target size",
+    "lineLabelLabel": "Line/area",
+    "lineLabelPlaceholder": "e.g. turning line 2",
+    "shiftModelLabel": "Shift model",
+    "shiftCountPlaceholder": "2",
+    "shiftMinutesPlaceholder": "450",
+    "shiftCountAria": "Shifts per day",
+    "shiftMinutesAria": "Net minutes per shift",
+    "shiftModelDeviation": "Differs from the shift model ({derived} min)",
+    "recordedOnLabel": "Recorded",
+    "recordedByLabel": "Recorded by",
+    "recordedByPlaceholder": "by whom"
   },
   "Canvas": {
     "bottleneck": "⚠ Bottleneck",
@@ -612,7 +628,9 @@
     "footer": "Created with Taktane on {date}",
     "methodCheckHeading": "METHOD CHECK",
     "comparisonSubtitle": "Scenario comparison",
-    "comparisonNote": "All states computed against the same customer demand."
+    "comparisonNote": "All states computed against the same customer demand.",
+    "shiftModel": "{count} × {minutes} min",
+    "recordedOn": "Recorded {date} {by}"
   },
   "CanvasLoader": {
     "loading": "Loading the map…"

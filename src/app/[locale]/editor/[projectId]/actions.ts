@@ -7,6 +7,7 @@ import { parseProcessesCsv } from '@/lib/vsm/csvImport'
 import { reconcileChainEdges } from '@/lib/vsm/chainOrder'
 import { isSupportedCurrency } from '@/lib/vsm/capital'
 import { isIntervalBasis } from '@/lib/vsm/supermarketSizing'
+import { deriveAvailableMinutes } from '@/lib/vsm/shiftModel'
 
 export interface AddProcessInput {
   name: string
@@ -190,11 +191,77 @@ export async function updateCurrency(projectId: string, currency: string) {
 
 // Takt time's other input, previously hardcoded to SHIFT_MINUTES with no way
 // to configure it — see lib/vsm/calculations.ts (availableMinutesPerDay).
+//
+// Setzt den Wert direkt und laesst das Schichtmodell unangetastet: Wer hier von
+// Hand eine gemessene Nettozeit eintraegt, die nicht zum Modell passt, soll sie
+// behalten. shiftModel.ts meldet die Abweichung, und die Oberflaeche zeigt sie
+// an, statt eine der beiden Angaben stillschweigend zu korrigieren.
 export async function updateAvailableMinutes(projectId: string, availableMinutesPerDay: number) {
   const supabase = await createClient()
   const { error } = await supabase
     .from('projects')
     .update({ available_minutes_per_day: availableMinutesPerDay })
+    .eq('id', projectId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
+}
+
+/**
+ * Das Schichtmodell — und damit die verfuegbaren Minuten, sobald es
+ * vollstaendig ist.
+ *
+ * Ist es das nicht (eine der beiden Angaben fehlt oder wurde geleert), bleiben
+ * die Minuten stehen, wie sie sind. Sie auf einen Vorgabewert zurueckzusetzen,
+ * weil jemand die Schichtzahl loescht, waere eine stille Aenderung an der
+ * Taktzeit und damit an jeder Kennzahl des Projekts.
+ */
+export async function updateShiftModel(
+  projectId: string,
+  model: { shiftCount: number | null; netMinutesPerShift: number | null }
+) {
+  const supabase = await createClient()
+  const derived = deriveAvailableMinutes(model)
+
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      shift_count: model.shiftCount,
+      shift_net_minutes: model.netMinutesPerShift,
+      ...(derived !== null ? { available_minutes_per_day: derived } : {}),
+    })
+    .eq('id', projectId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
+}
+
+/**
+ * Die uebrigen Kopfangaben: welche Linie, wann aufgenommen, von wem.
+ *
+ * Leere Zeichenketten werden zu null. Der Unterschied zaehlt: "nicht angegeben"
+ * laesst die Zeile im Kopf weg, ein leerer Text hinterliesse eine Beschriftung
+ * ohne Wert.
+ */
+export async function updateProjectHeader(
+  projectId: string,
+  header: { lineLabel: string | null; recordedOn: string | null; recordedBy: string | null }
+) {
+  const supabase = await createClient()
+  const trim = (value: string | null) => {
+    const t = value?.trim()
+    return t ? t : null
+  }
+
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      line_label: trim(header.lineLabel),
+      recorded_on: trim(header.recordedOn),
+      recorded_by: trim(header.recordedBy),
+    })
     .eq('id', projectId)
 
   if (error) throw new Error(error.message)

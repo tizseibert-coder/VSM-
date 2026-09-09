@@ -1,4 +1,5 @@
 import type { Tables } from '@/types/database'
+import { deriveAvailableMinutes } from './shiftModel'
 import { reconcileChainEdges } from './chainOrder'
 
 type Project = Tables<'projects'>
@@ -321,6 +322,43 @@ export const vsmOperations = {
     return {
       ...state,
       project: { ...state.project, available_minutes_per_day: availableMinutes },
+    }
+  },
+
+  /** Spiegelt updateShiftModel aus actions.ts: Ein vollstaendiges Modell
+   *  rechnet die Minuten mit, ein unvollstaendiges laesst sie stehen. */
+  updateShiftModel(
+    state: VsmState,
+    model: { shiftCount: number | null; netMinutesPerShift: number | null }
+  ): VsmState {
+    const derived = deriveAvailableMinutes(model)
+    return {
+      ...state,
+      project: {
+        ...state.project,
+        shift_count: model.shiftCount,
+        shift_net_minutes: model.netMinutesPerShift,
+        ...(derived !== null ? { available_minutes_per_day: derived } : {}),
+      },
+    }
+  },
+
+  updateProjectHeader(
+    state: VsmState,
+    header: { lineLabel: string | null; recordedOn: string | null; recordedBy: string | null }
+  ): VsmState {
+    const trim = (value: string | null) => {
+      const t = value?.trim()
+      return t ? t : null
+    }
+    return {
+      ...state,
+      project: {
+        ...state.project,
+        line_label: trim(header.lineLabel),
+        recorded_on: trim(header.recordedOn),
+        recorded_by: trim(header.recordedBy),
+      },
     }
   },
 
