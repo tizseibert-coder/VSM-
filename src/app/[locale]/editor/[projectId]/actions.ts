@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { parseProcessesCsv } from '@/lib/vsm/csvImport'
 import { reconcileChainEdges } from '@/lib/vsm/chainOrder'
 import { isSupportedCurrency } from '@/lib/vsm/capital'
+import { isIntervalBasis } from '@/lib/vsm/supermarketSizing'
 
 export interface AddProcessInput {
   name: string
@@ -327,6 +328,13 @@ export interface SetBufferWipInput {
    *  Display-only distinction, not a full kanban-card simulation. Ignored for
    *  non-supermarket buffers. */
   kanbanType?: string | null
+  /** Supermarket/FIFO sizing inputs — see lib/vsm/supermarketSizing.ts for what
+   *  each one covers. Dropped for every other buffer type, like kanbanType. */
+  sizingAduPerDay?: number | null
+  sizingAduStdDev?: number | null
+  sizingIntervalDays?: number | null
+  sizingIntervalBasis?: string | null
+  sizingPltDays?: number | null
 }
 
 // Upserts the WIP count (and optionally the pull-system type) for the gap
@@ -355,10 +363,61 @@ export async function setBufferWip(projectId: string, scenarioId: string | null,
   // value for any other buffer type instead of storing stale state.
   const kanbanType = bufferType === 'supermarket' ? (input.kanbanType ?? null) : null
 
+  // Continuous flow has no buffer by definition, so it cannot carry stock —
+  // enforced here rather than at each caller. Without it, switching a
+  // connection to one-piece flow on the canvas left the old push WIP standing
+  // and kept inflating the lead time, while the same switch through the
+  // wizard zeroed it: the same decision gave two different PLTs depending on
+  // where it was made.
+  const wipCount = bufferType === 'continuous' ? 0 : input.wipCount
+
+  // The column carries a CHECK against exactly these three; coerce anything
+  // else to null rather than letting the database reject the whole save.
+  const intervalBasis =
+    input.sizingIntervalBasis === undefined
+      ? undefined
+      : input.sizingIntervalBasis !== null && isIntervalBasis(input.sizingIntervalBasis)
+        ? input.sizingIntervalBasis
+        : null
+
+  // Sizing belongs to the two buffer types that actually hold a controlled
+  // stock. Two different rules, and the difference matters:
+  //
+  //   type no longer sized  → clear the columns, same as kanbanType above:
+  //                           numbers that describe nothing are worse than none.
+  //   sized, field omitted  → leave what is stored. Not every caller knows
+  //                           about sizing — the wizard's question 4 saves a
+  //                           connection with type and WIP only, and it must
+  //                           not wipe a sizing done on the canvas.
+  const isSized = bufferType === 'supermarket' || bufferType === 'fifo'
+  const keepIfGiven = <T,>(value: T | undefined, column: string) =>
+    value === undefined ? {} : { [column]: value }
+  const sizing = isSized
+    ? {
+        ...keepIfGiven(input.sizingAduPerDay, 'sizing_adu_per_day'),
+        ...keepIfGiven(input.sizingAduStdDev, 'sizing_adu_std_dev'),
+        ...keepIfGiven(input.sizingIntervalDays, 'sizing_interval_days'),
+        ...keepIfGiven(intervalBasis, 'sizing_interval_basis'),
+        ...keepIfGiven(input.sizingPltDays, 'sizing_plt_days'),
+      }
+    : {
+        sizing_adu_per_day: null,
+        sizing_adu_std_dev: null,
+        sizing_interval_days: null,
+        sizing_interval_basis: null,
+        sizing_plt_days: null,
+      }
+
   if (existing) {
     const { error } = await supabase
       .from('inventory_buffers')
-      .update({ wip_count: input.wipCount, buffer_type: bufferType, flow_style: flowStyle, kanban_type: kanbanType })
+      .update({
+        wip_count: wipCount,
+        buffer_type: bufferType,
+        flow_style: flowStyle,
+        kanban_type: kanbanType,
+        ...sizing,
+      })
       .eq('id', existing.id)
     if (error) throw new Error(error.message)
   } else {
@@ -367,10 +426,11 @@ export async function setBufferWip(projectId: string, scenarioId: string | null,
       scenario_id: scenarioId,
       from_process_id: input.fromProcessId,
       to_process_id: input.toProcessId,
-      wip_count: input.wipCount,
+      wip_count: wipCount,
       buffer_type: bufferType,
       flow_style: flowStyle,
       kanban_type: kanbanType,
+      ...sizing,
     })
     if (error) throw new Error(error.message)
   }

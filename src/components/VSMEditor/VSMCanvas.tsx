@@ -55,6 +55,15 @@ import {
   type PdfBranding,
 } from '@/lib/org/branding'
 import { formatCount, formatDecimal, formatPlain } from '@/lib/vsm/numberFormat'
+import {
+  isIntervalBasis,
+  parseUsageSeries,
+  sizeFifoLane,
+  sizeSupermarket,
+  suggestPltDays,
+  summariseUsageSeries,
+  type IntervalBasis,
+} from '@/lib/vsm/supermarketSizing'
 import { findPushBeforePacemaker } from '@/lib/vsm/pacemakerConsistency'
 import { TermTooltip } from './TermTooltip'
 import { deriveChainOrder, moveInOrder, wouldCreateCycle } from '@/lib/vsm/chainOrder'
@@ -164,6 +173,20 @@ const CANVAS_TEXT = {
    *  Kanban-Art, Klassifikationsmarke. */
   tag: 8,
 } as const
+
+/**
+ * Der freie Streifen im Prozesskasten, in dem die Engpass-Beschriftung steht.
+ *
+ * Der Datenblock (C/T, C/O, OEE) beginnt bei y=39 und belegt drei Zeilen zu
+ * CANVAS_TEXT.label mit lineHeight 1.5, endet also bei 84; PROCESS_HEIGHT ist
+ * 100. Bleiben 16 Einheiten. Die Beschriftung sitzt in deren Mitte und darf
+ * hoechstens so weit gegenskaliert werden, dass sie den Streifen gerade noch
+ * ausfuellt — sonst waechst sie aus dem Kasten heraus, was sie vor diesen
+ * beiden Konstanten bei jedem Zoom unter 100 % auch tat.
+ */
+const BOTTLENECK_LABEL_STRIP_HEIGHT = 16
+const BOTTLENECK_LABEL_CENTER_Y = 92
+const BOTTLENECK_LABEL_MAX_SCALE = BOTTLENECK_LABEL_STRIP_HEIGHT / CANVAS_TEXT.label
 
 /**
  * Zusaetzliche Trefferflaeche rund um die kleinen Symbole der Zeichenflaeche,
@@ -2459,6 +2482,9 @@ export default function VSMCanvas({
           currentBufferType={findBuffer(buffers, selection.from, selection.to)?.buffer_type ?? 'standard'}
           currentFlowStyle={findBuffer(buffers, selection.from, selection.to)?.flow_style ?? ''}
           currentKanbanType={findBuffer(buffers, selection.from, selection.to)?.kanban_type ?? ''}
+          currentSizing={findBuffer(buffers, selection.from, selection.to)}
+          leadTimeDays={kpis.totalLeadTimeDays}
+          departureRatePerDay={kpis.departureRatePerDay}
           onClose={() => setSelection(null)}
           onError={setError}
         />
@@ -3319,6 +3345,29 @@ function ProcessEditPanel({
   )
 }
 
+/**
+ * Der Vorschlag fuer das Nachfuellintervall: ein Tag.
+ *
+ * Das Lean-Ziel "jedes Teil jeden Tag" und bewusst keine gerechnete EPEI —
+ * dafuer fehlt die Variantenzahl im Schema, und eine erfundene Herleitung
+ * waere schlechter als ein klar benanntes Ziel. Die Ruestzeit des Vorprozesses
+ * steht im Panel daneben, damit sichtbar ist, ob ein Tag ueberhaupt
+ * erreichbar ist.
+ */
+const DEFAULT_INTERVAL_DAYS = 1
+
+/** Eine gespeicherte Zahl als Feldinhalt; null bleibt leer und wird nicht zu "0". */
+function numberField(value: number | null | undefined): string {
+  return value == null ? '' : String(value)
+}
+
+/** Ein Feldinhalt als Zahl; leer und unlesbar bleiben null, nicht 0. */
+function nullableNumber(raw: string): number | null {
+  if (raw.trim() === '') return null
+  const n = Number(raw.replace(',', '.'))
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
 function BufferEditPanel({
   projectId,
   scenarioId,
@@ -3328,6 +3377,9 @@ function BufferEditPanel({
   currentBufferType,
   currentFlowStyle,
   currentKanbanType,
+  currentSizing,
+  leadTimeDays,
+  departureRatePerDay,
   onClose,
   onError,
 }: {
@@ -3339,11 +3391,18 @@ function BufferEditPanel({
   currentBufferType: string
   currentFlowStyle: string
   currentKanbanType: string
+  /** Die gespeicherten Sizing-Eingaben dieser Kante, falls schon bemessen. */
+  currentSizing: Buffer | undefined
+  /** kpis.totalLeadTimeDays — nur als Ausgangswert fuer den PLT-Vorschlag. */
+  leadTimeDays: number | null
+  /** kpis.departureRatePerDay — rechnet den eigenen Anteil dieses Puffers heraus. */
+  departureRatePerDay: number | null
   onClose: () => void
   /** Siehe ProcessEditPanel: Das Panel ist zu, wenn der Server antwortet. */
   onError: (message: string) => void
 }) {
   const router = useRouter()
+  const locale = useLocale()
   const { mutate, isDemo } = useVsmMutationRequired()
   const [, startTransition] = useTransition()
   const t = useTranslations('Editor')
@@ -3354,38 +3413,99 @@ function BufferEditPanel({
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
+  // ADU und Streuung stehen bewusst leer da, wenn sie noch nie eingetragen
+  // wurden. Sie aus dem Jahresbedarf des Projekts vorzubelegen waere bequem
+  // und falsch: Das ist der Kundenbedarf des ganzen Stroms, der ADU hier der
+  // Verbrauch dieses Teils an dieser Stelle — siehe supermarketSizing.ts.
+  const [adu, setAdu] = useState(numberField(currentSizing?.sizing_adu_per_day))
+  const [stdDev, setStdDev] = useState(numberField(currentSizing?.sizing_adu_std_dev))
+  const [intervalBasis, setIntervalBasis] = useState<IntervalBasis>(
+    isIntervalBasis(currentSizing?.sizing_interval_basis ?? '')
+      ? (currentSizing?.sizing_interval_basis as IntervalBasis)
+      : 'epei'
+  )
+  // Intervall und PLT duerfen einen Vorschlag tragen — beide sind aus dem
+  // Wertstrom begruendbar. Ein gespeicherter Wert schlaegt ihn immer.
+  const [intervalDays, setIntervalDays] = useState(
+    currentSizing?.sizing_interval_days != null
+      ? String(currentSizing.sizing_interval_days)
+      : String(DEFAULT_INTERVAL_DAYS)
+  )
+  const [pltDays, setPltDays] = useState(() => {
+    if (currentSizing?.sizing_plt_days != null) return String(currentSizing.sizing_plt_days)
+    const suggested = suggestPltDays(leadTimeDays, departureRatePerDay, currentWip)
+    return suggested !== null ? String(suggested) : ''
+  })
+
+  const [calculatorOpen, setCalculatorOpen] = useState(false)
+  const [usageSeries, setUsageSeries] = useState('')
+
+  const isSized = bufferType === 'supermarket' || bufferType === 'fifo'
+  const num = (raw: string) => (raw.trim() === '' ? NaN : Number(raw.replace(',', '.')))
+
+  const seriesSummary = useMemo(
+    () => summariseUsageSeries(parseUsageSeries(usageSeries)),
+    [usageSeries]
+  )
+
+  // Die Sollgroesse. Beim Supermarkt aus drei Stufen, bei der FIFO-Bahn aus
+  // dem PLT-Stock allein: Ihr Nachfolger waehlt nicht aus, es gibt also kein
+  // Nachfuellintervall zu decken, und eine Bahn ist ein Deckel und kein
+  // Vorrat gegen Streuung.
+  const sizing = useMemo(
+    () =>
+      bufferType === 'supermarket'
+        ? sizeSupermarket({
+            aduPerDay: num(adu),
+            aduStdDev: num(stdDev),
+            intervalDays: num(intervalDays),
+            pltDays: num(pltDays),
+          })
+        : null,
+    [bufferType, adu, stdDev, intervalDays, pltDays]
+  )
+  const fifoCap = useMemo(
+    () => (bufferType === 'fifo' ? sizeFifoLane(num(adu), num(intervalDays)) : null),
+    [bufferType, adu, intervalDays]
+  )
+  const targetPieces = bufferType === 'fifo' ? fifoCap : (sizing?.totalPieces ?? null)
+
+  // Continuous Flow hat keinen Puffer, traegt also keinen Bestand. Das Feld
+  // zeigt hier 0 und ist gesperrt; die Server-Action erzwingt es ohnehin.
+  const isContinuous = bufferType === 'continuous'
+  const shownWip = isContinuous ? '0' : value
+
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    const n = Number(value)
+    const n = isContinuous ? 0 : Number(value)
     if (Number.isNaN(n) || n < 0) {
       setError(t('errorNumber'))
       return
     }
     setError(null)
     setIsSaving(true)
-    mutate((s) =>
-      vsmOperations.setBufferWip(s, {
-        fromProcessId,
-        toProcessId,
-        wipCount: n,
-        bufferType,
-        flowStyle: flowStyle || null,
-        kanbanType: kanbanType || null,
-      })
-    )
+    const payload = {
+      fromProcessId,
+      toProcessId,
+      wipCount: n,
+      bufferType,
+      flowStyle: flowStyle || null,
+      kanbanType: kanbanType || null,
+      // Nur mitschicken, was zum Puffertyp passt — die Action verwirft den
+      // Rest ohnehin, aber so steht dieselbe Regel auch in der Vorschau.
+      sizingAduPerDay: isSized ? nullableNumber(adu) : null,
+      sizingAduStdDev: bufferType === 'supermarket' ? nullableNumber(stdDev) : null,
+      sizingIntervalDays: isSized ? nullableNumber(intervalDays) : null,
+      sizingIntervalBasis: isSized ? intervalBasis : null,
+      sizingPltDays: bufferType === 'supermarket' ? nullableNumber(pltDays) : null,
+    }
+    mutate((s) => vsmOperations.setBufferWip(s, payload))
     onClose()
     if (isDemo) return
 
     startTransition(async () => {
       try {
-        await setBufferWip(projectId, scenarioId, {
-          fromProcessId,
-          toProcessId,
-          wipCount: n,
-          bufferType,
-          flowStyle: flowStyle || null,
-          kanbanType: kanbanType || null,
-        })
+        await setBufferWip(projectId, scenarioId, payload)
       } catch (err) {
         // Panel schon zu — siehe ProcessEditPanel.handleSave.
         onError(err instanceof Error ? err.message : t('errorSaving'))
@@ -3406,7 +3526,13 @@ function BufferEditPanel({
         <label htmlFor="buf-wip" className="block text-xs font-medium text-zinc-600">
           {t('unitPieces')}
         </label>
-        <input id="buf-wip" value={value} onChange={(e) => setValue(e.target.value)} className={`mt-1 ${inputClass} w-28`} />
+        <input
+          id="buf-wip"
+          value={shownWip}
+          disabled={isContinuous}
+          onChange={(e) => setValue(e.target.value)}
+          className={`mt-1 ${inputClass} w-28 disabled:bg-zinc-100 disabled:text-zinc-500`}
+        />
       </div>
       <div>
         <label htmlFor="buf-type" className="block text-xs font-medium text-zinc-600">
@@ -3462,6 +3588,191 @@ function BufferEditPanel({
             <option value="">{t('kanbanProduction')}</option>
             <option value="transport">{t('kanbanWithdrawal')}</option>
           </select>
+        </div>
+      )}
+
+      {isContinuous && (
+        <p className="w-full rounded-control bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+          {t('continuousNoStock')}
+        </p>
+      )}
+
+      {isSized && (
+        // Beim Wechsel von Push auf Pull verschwindet der Bestand nicht — er
+        // hoert auf unkontrolliert zu sein und wird bemessen. Dieser Block
+        // rechnet die Sollgroesse und stellt sie der stehenden Push-Menge
+        // gegenueber; uebernommen wird sie erst auf Klick.
+        <div className="w-full border-t border-zinc-100 pt-3">
+          <h3 className="text-xs font-semibold text-zinc-950">
+            <TermTooltip term="supermarketSizing">
+              {bufferType === 'fifo' ? t('fifoSizingTitle') : t('sizingTitle')}
+            </TermTooltip>
+          </h3>
+
+          <div className="mt-2 flex flex-wrap items-end gap-3">
+            <div>
+              <label htmlFor="buf-adu" className="block text-xs font-medium text-zinc-600">
+                <TermTooltip term="adu">{t('aduLabel')}</TermTooltip>
+              </label>
+              <input
+                id="buf-adu"
+                value={adu}
+                inputMode="decimal"
+                placeholder={t('measuredPlaceholder')}
+                onChange={(e) => setAdu(e.target.value)}
+                className={`mt-1 ${inputClass} w-32`}
+              />
+            </div>
+
+            {bufferType === 'supermarket' && (
+              <div>
+                <label htmlFor="buf-sigma" className="block text-xs font-medium text-zinc-600">
+                  <TermTooltip term="aduStdDev">{t('aduStdDevLabel')}</TermTooltip>
+                </label>
+                <input
+                  id="buf-sigma"
+                  value={stdDev}
+                  inputMode="decimal"
+                  placeholder={t('measuredPlaceholder')}
+                  onChange={(e) => setStdDev(e.target.value)}
+                  className={`mt-1 ${inputClass} w-32`}
+                />
+              </div>
+            )}
+
+            {bufferType === 'supermarket' && (
+              <div>
+                <label htmlFor="buf-basis" className="block text-xs font-medium text-zinc-600">
+                  {t('intervalBasisLabel')}
+                </label>
+                <select
+                  id="buf-basis"
+                  value={intervalBasis}
+                  onChange={(e) => setIntervalBasis(e.target.value as IntervalBasis)}
+                  className={`mt-1 ${inputClass} w-28`}
+                >
+                  <option value="epei">{t('basisEpei')}</option>
+                  <option value="cti">{t('basisCti')}</option>
+                  <option value="wq">{t('basisWq')}</option>
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="buf-interval" className="block text-xs font-medium text-zinc-600">
+                {bufferType === 'fifo' ? t('allowedWaitLabel') : t('intervalLabel')}
+              </label>
+              <input
+                id="buf-interval"
+                value={intervalDays}
+                inputMode="decimal"
+                onChange={(e) => setIntervalDays(e.target.value)}
+                className={`mt-1 ${inputClass} w-28`}
+              />
+            </div>
+
+            {bufferType === 'supermarket' && (
+              <div>
+                <label htmlFor="buf-plt" className="block text-xs font-medium text-zinc-600">
+                  <TermTooltip term="plt">{t('sizingPltLabel')}</TermTooltip>
+                </label>
+                <input
+                  id="buf-plt"
+                  value={pltDays}
+                  inputMode="decimal"
+                  onChange={(e) => setPltDays(e.target.value)}
+                  className={`mt-1 ${inputClass} w-28`}
+                />
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setCalculatorOpen((open) => !open)}
+              className="text-xs text-brand-700 underline"
+            >
+              {calculatorOpen ? t('calculatorHide') : t('calculatorShow')}
+            </button>
+          </div>
+
+          {calculatorOpen && (
+            // Sigma ist definitionsgemaess die Standardabweichung des ADU,
+            // also derselben Zahlenreihe. Eine Quelle, zwei Werte — und der
+            // einzige ehrliche Weg zu sigma, weil im Schema keine Streuung
+            // steht.
+            <div className="mt-3 rounded-surface border border-zinc-200 bg-zinc-50 p-3">
+              <label htmlFor="buf-series" className="block text-xs font-medium text-zinc-600">
+                {t('calculatorLabel')}
+              </label>
+              <textarea
+                id="buf-series"
+                value={usageSeries}
+                onChange={(e) => setUsageSeries(e.target.value)}
+                rows={4}
+                placeholder={t('calculatorPlaceholder')}
+                className={`mt-1 ${inputClass} font-mono`}
+              />
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <p className="text-xs text-zinc-600">
+                  {seriesSummary
+                    ? t('calculatorResult', {
+                        adu: formatDecimal(seriesSummary.aduPerDay, locale, 2),
+                        sigma: formatDecimal(seriesSummary.aduStdDev, locale, 2),
+                        count: seriesSummary.sampleCount,
+                      })
+                    : t('calculatorNeedsTwo')}
+                </p>
+                <button
+                  type="button"
+                  disabled={!seriesSummary}
+                  onClick={() => {
+                    if (!seriesSummary) return
+                    setAdu(String(seriesSummary.aduPerDay))
+                    setStdDev(String(seriesSummary.aduStdDev))
+                  }}
+                  className={`${secondaryButtonClass} disabled:opacity-40`}
+                >
+                  {t('calculatorApply')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {sizing && (
+            // Die Stufen einzeln, damit die Summe nachrechenbar bleibt und
+            // nicht als Orakel dasteht.
+            <p className="mt-2 text-xs text-zinc-600">
+              {t('sizingBreakdown', {
+                cycle: formatDecimal(sizing.cycleStock, locale, 1),
+                safety: formatDecimal(sizing.safetyStock, locale, 1),
+                plt: formatDecimal(sizing.pltStock, locale, 1),
+              })}
+            </p>
+          )}
+
+          {targetPieces === null ? (
+            <p className="mt-2 text-xs text-zinc-500">{t('sizingNeedsInput')}</p>
+          ) : (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <p className="text-xs font-medium text-zinc-950">
+                {t('sizingTarget', { target: formatCount(targetPieces, locale) })}
+              </p>
+              {Number(value) !== targetPieces && (
+                <>
+                  <p className="text-xs text-zinc-600">
+                    {t('sizingReplaces', { current: formatCount(Number(value) || 0, locale) })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setValue(String(targetPieces))}
+                    className={secondaryButtonClass}
+                  >
+                    {t('sizingApply')}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
       {error && (
@@ -3687,11 +3998,25 @@ function ProcessBox({
         // the PLT summary box uses. Shortened to "Engpass" so the label still
         // fits the box width once it stops shrinking with it — the "ggü. Takt"
         // part is spelled out in the Austaktungsdiagramm below the canvas.
-        <Group x={PROCESS_WIDTH / 2} y={86} scaleX={counterScale} scaleY={counterScale}>
+        //
+        // Anchored at the *centre* of the free strip, not at its top, and the
+        // counter-scale is capped: Konva scales a group from its origin, so a
+        // top-anchored label grows downward and left the box entirely as soon
+        // as the stage was zoomed out — at the 60 % auto-fit floor
+        // (MIN_READABLE_SCALE) it already hung below the bottom edge, without
+        // the user having zoomed at all. Centring halves the excursion, the
+        // cap keeps it inside the strip for good.
+        <Group
+          x={PROCESS_WIDTH / 2}
+          y={BOTTLENECK_LABEL_CENTER_Y}
+          scaleX={Math.min(counterScale, BOTTLENECK_LABEL_MAX_SCALE)}
+          scaleY={Math.min(counterScale, BOTTLENECK_LABEL_MAX_SCALE)}
+        >
           <Text
             text={tCanvas('bottleneck')}
             width={PROCESS_WIDTH}
             offsetX={PROCESS_WIDTH / 2}
+            offsetY={CANVAS_TEXT.label / 2}
             align="center"
             fontSize={CANVAS_TEXT.label}
             fontStyle="bold"

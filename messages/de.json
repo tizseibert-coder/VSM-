@@ -355,6 +355,22 @@
     "tiedUpCapital": {
       "term": "Gebundenes Kapital",
       "definition": "Bestand mal Wert je Stück: das Geld, das im Wertstrom liegt statt auf dem Konto. Halbiert ein Szenario den Bestand, wird die Hälfte davon wieder frei — das ist die Zahl, die eine Investition trägt."
+    },
+    "supermarketSizing": {
+      "term": "Supermarkt-Sizing",
+      "definition": "Wie viele Stück ein Supermarkt halten muss: Zyklusbestand (Nachfüllintervall × ADU) plus Safety Stock (deckt Streuung) plus PLT-Stock (deckt den Bedarf während der Produktion). Beim Wechsel von Push auf Pull tritt diese gerechnete Zahl an die Stelle des gewachsenen Bestands."
+    },
+    "adu": {
+      "term": "ADU (Average Daily Usage)",
+      "definition": "Der durchschnittliche Tagesverbrauch dieses Teils an dieser Stelle, in Stück je Tag. Nicht dasselbe wie der Jahresbedarf des Projekts: Der beschreibt, was der Kunde am Ende des Stroms abnimmt. Den ADU liest man aus einem Verbrauchsauszug über einen repräsentativen Zeitraum."
+    },
+    "aduStdDev": {
+      "term": "σ (Standardabweichung des ADU)",
+      "definition": "Wie stark der Tagesverbrauch um seinen Mittelwert schwankt, in Stück je Tag. Sie bestimmt den Safety Stock. Der Rechner im Puffer-Panel ermittelt sie zusammen mit dem ADU aus einer Reihe eingefügter Tagesverbräuche."
+    },
+    "plt": {
+      "term": "PLT (Process Lead Time)",
+      "definition": "Die Prozessdurchlaufzeit in Tagen, am Wertstrom gemessen. Für die Bemessung eines Supermarkts zählt der Vorlauf ohne den Beitrag, den dieser Puffer selbst zur Durchlaufzeit leistet — sonst rechnete man die eigene Größe in ihre eigene Voraussetzung hinein."
     }
   },
   "Editor": {
@@ -476,7 +492,32 @@
     "emptyStep3Title": "Kundenbedarf und Schichtzeit",
     "emptyStep3Body": "Die beiden Felder oben. Erst daraus entsteht die Taktzeit, und erst damit lässt sich sagen, ob die Linie den Bedarf überhaupt deckt.",
     "emptySheetLink": "Erhebungsbogen für die Linie →",
-    "emptySheetHint": "Zum Ausdrucken und Mitnehmen: eine Seite mit allen Feldern, die Sie an der Linie erheben."
+    "emptySheetHint": "Zum Ausdrucken und Mitnehmen: eine Seite mit allen Feldern, die Sie an der Linie erheben.",
+    "continuousNoStock": "Continuous Flow hat keinen Puffer und damit keinen Bestand — der Lagerbestand steht deshalb fest auf 0.",
+    "sizingTitle": "Supermarkt bemessen",
+    "fifoSizingTitle": "FIFO-Bahn deckeln",
+    "aduLabel": "ADU (Stk./Tag)",
+    "aduStdDevLabel": "σ des ADU (Stk./Tag)",
+    "measuredPlaceholder": "gemessen",
+    "intervalBasisLabel": "Intervall-Art",
+    "basisEpei": "EPEI",
+    "basisCti": "CTI",
+    "basisWq": "WQ",
+    "intervalLabel": "Intervall (Tage)",
+    "allowedWaitLabel": "Zugelassene Wartezeit (Tage)",
+    "sizingPltLabel": "PLT (Tage)",
+    "calculatorShow": "ADU und σ ausrechnen",
+    "calculatorHide": "Rechner schließen",
+    "calculatorLabel": "Tagesverbräuche, eine Zahl pro Zeile",
+    "calculatorPlaceholder": "120\n134\n98\n141",
+    "calculatorResult": "ADU {adu} Stk./Tag, σ {sigma} Stk./Tag, aus {count} Tagen.",
+    "calculatorNeedsTwo": "Mindestens zwei Tage eintragen — aus einem einzigen lässt sich keine Streuung ableiten.",
+    "calculatorApply": "Beide übernehmen",
+    "sizingBreakdown": "Zyklusbestand {cycle} + Safety Stock {safety} + PLT-Stock {plt} Stk.",
+    "sizingNeedsInput": "Sollgröße erst berechenbar, wenn ADU, Streuung, Intervall und PLT eingetragen sind.",
+    "sizingTarget": "Sollgröße {target} Stk.",
+    "sizingReplaces": "Aktuell stehen {current} Stk. als unbemessener Bestand darin.",
+    "sizingApply": "Sollgröße übernehmen"
   },
   "Canvas": {
     "bottleneck": "⚠ Engpass",

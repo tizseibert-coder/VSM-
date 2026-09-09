@@ -75,9 +75,45 @@ function newBuffer(state: VsmState, from: string | null, to: string | null, wipC
     buffer_type: null,
     flow_style: null,
     kanban_type: null,
+    sizing_adu_per_day: null,
+    sizing_adu_std_dev: null,
+    sizing_interval_days: null,
+    sizing_interval_basis: null,
+    sizing_plt_days: null,
     x: null,
     y: null,
     created_at: state.project.created_at,
+  }
+}
+
+/**
+ * Die Sizing-Spalten eines Puffers, nach denselben zwei Regeln wie in
+ * setBufferWip: Ein Puffertyp, der keinen bemessenen Bestand haelt, verliert
+ * sie; ein Aufrufer, der sie nicht mitschickt, laesst sie stehen.
+ */
+function sizingPatch(input: {
+  bufferType?: string | null
+  sizingAduPerDay?: number | null
+  sizingAduStdDev?: number | null
+  sizingIntervalDays?: number | null
+  sizingIntervalBasis?: string | null
+  sizingPltDays?: number | null
+}): Partial<Buffer> {
+  if (input.bufferType !== undefined && input.bufferType !== 'supermarket' && input.bufferType !== 'fifo') {
+    return {
+      sizing_adu_per_day: null,
+      sizing_adu_std_dev: null,
+      sizing_interval_days: null,
+      sizing_interval_basis: null,
+      sizing_plt_days: null,
+    }
+  }
+  return {
+    ...(input.sizingAduPerDay !== undefined ? { sizing_adu_per_day: input.sizingAduPerDay } : {}),
+    ...(input.sizingAduStdDev !== undefined ? { sizing_adu_std_dev: input.sizingAduStdDev } : {}),
+    ...(input.sizingIntervalDays !== undefined ? { sizing_interval_days: input.sizingIntervalDays } : {}),
+    ...(input.sizingIntervalBasis !== undefined ? { sizing_interval_basis: input.sizingIntervalBasis } : {}),
+    ...(input.sizingPltDays !== undefined ? { sizing_plt_days: input.sizingPltDays } : {}),
   }
 }
 
@@ -237,17 +273,29 @@ export const vsmOperations = {
       bufferType?: string | null
       flowStyle?: string | null
       kanbanType?: string | null
+      sizingAduPerDay?: number | null
+      sizingAduStdDev?: number | null
+      sizingIntervalDays?: number | null
+      sizingIntervalBasis?: string | null
+      sizingPltDays?: number | null
     }
   ): VsmState {
     const existing = state.buffers.find(
       (b) => b.from_process_id === input.fromProcessId && b.to_process_id === input.toProcessId
     )
 
+    // Continuous flow has no buffer, so it carries no stock — mirrors the same
+    // rule in setBufferWip so the demo preview and the saved project agree on
+    // the lead time.
+    const wipCount =
+      input.bufferType === 'continuous' ? 0 : input.wipCount
+
     const patch = {
-      ...(input.wipCount !== undefined ? { wip_count: input.wipCount } : {}),
+      ...(wipCount !== undefined ? { wip_count: wipCount } : {}),
       ...(input.bufferType !== undefined ? { buffer_type: input.bufferType } : {}),
       ...(input.flowStyle !== undefined ? { flow_style: input.flowStyle } : {}),
       ...(input.kanbanType !== undefined ? { kanban_type: input.kanbanType } : {}),
+      ...sizingPatch(input),
     }
 
     if (existing) {

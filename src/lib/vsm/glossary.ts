@@ -38,6 +38,10 @@ export const GLOSSARY_KEYS = [
   'heijunka',
   'pitch',
   'kaizenBlitz',
+  'supermarketSizing',
+  'adu',
+  'aduStdDev',
+  'plt',
 ] as const
 
 export type GlossaryKey = (typeof GLOSSARY_KEYS)[number]
