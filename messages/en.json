@@ -90,6 +90,11 @@
         "scenario": "0.83%"
       },
       {
+        "label": "Working capital tied up",
+        "current": "€1.4M",
+        "scenario": "€0.7M"
+      },
+      {
         "label": "Investment",
         "current": "–",
         "scenario": "€85,000"

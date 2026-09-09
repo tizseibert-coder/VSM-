@@ -90,6 +90,11 @@
         "scenario": "0,83 %"
       },
       {
+        "label": "Gebundenes Umlaufkapital",
+        "current": "1,4 Mio. €",
+        "scenario": "0,7 Mio. €"
+      },
+      {
         "label": "Investition",
         "current": "–",
         "scenario": "85.000 €"

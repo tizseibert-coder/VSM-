@@ -271,6 +271,19 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         </div>
       </section>
 
+      {/* [Marketing-Audit 2026-09-07, A8] Die Tabelle zeigte bisher nur
+          Lean-Kennzahlen (Durchlaufzeit, Wertschoepfungsanteil) und rein
+          finanzielle (Investition, Amortisation, Risiko) — aber nicht die
+          Zeile, die beide Seiten verbindet. Eine Durchlaufzeit-Verkuerzung
+          ist gebundenes Kapital, das freiwird; genau das rechnet
+          lib/vsm/capital.ts fuer ein echtes Projekt (Stueckzahl im Bestand
+          mal Stueckwert). Die Beispielzahlen hier folgen derselben
+          Rechnung: 2.000 Stueck Bestand zu 700 € im Ist-Zustand sind
+          1,4 Mio. € gebunden; die Halbierung auf 1.000 Stueck (passend zur
+          Durchlaufzeit-Halbierung eine Zeile darueber, ueber Little's Law
+          durchaus plausibel) setzt 0,7 Mio. € davon frei. Es ist die
+          einzige Zeile der Tabelle, die ein Kaufmann ohne Uebersetzung
+          versteht. */}
       <section className="border-t border-zinc-200 bg-zinc-50">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
