@@ -688,7 +688,7 @@
     "emptyHint": "Deletable at any time. Or create your own project above.",
     "open": "Open →",
     "signedInAs": "Signed in as {email}",
-    "deleteConfirm": "Really delete “{name}”?",
+    "deleteConfirm": "Really delete?",
     "delete": "Delete",
     "admin": "Admin",
     "tierFREE": "Free",
@@ -705,7 +705,8 @@
     "demoImportBody": "“{name}” with {count} stations. So far it only lives in this browser. Take it over and it belongs to your account — the local copy is then cleared.",
     "demoImportAccept": "Take it over",
     "demoImportDiscard": "Discard",
-    "manageBilling": "Manage subscription"
+    "manageBilling": "Manage subscription",
+    "planUsageOver": "{used} value streams, {limit} included in your plan"
   },
   "Team": {
     "title": "Team",

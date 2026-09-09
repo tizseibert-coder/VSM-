@@ -688,7 +688,7 @@
     "emptyHint": "Jederzeit löschbar. Oder leg oben ein eigenes Projekt an.",
     "open": "Öffnen →",
     "signedInAs": "Angemeldet als {email}",
-    "deleteConfirm": "„{name}“ wirklich löschen?",
+    "deleteConfirm": "Wirklich löschen?",
     "delete": "Löschen",
     "admin": "Verwaltung",
     "tierFREE": "Kostenlos",
@@ -705,7 +705,8 @@
     "demoImportBody": "„{name}“ mit {count} Stationen. Er liegt bisher nur in diesem Browser. Übernehmen Sie ihn, dann gehört er Ihrem Konto — und der Zwischenstand wird gelöscht.",
     "demoImportAccept": "Übernehmen",
     "demoImportDiscard": "Verwerfen",
-    "manageBilling": "Abo verwalten"
+    "manageBilling": "Abo verwalten",
+    "planUsageOver": "{used} Wertströme, {limit} im Tarif enthalten"
   },
   "Team": {
     "title": "Team",

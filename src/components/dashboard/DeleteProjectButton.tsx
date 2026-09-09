@@ -39,7 +39,13 @@ export default function DeleteProjectButton({
             : 'rounded-control border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
         }
       >
-        {armed ? t('deleteConfirm', { name: projectName }) : t('delete')}
+        {/* Der Projektname stand frueher in der Beschriftung. Auf einem
+            390 px breiten Bildschirm machte das aus dem Knopf ein 371 px
+            breites Feld, das in einem `shrink-0`-Formular sitzt und die Zeile
+            aus dem Bild schob. Sichtbar gewinnt der Name hier nichts: Er steht
+            in derselben Zeile unmittelbar links daneben. Fuer alles, was die
+            Zeile nicht sieht, traegt ihn das aria-label oben. */}
+        {armed ? t('deleteConfirm') : t('delete')}
       </button>
     </form>
   )

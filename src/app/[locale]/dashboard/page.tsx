@@ -162,12 +162,24 @@ export default async function DashboardPage({
                 {t(`tier${plan.tier}`)}
               </span>
               <span className="text-sm text-zinc-600">
+                {/* Drei Faelle, nicht zwei. „2 von 1 Wertstroemen" ist
+                    rechnerisch richtig und liest sich wie ein Tippfehler:
+                    „X von Y" verspricht, dass X hineinpasst. Ueber der Grenze
+                    zu liegen ist erlaubt (Durchsetzung aus, Grenze
+                    nachtraeglich gesenkt, Tarif ausgelaufen) und braucht
+                    deshalb einen eigenen Satz statt einer Zahl, die man
+                    zweimal liest. */}
                 {usage.projects.limit === null
                   ? t('planUsageUnlimited', { used: usage.projects.used })
-                  : t('planUsage', {
-                      used: usage.projects.used,
-                      limit: usage.projects.limit,
-                    })}
+                  : usage.projects.used > usage.projects.limit
+                    ? t('planUsageOver', {
+                        used: usage.projects.used,
+                        limit: usage.projects.limit,
+                      })
+                    : t('planUsage', {
+                        used: usage.projects.used,
+                        limit: usage.projects.limit,
+                      })}
               </span>
             </div>
             <div className="flex items-center gap-4">
