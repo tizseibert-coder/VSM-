@@ -58,6 +58,7 @@
     "checksBody": "Ein Wertstrom kann methodisch falsch sein und trotzdem gut aussehen. Die Methodikprüfung läuft bei jeder Änderung mit und ordnet nach Schwere: zuerst das, was eine Kennzahl entwertet, danach das, was nur die Darstellung betrifft.",
     "severityCritical": "Kennzahl betroffen",
     "severityWarning": "Methodisch unsauber",
+    "checksLinkText": "Alle Prüfungen in der Demo ansehen →",
     "checks": [
       {
         "title": "Kapazitätsunterdeckung",
@@ -78,6 +79,7 @@
     "comparisonColCurrent": "Ist-Zustand",
     "comparisonColScenario": "Szenario A",
     "comparisonNote": "Beispielwerte zur Veranschaulichung der Spalten.",
+    "comparisonLinkText": "Ein eigenes Szenario kostenlos anlegen →",
     "comparison": [
       {
         "label": "Durchlaufzeit",

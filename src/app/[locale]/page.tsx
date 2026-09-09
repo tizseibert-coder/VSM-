@@ -119,7 +119,12 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         }}
       />
 
-      <header className="border-b border-zinc-200">
+      {/* [Marketing-Audit 2026-09-07, A7] Bei einer Seite ueber 4.000 px war
+          der Primaerknopf nur ganz oben zu sehen — wer weiter unten
+          ueberzeugt ist, musste erst wieder hochscrollen. sticky mit
+          explizitem bg-white, weil dahinter Abschnitte mit bg-zinc-50
+          durchscheinen wuerden; z-20 haelt sie unter dem Kopf, nicht davor. */}
+      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
         {/* [Bedienbarkeitsprüfung 2026-09-03, B4] Ohne Umbruch braucht diese
             Zeile 435 px — auf einem 390 px breiten Telefon stand "Kostenlos
             starten" zur Hälfte ausserhalb des Bildes, also genau der Knopf, für
@@ -269,6 +274,18 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             ))}
           </ul>
         </div>
+        {/* [Marketing-Audit 2026-09-07, A7] Wer an dieser Stelle ueberzeugt
+            ist — der Abschnitt, den das Audit selbst als staerksten der
+            Seite einstuft —, musste bisher vier weitere Abschnitte scrollen,
+            um ueberhaupt handeln zu koennen. Kein zusaetzlicher Knopf, nur
+            ein Textverweis dorthin, wo die Pruefungen tatsaechlich laufen:
+            Die Demo teilt sich denselben Editor-Code, MethodCheckPanel
+            eingeschlossen — keine reduzierte Vorschau. */}
+        <p className="mt-6">
+          <Link href="/demo" className="text-sm font-medium text-brand-600 hover:underline">
+            {t('checksLinkText')}
+          </Link>
+        </p>
       </section>
 
       {/* [Marketing-Audit 2026-09-07, A8] Die Tabelle zeigte bisher nur
@@ -318,6 +335,19 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </table>
           </div>
           <p className="mt-3 text-xs text-zinc-600">{t('comparisonNote')}</p>
+          {/* [Marketing-Audit 2026-09-07, A7] Der Wortlaut des Audits schlug
+              hier "Szenariovergleich in der Demo öffnen" vor — das waere eine
+              Falschangabe gewesen: Die Demo uebergibt scenarioId={null} und
+              hat keinen zweiten Zustand, gegen den sie vergleichen koennte
+              (siehe DemoCanvas.tsx). Der Szenariovergleich existiert, aber
+              erst mit einem Konto — und die kostenlose Stufe deckt genau ein
+              Szenario ab (lib/billing/plans.ts, PLANS.FREE), der Link fuehrt
+              also dorthin, nicht in die Demo. */}
+          <p className="mt-4">
+            <Link href="/signup" className="text-sm font-medium text-brand-600 hover:underline">
+              {t('comparisonLinkText')}
+            </Link>
+          </p>
         </div>
       </section>
 

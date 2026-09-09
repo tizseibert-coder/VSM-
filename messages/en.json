@@ -58,6 +58,7 @@
     "checksBody": "A value stream can be methodologically wrong and still look fine. The method check runs on every change and ranks by severity: first what invalidates a metric, then what only affects the drawing.",
     "severityCritical": "Metric affected",
     "severityWarning": "Methodologically unsound",
+    "checksLinkText": "See every check in the demo →",
     "checks": [
       {
         "title": "Capacity shortfall",
@@ -78,6 +79,7 @@
     "comparisonColCurrent": "Current state",
     "comparisonColScenario": "Scenario A",
     "comparisonNote": "Example values, shown to illustrate the columns.",
+    "comparisonLinkText": "Set up your own scenario for free →",
     "comparison": [
       {
         "label": "Lead time",
