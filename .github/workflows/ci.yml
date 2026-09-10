@@ -1,0 +1,81 @@
+name: CI
+
+# Bei jedem Push und jedem Pull Request. Bis hierher lief nichts davon
+# automatisch: Tests, Linter und Typpruefung gab es nur, wenn jemand sie von
+# Hand aufrief, und auf origin kam nichts an, das sie wiederholt haette.
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruefen:
+    name: Tests, Linter, Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Die leeren Werte aus .env.example genuegen: Naechster Schritt baut
+      # damit durch, und die Browsertests setzen ihre eigenen Platzhalter.
+      # Es braucht also kein einziges Geheimnis in diesem Workflow.
+      - name: Umgebungsvorlage übernehmen
+        run: cp .env.example .env.local
+
+      - name: Einheitentests
+        run: npm run test
+
+      - name: Linter
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # NACH dem Build, und das ist kein Schoenheitsfehler: `LayoutProps` in
+      # src/app/[locale]/layout.tsx ist keine Datei im Repository, sondern wird
+      # von `next build` unter .next/types erzeugt. Vorne stehend faerbte die
+      # Typpruefung jeden Lauf rot.
+      - name: Typprüfung
+        run: npm run typecheck
+
+  browser:
+    name: Browsertests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Holt die Browserfassung, die zur gepinnten Playwright-Version passt.
+      # PLAYWRIGHT_CHROMIUM_EXECUTABLE bleibt hier ungesetzt, der Zweig in
+      # playwright.config.ts greift also nicht.
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      # Playwright baut und startet die Anwendung selbst (siehe webServer in
+      # playwright.config.ts) und setzt dabei seine eigenen Platzhalter.
+      - name: Browsertests
+        run: npx playwright test
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

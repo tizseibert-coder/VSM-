@@ -151,8 +151,18 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
 
       <section className="mx-auto max-w-6xl px-6 pb-16 pt-14 sm:pt-20">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-          <div>
-            <h1 className="text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl">
+          {/* `min-w-0`, weil ein Gitterelement von Haus aus `min-width: auto`
+              traegt und damit nicht unter die Eigenbreite seines Inhalts
+              schrumpft. Ohne das war die Spalte 309 px breit, egal wie schmal
+              der Bildschirm war. */}
+          <div className="min-w-0">
+            {/* Die Eigenbreite kam aus einem einzigen Wort: "Wertstromanalyse"
+                bei 36 px ist breiter als ein 320-px-Bildschirm abzueglich
+                Polsterung. Deutsche Komposita sind hier der Normalfall, nicht
+                die Ausnahme — `hyphens-auto` trennt sie sauber (das
+                lang-Attribut steht im Layout), `break-words` faengt den Fall
+                ab, in dem der Browser keine Trennstelle kennt. */}
+            <h1 className="hyphens-auto text-balance break-words text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl">
               {t('heroTitle')}
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-zinc-700">
@@ -171,7 +181,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
 
           {/* Das charakteristischste Bild des Fachs steht am Anfang, statt es
               zu beschreiben. */}
-          <div className="rounded-surface border border-zinc-200 p-4 sm:p-6">
+          <div className="min-w-0 rounded-surface border border-zinc-200 p-4 sm:p-6">
             <VsmSketch />
             <p className="mt-4 text-xs leading-relaxed text-zinc-600">
               {t('sketchCaption')}

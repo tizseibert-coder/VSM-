@@ -1849,7 +1849,7 @@ export default function VSMCanvas({
             ein datierter Befund, keine Dauerwahrheit. Steht vor den
             Kennzahleneingaben, weil es sie einordnet. */}
         <div className="mb-4 flex flex-wrap items-end gap-x-6 gap-y-2 border-b border-zinc-100 pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="line-label" className="text-sm text-zinc-600">
               {t('lineLabelLabel')}
             </label>
@@ -1862,7 +1862,7 @@ export default function VSMCanvas({
               className="w-44 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="shift-count" className="text-sm text-zinc-600">
               <TermTooltip term="shiftModel">{t('shiftModelLabel')}</TermTooltip>
             </label>
@@ -1891,7 +1891,7 @@ export default function VSMCanvas({
             />
             <span className="text-sm text-zinc-500">{t('unitMin')}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="recorded-on" className="text-sm text-zinc-600">
               {t('recordedOnLabel')}
             </label>
