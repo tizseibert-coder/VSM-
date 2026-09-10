@@ -10,6 +10,8 @@ import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
 import { noteUserActivity } from '@/lib/crm/leads'
 import { projectDefaults } from '@/lib/org/orgSettings'
 import { parseSerializedTransfer } from '@/lib/vsm/demoTransfer'
+import { deriveAvailableMinutes } from '@/lib/vsm/shiftModel'
+import { isSupportedCurrency } from '@/lib/vsm/capital'
 
 export async function signOut() {
   const supabase = await createClient()
@@ -55,10 +57,19 @@ export async function switchOrg(orgId: string) {
   redirect('/dashboard')
 }
 
+/**
+ * Legt einen Wertstrom an — mit den Kopfdaten, die auf der Anlegeseite
+ * eingetragen wurden.
+ *
+ * Ausser dem Namen ist alles freiwillig. Wer im Workshop sofort zeichnen will,
+ * klickt durch; alle Angaben lassen sich spaeter auf der Zeichenflaeche
+ * nachtragen, wo sie ohnehin stehen. Leere Felder werden deshalb zu null und
+ * nicht zu Vorgabewerten — "nicht angegeben" ist eine eigene Aussage.
+ */
 export async function createProject(formData: FormData) {
   const name = (formData.get('name') as string | null)?.trim()
   if (!name) {
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('projectNameEmpty')))
+    redirect('/dashboard/new?error=' + encodeURIComponent(await tErr('projectNameEmpty')))
   }
 
   const orgResult = await currentUserOrgId()
@@ -82,10 +93,15 @@ export async function createProject(formData: FormData) {
   // und was nicht gesetzt ist, bleibt bei den Vorgaben der Tabelle.
   const defaults = await projectDefaults(orgResult.orgId, orgResult.orgName)
 
+  // Was im Formular steht, schlaegt die Vorgabe aus dem Firmenprofil: Der
+  // Nutzer hat es fuer diesen Wertstrom gerade eingetippt, das Profil gilt nur,
+  // solange niemand widerspricht.
+  const header = readProjectHeader(formData)
+
   const supabase = await createClient()
   const { data: project, error } = await supabase
     .from('projects')
-    .insert({ organization_id: orgResult.orgId, name, ...defaults })
+    .insert({ organization_id: orgResult.orgId, name, ...defaults, ...header })
     .select('id')
     .single()
 
@@ -425,4 +441,48 @@ async function projectLimitError(organizationId: string): Promise<string | null>
 async function tErr(key: string): Promise<string> {
   const t = await getTranslations('Errors')
   return t(key)
+}
+
+
+/**
+ * Die Kopf- und Rahmendaten aus dem Anlegeformular.
+ *
+ * Ein leeres Feld ergibt null, kein 0 und keine leere Zeichenkette: Die
+ * Zeichenflaeche und das PDF lassen eine Angabe weg, die nicht da ist, und
+ * unterscheiden das von einer, die auf null steht. Eine unbrauchbare Eingabe
+ * wird wie ein leeres Feld behandelt statt das Anlegen scheitern zu lassen —
+ * an einem vertippten Jahresbedarf soll kein Workshop haengenbleiben.
+ *
+ * Ein vollstaendiges Schichtmodell rechnet zusaetzlich die verfuegbaren
+ * Minuten aus, dieselbe Regel wie in updateShiftModel: Die Angabe sagt mehr
+ * als die Tagessumme allein.
+ */
+function readProjectHeader(formData: FormData) {
+  const text = (field: string): string | null => {
+    const value = (formData.get(field) as string | null)?.trim()
+    return value ? value : null
+  }
+  const number = (field: string): number | null => {
+    const value = text(field)
+    if (value === null) return null
+    const n = Number(value.replace(',', '.'))
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+
+  const shiftCount = number('shiftCount')
+  const netMinutesPerShift = number('shiftNetMinutes')
+  const derived = deriveAvailableMinutes({ shiftCount, netMinutesPerShift })
+  const currency = formData.get('currency') as string | null
+
+  return {
+    line_label: text('lineLabel'),
+    recorded_on: text('recordedOn'),
+    recorded_by: text('recordedBy'),
+    shift_count: shiftCount,
+    shift_net_minutes: netMinutesPerShift,
+    annual_throughput: number('annualThroughput'),
+    piece_value: number('pieceValue'),
+    ...(derived !== null ? { available_minutes_per_day: derived } : {}),
+    ...(currency && isSupportedCurrency(currency) ? { currency } : {}),
+  }
 }

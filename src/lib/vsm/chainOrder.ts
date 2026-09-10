@@ -86,6 +86,15 @@ export interface ChainReconciliation {
   unchanged: string[]
   /** Existing buffer ids to repoint to a new (from, to) pair, reusing the row instead of delete+insert. */
   repoint: { id: string; from: string | null; to: string | null }[]
+  /**
+   * Desired edges that no existing row could cover — they have to be inserted.
+   *
+   * Beim blossen Umsortieren ist diese Liste immer leer: Die Kette behaelt ihre
+   * Kantenzahl, jede fehlende Kante findet eine veraltete zum Umhaengen. Sie
+   * fuellt sich erst, wenn die Kette *waechst* — beim CSV-Import, der mehrere
+   * Stationen auf einmal anhaengt.
+   */
+  create: ChainEdge[]
 }
 
 function edgeKey(edge: ChainEdge): string {
@@ -120,7 +129,12 @@ export function reconcileChainEdges(existing: ExistingEdge[], desiredOrder: stri
     .slice(0, missing.length)
     .map((edge, i) => ({ id: edge.id, from: missing[i].from, to: missing[i].to }))
 
-  return { unchanged, repoint }
+  // Was uebrig bleibt, wenn es mehr fehlende als veraltete Kanten gibt. Die
+  // Reihenfolge ist dieselbe wie in `missing`, deshalb genuegt das Abschneiden
+  // der bereits umgehaengten.
+  const create = missing.slice(repoint.length)
+
+  return { unchanged, repoint, create }
 }
 
 /**

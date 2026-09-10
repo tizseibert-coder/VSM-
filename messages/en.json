@@ -680,8 +680,7 @@
     "team": "Team",
     "signOut": "Sign out",
     "organisation": "Organisation:",
-    "newProjectPlaceholder": "New project, e.g. Assembly X",
-    "create": "Create",
+    "create": "New value stream",
     "loadExample": "Load example VSM",
     "emptyTitle": "Start with the example VSM",
     "emptyBody": "A machine shop with five processes, inventory and calculated metrics. Change a cycle time and watch lead time and takt time respond.",
@@ -707,6 +706,33 @@
     "demoImportDiscard": "Discard",
     "manageBilling": "Manage subscription",
     "planUsageOver": "{used} value streams, {limit} included in your plan"
+  },
+  "NewProject": {
+    "back": "← Back to overview",
+    "title": "New value stream",
+    "intro": "Enter what your data sheet says. Everything but the name can be added later on the canvas.",
+    "nameHeading": "Name",
+    "nameLabel": "What should the value stream be called?",
+    "namePlaceholder": "e.g. Turning shop, plant 2",
+    "headerHeading": "Header",
+    "optionalHint": "All optional. They appear in the canvas header and on the PDF.",
+    "lineLabel": "Line or area",
+    "linePlaceholder": "e.g. turning line 2",
+    "shiftCountLabel": "Shifts per day",
+    "shiftMinutesLabel": "Net minutes per shift",
+    "recordedOnLabel": "Recorded on",
+    "recordedByLabel": "Recorded by",
+    "recordedByPlaceholder": "Name",
+    "frameHeading": "Frame data",
+    "frameHint": "These set the takt time and the tied-up capital. Without them the editor draws but does not yet calculate.",
+    "annualDemandLabel": "Annual demand (pieces)",
+    "pieceValueLabel": "Value per piece",
+    "currencyLabel": "Currency",
+    "sheetHeading": "The data sheet",
+    "sheetBody": "You record the stations with cycle time, changeover, OEE, operators and stock at the line. Download the sheet as a spreadsheet, fill it in and import it in the editor — or print it for the clipboard.",
+    "sheetDownload": "Download sheet for Excel",
+    "sheetPrint": "View for printing",
+    "submit": "Create value stream"
   },
   "Team": {
     "title": "Team",
@@ -873,7 +899,8 @@
     "demoImportFailed": "The value stream from the demo could not be imported.",
     "portalNotOwner": "Only owners can manage the subscription.",
     "portalNoCustomer": "This organisation has no Stripe subscription yet.",
-    "portalFailed": "Account management could not be opened. Please try again."
+    "portalFailed": "Account management could not be opened. Please try again.",
+    "csvImportIncomplete": "The import did not complete. Please try again."
   },
   "DataSheet": {
     "metaTitle": "Data collection sheet",

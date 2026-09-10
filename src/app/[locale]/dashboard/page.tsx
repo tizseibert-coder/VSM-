@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { SITE_NAME } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
-import { signOut, createProject, createExampleProject, switchOrg } from './actions'
+import { signOut, createExampleProject, switchOrg } from './actions'
 import { openBillingPortal } from '@/app/[locale]/pricing/actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
@@ -208,20 +208,14 @@ export default async function DashboardPage({
         )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <form action={createProject} className="flex min-w-0 items-center gap-2">
-            <input
-              name="name"
-              placeholder={t('newProjectPlaceholder')}
-              required
-              className="w-full rounded-control border border-zinc-300 px-3 py-2 text-sm sm:w-72"
-            />
-            <button
-              type="submit"
-              className={buttonPrimary}
-            >
-              {t('create')}
-            </button>
-          </form>
+          {/* Fuehrt auf den Anlegeschritt statt sofort anzulegen: Wer einen
+              Wertstrom aufnimmt, traegt dort erst die Kopfdaten ein und nimmt
+              den Erhebungsbogen mit, bevor die leere Zeichenflaeche kommt. Das
+              Namensfeld ist damit hier weggefallen — es steht jetzt als erstes
+              Feld auf der Anlegeseite. */}
+          <Link href="/dashboard/new" className={buttonPrimary}>
+            {t('create')}
+          </Link>
 
           {/* Solange die Liste leer ist, traegt der Leerzustand darunter diese
               Handlung als Primaerknopf. Zweimal dasselbe Angebot auf einem

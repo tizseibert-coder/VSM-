@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { parseProcessesCsv } from '@/lib/vsm/csvImport'
-import { reconcileChainEdges } from '@/lib/vsm/chainOrder'
+import { deriveChainOrder, reconcileChainEdges } from '@/lib/vsm/chainOrder'
 import { isSupportedCurrency } from '@/lib/vsm/capital'
 import { isIntervalBasis } from '@/lib/vsm/supermarketSizing'
 import { deriveAvailableMinutes } from '@/lib/vsm/shiftModel'
@@ -119,6 +119,20 @@ export async function deleteProcess(projectId: string, processId: string) {
   revalidatePath(`/editor/${projectId}`)
 }
 
+/**
+ * Der Erhebungsbogen wird zum Wertstrom.
+ *
+ * Bis hierher legte diese Action nur Zeilen in `processes` an — die Kette in
+ * `inventory_buffers` blieb aus, obwohl `addProcess` sie daneben pflegt. Ein
+ * importierter Wertstrom bestand damit aus losen Kaesten: kein Materialfluss,
+ * keine Puffer, und weil die Durchlaufzeit ueber Little's Law am Bestand
+ * haengt, auch keine Durchlaufzeit. Der Import baut die Kette jetzt mit auf.
+ *
+ * Angehaengt, nicht ersetzt: Wer zu einer begonnenen Aufnahme nachtraegt, soll
+ * nicht die bereits gezeichneten Stationen verlieren. Deshalb laufen die neuen
+ * Stationen hinter die vorhandenen, und die Kante zum Kunden wird umgehaengt
+ * statt neu angelegt — sie traegt womoeglich schon einen Bestand.
+ */
 export async function importProcessesCsv(projectId: string, scenarioId: string | null, csvText: string) {
   // Throws with a Zeile-N message on bad input; caller shows it verbatim.
   const rows = parseProcessesCsv(csvText)
@@ -128,19 +142,94 @@ export async function importProcessesCsv(projectId: string, scenarioId: string |
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('processes').insert(
-    rows.map((row) => ({
-      project_id: projectId,
-      scenario_id: scenarioId,
-      name: row.name,
-      cycle_time: row.cycleTime,
-      ...(row.oee !== undefined ? { oee: row.oee } : {}),
-      ...(row.wip !== undefined ? { wip: row.wip } : {}),
-    }))
+
+  const scoped = <T extends { eq: (c: string, v: string) => T; is: (c: string, v: null) => T }>(q: T) =>
+    scenarioId ? q.eq('scenario_id', scenarioId) : q.is('scenario_id', null)
+
+  // Der Stand vor dem Import: vorhandene Stationen und ihre Kanten.
+  const { data: existingProcesses, error: processFetchError } = await scoped(
+    supabase.from('processes').select('id').eq('project_id', projectId)
   )
+  if (processFetchError) throw new Error(processFetchError.message)
+
+  const { data: existingBuffers, error: bufferFetchError } = await scoped(
+    supabase.from('inventory_buffers').select('id, from_process_id, to_process_id').eq('project_id', projectId)
+  )
+  if (bufferFetchError) throw new Error(bufferFetchError.message)
+
+  // Die zurueckgegebenen Zeilen stehen in der Reihenfolge der eingefuegten —
+  // PostgreSQL gibt bei einem mehrzeiligen INSERT ... RETURNING die VALUES-
+  // Reihenfolge zurueck. Darauf beruht die Zuordnung `newIds[i]` weiter unten;
+  // ueber den Namen zuzuordnen ginge nicht, weil zwei Stationen gleich heissen
+  // duerfen. Die Laengenpruefung direkt danach faengt den Fall ab, dass wider
+  // Erwarten nicht alles ankam.
+  const { data: inserted, error } = await supabase
+    .from('processes')
+    .insert(
+      rows.map((row) => ({
+        project_id: projectId,
+        scenario_id: scenarioId,
+        name: row.name,
+        cycle_time: row.cycleTime,
+        // Was nicht in der Datei stand, wird nicht geschrieben — dann gilt die
+        // Vorgabe der Tabelle (oee 78, changeover_time 0, operator_count 1).
+        ...(row.changeoverTime !== undefined ? { changeover_time: row.changeoverTime } : {}),
+        ...(row.oee !== undefined ? { oee: row.oee } : {}),
+        ...(row.operatorCount !== undefined ? { operator_count: row.operatorCount } : {}),
+        ...(row.wip !== undefined ? { wip: row.wip } : {}),
+      }))
+    )
+    .select('id')
 
   if (error) throw new Error(error.message)
+  if (!inserted || inserted.length !== rows.length) {
+    throw new Error(await tErr('csvImportIncomplete'))
+  }
+
+  // Die vorhandene Reihenfolge, dann die neuen Stationen dahinter.
+  const previousOrder = deriveChainOrder(
+    (existingProcesses ?? []).map((p) => p.id),
+    (existingBuffers ?? []).map((b) => ({ from: b.from_process_id, to: b.to_process_id }))
+  )
+  const newIds = inserted.map((p) => p.id)
+  const desiredOrder = [...previousOrder, ...newIds]
+
+  const { repoint, create } = reconcileChainEdges(
+    (existingBuffers ?? []).map((b) => ({ id: b.id, from: b.from_process_id, to: b.to_process_id })),
+    desiredOrder
+  )
+
+  for (const edit of repoint) {
+    const { error: repointError } = await supabase
+      .from('inventory_buffers')
+      .update({ from_process_id: edit.from, to_process_id: edit.to })
+      .eq('id', edit.id)
+    if (repointError) throw new Error(repointError.message)
+  }
+
+  if (create.length > 0) {
+    // "WIP danach" gehoert an die Kante *hinter* der Station, nicht an die
+    // Station selbst — deshalb wird der Wert hier ueber die Herkunft der Kante
+    // zugeordnet und nicht beim Anlegen der Prozesse mitgeschrieben.
+    const wipAfterOf = new Map<string, number>()
+    rows.forEach((row, i) => {
+      if (row.wipAfter !== undefined) wipAfterOf.set(newIds[i], row.wipAfter)
+    })
+
+    const { error: createError } = await supabase.from('inventory_buffers').insert(
+      create.map((edge) => ({
+        project_id: projectId,
+        scenario_id: scenarioId,
+        from_process_id: edge.from,
+        to_process_id: edge.to,
+        wip_count: (edge.from !== null ? wipAfterOf.get(edge.from) : undefined) ?? 0,
+      }))
+    )
+    if (createError) throw new Error(createError.message)
+  }
+
   revalidatePath(`/editor/${projectId}`)
+  revalidatePath(`/editor/${projectId}/future-state`)
 }
 
 export async function updateAnnualThroughput(projectId: string, annualThroughput: number | null) {

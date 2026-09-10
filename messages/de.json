@@ -680,8 +680,7 @@
     "team": "Team",
     "signOut": "Abmelden",
     "organisation": "Organisation:",
-    "newProjectPlaceholder": "Neues Projekt, z. B. Baugruppe X",
-    "create": "Erstellen",
+    "create": "Neuer Wertstrom",
     "loadExample": "Beispiel-VSM laden",
     "emptyTitle": "Mit dem Beispiel-VSM anfangen",
     "emptyBody": "Eine Dreherei mit fünf Prozessen, Beständen und gerechneten Kennzahlen. Ändern Sie eine Zykluszeit und sehen Sie zu, wie Durchlaufzeit und Taktzeit reagieren.",
@@ -707,6 +706,33 @@
     "demoImportDiscard": "Verwerfen",
     "manageBilling": "Abo verwalten",
     "planUsageOver": "{used} Wertströme, {limit} im Tarif enthalten"
+  },
+  "NewProject": {
+    "back": "← Zurück zur Übersicht",
+    "title": "Neuen Wertstrom anlegen",
+    "intro": "Tragen Sie ein, was auf Ihrem Erhebungsbogen steht. Alles außer dem Namen können Sie auch später auf der Zeichenfläche ergänzen.",
+    "nameHeading": "Name",
+    "nameLabel": "Wie soll der Wertstrom heißen?",
+    "namePlaceholder": "z. B. Dreherei Werk 2",
+    "headerHeading": "Kopfdaten",
+    "optionalHint": "Alle Felder freiwillig. Sie stehen später im Kopf der Zeichenfläche und auf dem PDF.",
+    "lineLabel": "Linie oder Bereich",
+    "linePlaceholder": "z. B. Drehlinie 2",
+    "shiftCountLabel": "Schichten pro Tag",
+    "shiftMinutesLabel": "Nettominuten je Schicht",
+    "recordedOnLabel": "Aufgenommen am",
+    "recordedByLabel": "Aufgenommen von",
+    "recordedByPlaceholder": "Name",
+    "frameHeading": "Rahmendaten",
+    "frameHint": "Sie bestimmen Taktzeit und gebundenes Kapital. Ohne sie zeichnet der Editor, rechnet aber noch nicht.",
+    "annualDemandLabel": "Jahresbedarf (Stück)",
+    "pieceValueLabel": "Wert je Stück",
+    "currencyLabel": "Währung",
+    "sheetHeading": "Der Erhebungsbogen",
+    "sheetBody": "Die Stationen mit Zykluszeit, Rüstzeit, OEE, Bedienern und Bestand nehmen Sie an der Linie auf. Laden Sie den Bogen als Tabelle herunter, füllen Sie ihn aus und importieren Sie ihn im Editor — oder drucken Sie ihn fürs Klemmbrett.",
+    "sheetDownload": "Bogen für Excel herunterladen",
+    "sheetPrint": "Zum Ausdrucken ansehen",
+    "submit": "Wertstrom anlegen"
   },
   "Team": {
     "title": "Team",
@@ -873,7 +899,8 @@
     "demoImportFailed": "Der Wertstrom aus der Demo konnte nicht übernommen werden.",
     "portalNotOwner": "Nur Inhaber können das Abo verwalten.",
     "portalNoCustomer": "Zu dieser Organisation gibt es noch kein Abo bei Stripe.",
-    "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut."
+    "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.",
+    "csvImportIncomplete": "Der Import ist unvollständig geblieben. Bitte erneut versuchen."
   },
   "DataSheet": {
     "metaTitle": "Erhebungsbogen",
