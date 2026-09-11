@@ -79,3 +79,82 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  e2e-angemeldet:
+    name: Browsertests (angemeldet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Die Reihenfolge ist hier nicht beliebig, und sie ist der Grund, warum
+      # dieser Job nicht einfach `supabase start` ruft:
+      #
+      # Der Tabellen-Baseline (20260830155000) bricht mit eigener Meldung ab,
+      # wenn `public.organizations` und `auth.users` fehlen — und
+      # `organizations` gehoert Prisma, liegt also in einem anderen
+      # Repository. Wuerde `supabase start` die Migrationen selbst anwenden,
+      # scheiterte es an der ersten.
+      #
+      # Deshalb: Migrationen beiseitelegen, Instanz leer hochfahren, die
+      # Nachbildung einspielen, dann die Migrationen von Hand — genau den Weg
+      # geht supabase/tests/leere-datenbank-pruefen.sh schon, nur ohne Docker.
+      - name: Instanz ohne Migrationen hochfahren
+        run: |
+          mkdir -p /tmp/migrationen
+          mv supabase/migrations/*.sql /tmp/migrationen/
+          supabase start
+          mv /tmp/migrationen/*.sql supabase/migrations/
+
+      - name: Fremde Objekte nachbilden, dann Migrationen und Seed
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/tests/e2e_prisma_nachbildung.sql
+          for datei in supabase/migrations/*.sql; do
+            echo "  → $(basename "$datei")"
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$datei"
+          done
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/seed.sql
+
+      # Nagelt die Rangfolge der nachgebildeten has_org_role() fest. Driftet
+      # die echte Funktion, bestaetigen die Tests darueber sonst eine
+      # Berechtigungslogik, die es nicht gibt.
+      - name: Rangfolge der Nachbildung prüfen
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/rangfolge-pruefen.sql
+
+      # Legt die Testkonten an (Vorprojekt `saeen`), meldet sie an
+      # (`anmelden`) und faehrt dann die eigentlichen Tests — die Reihenfolge
+      # steht in playwright.config.ts, nicht hier.
+      - name: Browsertests
+        run: |
+          set -euo pipefail
+          export NEXT_PUBLIC_SUPABASE_URL="$(supabase status -o json | jq -r '.API_URL')"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(supabase status -o json | jq -r '.ANON_KEY')"
+          export SUPABASE_SERVICE_ROLE_KEY="$(supabase status -o json | jq -r '.SERVICE_ROLE_KEY')"
+          npx playwright test --project=angemeldet
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht-angemeldet
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

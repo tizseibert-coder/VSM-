@@ -50,3 +50,6 @@ next-env.d.ts
 /playwright-report/
 /test-results/
 /blob-report/
+
+# Angemeldete Sitzungen der Browsertests
+/e2e/.sitzungen/

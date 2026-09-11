@@ -17,6 +17,17 @@ import { defineConfig, devices } from '@playwright/test'
  */
 const PORT = 3123
 
+/**
+ * In CI installiert `playwright install chromium` die Fassung, die zur
+ * gepinnten Version passt, und dieser Zweig bleibt leer. In einer Umgebung mit
+ * vorinstalliertem Chromium (etwa der Entwicklungssandbox) kann dessen Build
+ * abweichen — dann zeigt PLAYWRIGHT_CHROMIUM_EXECUTABLE auf die vorhandene
+ * Binaerdatei, statt einen Download anzustossen, den die Umgebung unterbindet.
+ */
+const browserPfad = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+  ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } }
+  : {}
+
 export default defineConfig({
   testDir: './e2e',
   // Ein Fehlschlag soll erklaerbar sein, nicht weggewiederholt werden.
@@ -28,20 +39,33 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
+    // Die oeffentlichen Seiten brauchen keine Anmeldung und sollen deshalb
+    // auch nicht darauf warten.
     {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        // In CI installiert `playwright install chromium` den Browser, der zur
-        // gepinnten Fassung passt, und dieser Zweig bleibt leer. In einer
-        // Umgebung mit vorinstalliertem Chromium (etwa dieser Sandbox) kann
-        // dessen Build von dem abweichen, den Playwright erwartet — dann zeigt
-        // PLAYWRIGHT_CHROMIUM_EXECUTABLE auf die vorhandene Binaerdatei, statt
-        // einen Download anzustossen, den die Umgebung ohnehin unterbindet.
-        ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
-          ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } }
-          : {}),
-      },
+      name: 'oeffentlich',
+      testMatch: /(overflow|smoke)\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], ...browserPfad },
+    },
+    // Meldet die Testkonten an und legt ihren Sitzungsstand ab. Laeuft nur,
+    // wenn eine lokale Supabase-Instanz da ist — deshalb ein eigenes Projekt
+    // und keine globale Vorbereitung: Ohne Instanz laesst sich `--project`
+    // schlicht weglassen, und die oeffentlichen Tests laufen weiter.
+    {
+      name: 'saeen',
+      testMatch: /seed\.setup\.ts/,
+      use: { ...devices['Desktop Chrome'], ...browserPfad },
+    },
+    {
+      name: 'anmelden',
+      testMatch: /auth\.setup\.ts/,
+      dependencies: ['saeen'],
+      use: { ...devices['Desktop Chrome'], ...browserPfad },
+    },
+    {
+      name: 'angemeldet',
+      testMatch: /(angemeldet|ablaeufe)\.spec\.ts/,
+      dependencies: ['anmelden'],
+      use: { ...devices['Desktop Chrome'], ...browserPfad },
     },
   ],
   webServer: {
