@@ -61,7 +61,42 @@ describe('reconcileChainEdges', () => {
 
   it('is a no-op for an already-empty chain and empty desired order', () => {
     const result = reconcileChainEdges([], [])
-    expect(result).toEqual({ unchanged: [], repoint: [] })
+    expect(result).toEqual({ unchanged: [], repoint: [], create: [] })
+  })
+
+  // Beim Umsortieren bleibt die Kantenzahl gleich, jede fehlende Kante findet
+  // eine veraltete zum Umhaengen — anzulegen ist dann nie etwas.
+  it('creates nothing when the chain only changes order', () => {
+    const existing = [
+      { id: 'e0', from: null, to: 'A' },
+      { id: 'e1', from: 'A', to: 'B' },
+      { id: 'e2', from: 'B', to: null },
+    ]
+    expect(reconcileChainEdges(existing, ['B', 'A']).create).toEqual([])
+  })
+
+  // Waechst die Kette (CSV-Import haengt Stationen an), reichen die
+  // vorhandenen Kanten nicht mehr aus.
+  it('reports the edges that have to be inserted when the chain grows', () => {
+    const result = reconcileChainEdges([], ['A', 'B'])
+    expect(result.repoint).toEqual([])
+    expect(result.create).toEqual([
+      { from: null, to: 'A' },
+      { from: 'A', to: 'B' },
+      { from: 'B', to: null },
+    ])
+  })
+
+  it('reuses every existing row before inserting new ones', () => {
+    const existing = [
+      { id: 'e0', from: null, to: 'A' },
+      { id: 'e1', from: 'A', to: null },
+    ]
+    const result = reconcileChainEdges(existing, ['A', 'B'])
+    // null->A passt weiter, A->null wird zu A->B umgehaengt, B->null ist neu.
+    expect(result.unchanged).toEqual(['e0'])
+    expect(result.repoint).toEqual([{ id: 'e1', from: 'A', to: 'B' }])
+    expect(result.create).toEqual([{ from: 'B', to: null }])
   })
 })
 

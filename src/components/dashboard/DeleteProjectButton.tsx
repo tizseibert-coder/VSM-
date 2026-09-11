@@ -10,9 +10,9 @@ import { Spinner } from '@/components/ui/Spinner'
 // loescht. Blur setzt zurueck. Dasselbe Muster wie DeleteScenarioButton — ein
 // eigener Dialog waere hier schwerer zu bedienen, nicht sicherer.
 //
-// Der Projektname steht bewusst im scharfen Zustand: in einer Liste mehrerer
-// VSMs ist "Wirklich loeschen?" allein keine Bestaetigung dessen, was man
-// tatsaechlich trifft.
+// Der Projektname steht im aria-label, nicht in der sichtbaren Beschriftung —
+// er wuerde den Knopf auf einem Telefon ueber die Zeilenbreite hinaus treiben,
+// und sichtbar gewinnt er nichts, weil er unmittelbar links daneben steht.
 export default function DeleteProjectButton({
   projectId,
   projectName,
@@ -68,7 +68,13 @@ function ConfirmButton({
       }
     >
       {pending && <Spinner />}
-      {armed ? t('deleteConfirm', { name: projectName }) : t('delete')}
+      {/* Der Projektname stand frueher in der Beschriftung. Auf einem 390 px
+          breiten Bildschirm machte das aus dem Knopf ein 371 px breites Feld,
+          das in einem `shrink-0`-Formular sitzt und die Zeile aus dem Bild
+          schob. Sichtbar gewinnt der Name hier nichts: Er steht in derselben
+          Zeile unmittelbar links daneben. Fuer alles, was die Zeile nicht
+          sieht, traegt ihn das aria-label oben. */}
+      {armed ? t('deleteConfirm') : t('delete')}
     </button>
   )
 }

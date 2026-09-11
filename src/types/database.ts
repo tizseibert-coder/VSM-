@@ -1079,11 +1079,16 @@ export type Database = {
           description: string | null
           erp_label: string
           id: string
+          line_label: string | null
           name: string
           organization_id: string
           piece_value: number | null
           pitch_minutes: number | null
           product_name: string | null
+          recorded_by: string | null
+          recorded_on: string | null
+          shift_count: number | null
+          shift_net_minutes: number | null
           supplier_name: string
           updated_at: string
         }
@@ -1097,11 +1102,16 @@ export type Database = {
           description?: string | null
           erp_label?: string
           id?: string
+          line_label?: string | null
           name: string
           organization_id: string
           piece_value?: number | null
           pitch_minutes?: number | null
           product_name?: string | null
+          recorded_by?: string | null
+          recorded_on?: string | null
+          shift_count?: number | null
+          shift_net_minutes?: number | null
           supplier_name?: string
           updated_at?: string
         }
@@ -1115,11 +1125,16 @@ export type Database = {
           description?: string | null
           erp_label?: string
           id?: string
+          line_label?: string | null
           name?: string
           organization_id?: string
           piece_value?: number | null
           pitch_minutes?: number | null
           product_name?: string | null
+          recorded_by?: string | null
+          recorded_on?: string | null
+          shift_count?: number | null
+          shift_net_minutes?: number | null
           supplier_name?: string
           updated_at?: string
         }

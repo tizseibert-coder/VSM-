@@ -44,6 +44,8 @@ export type DemoLabels = {
   customerName: string
   supplierName: string
   erpLabel: string
+  /** Die Linie, in der aufgenommen wurde — Kopfangabe der Zeichenflaeche. */
+  lineLabel: string
   /** Fuenf Stationen, in der Reihenfolge der Kette. */
   processNames: readonly string[]
 }
@@ -57,6 +59,7 @@ export const DEMO_LABELS_DE: DemoLabels = {
   customerName: 'Kunde',
   supplierName: 'Lieferant',
   erpLabel: 'Produktionssteuerung (ERP)',
+  lineLabel: 'Drehlinie 2',
   processNames: ['Sägen', 'Drehen', 'Fräsen', 'Entgraten', 'Montage'],
 }
 
@@ -73,6 +76,14 @@ function demoProject(labels: DemoLabels): Project {
     erp_label: labels.erpLabel,
     annual_throughput: 50000,
     available_minutes_per_day: 480,
+    // Eine Schicht zu 480 Minuten — dieselbe Zahl wie darueber, nur mit ihrer
+    // Herkunft. Die Demo zeigt damit den Kopf vollstaendig, statt das
+    // Schichtmodell als das eine leere Feld dastehen zu lassen.
+    shift_count: 1,
+    shift_net_minutes: 480,
+    line_label: labels.lineLabel,
+    recorded_on: null,
+    recorded_by: null,
     pitch_minutes: null,
     // Der Materialwert einer Antriebswelle. Er ist der Grund, warum in der Demo
     // neben "9 300 Stueck" auch "465.000 €" steht: Die Stueckzahl ueberzeugt die

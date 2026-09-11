@@ -1,17 +1,10 @@
-# Was bei jedem Push laeuft.
-#
-# Vorher lief nichts: Die Vitest-Faelle und das Pruefskript unter
-# supabase/tests/ gab es laengst, aber nur wer sie von Hand startete, erfuhr
-# etwas von ihnen. Ein Test, den niemand faehrt, ist eine Datei.
-#
-# Zwei Auftraege, bewusst getrennt: Die Anwendung braucht Node, die Datenbank
-# braucht Postgres. Wer nur an einer von beiden etwas kaputtmacht, soll nicht
-# raten muessen, welche der beiden Haelften rot ist.
 name: CI
 
+# Bei jedem Push und jedem Pull Request. Bis hierher lief nichts davon
+# automatisch: Tests, Linter und Typpruefung gab es nur, wenn jemand sie von
+# Hand aufrief, und auf origin kam nichts an, das sie wiederholt haette.
 on:
   push:
-    branches: ['**']
   pull_request:
 
 # Wer zweimal hintereinander pusht, braucht das Ergebnis des ersten Laufs
@@ -21,56 +14,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  anwendung:
-    name: Anwendung
+  pruefen:
+    name: Tests, Linter, Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 22
           cache: npm
 
-      - name: Abhaengigkeiten
-        run: npm ci
+      - run: npm ci
 
-      # Reihenfolge nach Aussagekraft der Fehlermeldung: Ein Typfehler ist
-      # praezise, ein gescheiterter Build sagt oft nur, dass irgendwo etwas
-      # nicht stimmt. Wer zuerst das Genaue sieht, sucht kuerzer.
-      - name: Typen
+      # Die leeren Werte aus .env.example genuegen: Naechster Schritt baut
+      # damit durch, und die Browsertests setzen ihre eigenen Platzhalter.
+      # Es braucht also kein einziges Geheimnis in diesem Workflow.
+      - name: Umgebungsvorlage übernehmen
+        run: cp .env.example .env.local
+
+      # Steht vorn, seit `npm run typecheck` den typegen-Schritt selbst
+      # mitbringt. Vorher musste sie hinter den Build, weil `LayoutProps` in
+      # src/app/[locale]/layout.tsx keine Datei im Repository ist, sondern von
+      # `next build` unter .next/types erzeugt wird — ohne Build faerbte die
+      # Typpruefung jeden Lauf rot. `next typegen` erzeugt dieselben Typen in
+      # Sekunden, und ein Typfehler meldet sich damit als Typfehler statt als
+      # abgebrochener Build.
+      - name: Typprüfung
         run: npm run typecheck
 
-      - name: Lint
+      - name: Einheitentests
+        run: npm run test
+
+      - name: Linter
         run: npm run lint
 
-      - name: Tests
-        run: npm test
-
-      # Der Build prueft, was `tsc` nicht sieht: ob jede Seite sich bauen
-      # laesst, ob die Routentypen stimmen, ob robots.txt und sitemap.xml
-      # entstehen.
-      #
-      # Die Werte hier sind Platzhalter und muessen es sein. Sie gehen in
-      # keine Auslieferung; gebraucht werden sie nur, weil der Build sonst
-      # ueber fehlende Variablen stolpert, bevor er zum Pruefen kommt. Echte
-      # Schluessel stehen in Vercel, nicht hier — siehe .env.example.
       - name: Build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://beispiel.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_nur_fuer_die_ci
-          NEXT_PUBLIC_SITE_URL: https://beispiel.invalid
         run: npm run build
 
   datenbank:
     name: Datenbank
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     services:
       # Postgres 17, weil Supabase 17 faehrt. Unter 16 legt Postgres vier
       # CHECK-Constraints in anderer Schreibweise ab — supabase/README.md
       # beschreibt das unter "Pruefen". Die CI soll die Produktion nachstellen
       # und nicht eine zweite Wahrheit ueber das Schema erzeugen.
+      #
+      # Ein blankes Postgres, keine Supabase-Instanz: Dieser Auftrag prueft das
+      # Schema und die Policies, nicht die Anwendung. Er braucht darum weder
+      # Docker-Compose noch die Supabase-CLI und ist in Sekunden durch — der
+      # Auftrag "Browsertests (angemeldet)" weiter unten macht das andere.
       postgres:
         image: postgres:17
         env:
@@ -105,3 +103,131 @@ jobs:
       # Und dann: erlaubt das Schema auch das Richtige?
       - name: Autorisierungsschicht
         run: ./supabase/tests/rechte-pruefen.sh "$PGURL_BASIS/rechte_pruefung"
+
+  browser:
+    name: Browsertests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Holt die Browserfassung, die zur gepinnten Playwright-Version passt.
+      # PLAYWRIGHT_CHROMIUM_EXECUTABLE bleibt hier ungesetzt, der Zweig in
+      # playwright.config.ts greift also nicht.
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      # Playwright baut und startet die Anwendung selbst (siehe webServer in
+      # playwright.config.ts) und setzt dabei seine eigenen Platzhalter.
+      # Mit Projektangabe, sonst zieht Playwright auch `saeen`, `anmelden` und
+      # `angemeldet` mit — die brauchen eine lokale Supabase-Instanz, die es in
+      # diesem Job nicht gibt.
+      - name: Browsertests
+        run: npx playwright test --project=oeffentlich
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  e2e-angemeldet:
+    name: Browsertests (angemeldet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Die Reihenfolge ist hier nicht beliebig, und sie ist der Grund, warum
+      # dieser Job nicht einfach `supabase start` ruft:
+      #
+      # Der Tabellen-Baseline (20260830155000) bricht mit eigener Meldung ab,
+      # wenn `public.organizations` und `auth.users` fehlen — und
+      # `organizations` gehoert Prisma, liegt also in einem anderen
+      # Repository. Wuerde `supabase start` die Migrationen selbst anwenden,
+      # scheiterte es an der ersten.
+      #
+      # Deshalb: Migrationen beiseitelegen, Instanz leer hochfahren, die
+      # Nachbildung einspielen, dann die Migrationen von Hand — genau den Weg
+      # geht supabase/tests/leere-datenbank-pruefen.sh schon, nur ohne Docker.
+      # Beiseitegelegt wird beides: `supabase start` wendet nicht nur die
+      # Migrationen an, sondern faehrt danach auch seed.sql — und der schreibt
+      # in `benchmark_reference`, eine Tabelle, die ohne die Migrationen nicht
+      # existiert. Genau daran ist der erste Lauf gescheitert.
+      - name: Instanz ohne Migrationen und Seed hochfahren
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/beiseite
+          mv supabase/migrations/*.sql /tmp/beiseite/
+          mv supabase/seed.sql /tmp/beiseite/
+          supabase start
+          mv /tmp/beiseite/*.sql supabase/migrations/
+          mv supabase/migrations/seed.sql supabase/seed.sql
+
+      - name: Fremde Objekte nachbilden, dann Migrationen und Seed
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/tests/e2e_prisma_nachbildung.sql
+          for datei in supabase/migrations/*.sql; do
+            echo "  → $(basename "$datei")"
+            psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$datei"
+          done
+          psql "$PGURL" -v ON_ERROR_STOP=1 -q -f supabase/seed.sql
+
+      # Nagelt die Rangfolge der nachgebildeten has_org_role() fest. Driftet
+      # die echte Funktion, bestaetigen die Tests darueber sonst eine
+      # Berechtigungslogik, die es nicht gibt.
+      #
+      # Das ist die andere Haelfte zum Auftrag "Datenbank": Dort wird geprueft,
+      # dass die Policies die richtige Mindestrolle verlangen, hier, dass die
+      # Rangfolge dahinter stimmt. Keines der beiden ersetzt das andere.
+      - name: Rangfolge der Nachbildung prüfen
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/rangfolge-pruefen.sql
+
+      # Legt die Testkonten an (Vorprojekt `saeen`), meldet sie an
+      # (`anmelden`) und faehrt dann die eigentlichen Tests — die Reihenfolge
+      # steht in playwright.config.ts, nicht hier.
+      - name: Browsertests
+        run: |
+          set -euo pipefail
+          export NEXT_PUBLIC_SUPABASE_URL="$(supabase status -o json | jq -r '.API_URL')"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(supabase status -o json | jq -r '.ANON_KEY')"
+          export SUPABASE_SERVICE_ROLE_KEY="$(supabase status -o json | jq -r '.SERVICE_ROLE_KEY')"
+          npx playwright test --project=angemeldet
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht-angemeldet
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

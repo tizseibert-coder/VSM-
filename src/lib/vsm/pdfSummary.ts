@@ -104,3 +104,21 @@ export function buildPdfSubtitle(
   const trimmed = scenarioName?.trim()
   return trimmed ? labels.futureState(trimmed) : labels.currentState
 }
+
+/**
+ * Die Untertitelzeile samt Kopfangaben: welcher Zustand, welche Linie, welches
+ * Schichtmodell, wann und von wem aufgenommen.
+ *
+ * Unbekanntes faellt weg, statt als leere Beschriftung dazustehen. Ein Blatt,
+ * auf dem "Aufgenommen: —" steht, beantwortet die Frage schlechter als eines,
+ * auf dem die Zeile fehlt — und im Gremium zieht der Gedankenstrich genau die
+ * Aufmerksamkeit auf sich, die dem Diagramm gehoert.
+ *
+ * Die einzelnen Angaben kommen fertig formatiert herein: Ein Datum und ein
+ * Schichtmodell schreiben sich je Sprache anders, und das weiss nur der
+ * Aufrufer.
+ */
+export function buildPdfSubtitleLine(subtitle: string, facts: (string | null)[]): string {
+  const kept = facts.map((f) => f?.trim()).filter((f): f is string => !!f)
+  return [subtitle, ...kept].join('  ·  ')
+}

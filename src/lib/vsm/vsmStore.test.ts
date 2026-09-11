@@ -231,6 +231,34 @@ describe('vsmOperations', () => {
     expect(b?.sizing_plt_days).toBeNull()
   })
 
+  // Das Schichtmodell rechnet die Minuten mit — sonst zeigte die Demo nach
+  // einer Umstellung auf zwei Schichten weiter die alte Taktzeit.
+  it('derives the available minutes from a complete shift model', () => {
+    const next = vsmOperations.updateShiftModel(start(), { shiftCount: 2, netMinutesPerShift: 450 })
+    expect(next.project.available_minutes_per_day).toBe(900)
+    expect(next.project.shift_count).toBe(2)
+  })
+
+  // Die Minuten auf einen Vorgabewert zurueckzusetzen, weil jemand die
+  // Schichtzahl leert, waere eine stille Aenderung an jeder Kennzahl.
+  it('leaves the available minutes alone when the model is incomplete', () => {
+    const before = start().project.available_minutes_per_day
+    const next = vsmOperations.updateShiftModel(start(), { shiftCount: null, netMinutesPerShift: 450 })
+    expect(next.project.available_minutes_per_day).toBe(before)
+    expect(next.project.shift_count).toBeNull()
+  })
+
+  it('stores the header and turns blank entries into null', () => {
+    const next = vsmOperations.updateProjectHeader(start(), {
+      lineLabel: '  Drehlinie 2  ',
+      recordedOn: '2026-09-09',
+      recordedBy: '   ',
+    })
+    expect(next.project.line_label).toBe('Drehlinie 2')
+    expect(next.project.recorded_on).toBe('2026-09-09')
+    expect(next.project.recorded_by).toBeNull()
+  })
+
   it('updates the project throughput', () => {
     const next = vsmOperations.updateAnnualThroughput(start(), 12345)
     expect(next.project.annual_throughput).toBe(12345)

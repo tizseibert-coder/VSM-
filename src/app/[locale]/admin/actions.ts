@@ -1,13 +1,14 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminCredentials } from '@/lib/supabase/admin'
 import { requireAdmin, requireStaff } from '@/lib/crm/staff'
 import { isStage } from '@/lib/crm/queries'
 import { isTier } from '@/lib/billing/plans'
 import { grantEntitlement } from '@/lib/billing/entitlement'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 /**
  * Setzt die Trichterstufe eines Interessenten.
@@ -21,11 +22,12 @@ import { grantEntitlement } from '@/lib/billing/entitlement'
  * Nebeneffekt eines Klicks des Kunden.
  */
 export async function setLeadStage(leadId: string, formData: FormData) {
+  const locale = await getLocale()
   const staff = await requireStaff()
   const stage = formData.get('stage')
 
   if (typeof stage !== 'string' || !isStage(stage)) {
-    redirect(`/admin/leads/${leadId}?error=stage`)
+    redirectLocalized(`/admin/leads/${leadId}?error=stage`, locale)
   }
 
   const supabase = await createClient()
@@ -35,7 +37,7 @@ export async function setLeadStage(leadId: string, formData: FormData) {
     .eq('id', leadId)
     .maybeSingle()
 
-  if (before?.stage === stage) redirect(`/admin/leads/${leadId}`)
+  if (before?.stage === stage) redirectLocalized(`/admin/leads/${leadId}`, locale)
 
   const { error } = await supabase
     .from('vsm_leads')
@@ -44,7 +46,7 @@ export async function setLeadStage(leadId: string, formData: FormData) {
 
   if (error) {
     console.error('setLeadStage failed:', error.message)
-    redirect(`/admin/leads/${leadId}?error=save`)
+    redirectLocalized(`/admin/leads/${leadId}?error=save`, locale)
   }
 
   // Die Chronik traegt den Wechsel *mit Vorher-Wert*. Ein Protokoll, in dem
@@ -57,18 +59,19 @@ export async function setLeadStage(leadId: string, formData: FormData) {
     actor_user_id: staff.userId,
   })
 
-  revalidatePath(`/admin/leads/${leadId}`)
-  revalidatePath('/admin/leads')
-  redirect(`/admin/leads/${leadId}`)
+  revalidateLocalized(`/admin/leads/${leadId}`)
+  revalidateLocalized('/admin/leads')
+  redirectLocalized(`/admin/leads/${leadId}`, locale)
 }
 
 /** Eine Handnotiz an der Chronik. Anfuegend, nicht aenderbar — wer sich
  *  vertippt hat, schreibt eine Berichtigung darunter. */
 export async function addLeadNote(leadId: string, formData: FormData) {
+  const locale = await getLocale()
   const staff = await requireStaff()
   const body = (formData.get('body') as string | null)?.trim()
 
-  if (!body) redirect(`/admin/leads/${leadId}`)
+  if (!body) redirectLocalized(`/admin/leads/${leadId}`, locale)
 
   const supabase = await createClient()
   const { error } = await supabase.from('vsm_lead_events').insert({
@@ -80,7 +83,7 @@ export async function addLeadNote(leadId: string, formData: FormData) {
 
   if (error) {
     console.error('addLeadNote failed:', error.message)
-    redirect(`/admin/leads/${leadId}?error=save`)
+    redirectLocalized(`/admin/leads/${leadId}?error=save`, locale)
   }
 
   await supabase
@@ -88,14 +91,15 @@ export async function addLeadNote(leadId: string, formData: FormData) {
     .update({ last_activity_at: new Date().toISOString() })
     .eq('id', leadId)
 
-  revalidatePath(`/admin/leads/${leadId}`)
-  redirect(`/admin/leads/${leadId}`)
+  revalidateLocalized(`/admin/leads/${leadId}`)
+  redirectLocalized(`/admin/leads/${leadId}`, locale)
 }
 
 /** Zustaendigkeit uebernehmen oder abgeben. Zwei Zustaende genuegen: „ich" und
  *  „niemand". Eine Auswahlliste aller Betreiber braeuchte deren Namen, und die
  *  stehen nicht in einer Tabelle, die die Oberflaeche lesen kann. */
 export async function claimLead(leadId: string, release: boolean) {
+  const locale = await getLocale()
   const staff = await requireStaff()
 
   const supabase = await createClient()
@@ -106,7 +110,7 @@ export async function claimLead(leadId: string, release: boolean) {
 
   if (error) {
     console.error('claimLead failed:', error.message)
-    redirect(`/admin/leads/${leadId}?error=save`)
+    redirectLocalized(`/admin/leads/${leadId}?error=save`, locale)
   }
 
   await supabase.from('vsm_lead_events').insert({
@@ -116,8 +120,8 @@ export async function claimLead(leadId: string, release: boolean) {
     actor_user_id: staff.userId,
   })
 
-  revalidatePath(`/admin/leads/${leadId}`)
-  redirect(`/admin/leads/${leadId}`)
+  revalidateLocalized(`/admin/leads/${leadId}`)
+  redirectLocalized(`/admin/leads/${leadId}`, locale)
 }
 
 /**
@@ -134,21 +138,22 @@ export async function claimLead(leadId: string, release: boolean) {
  * Nur `admin`, nicht `sales`: Das hier kostet Geld.
  */
 export async function grantTier(organizationId: string, formData: FormData) {
+  const locale = await getLocale()
   const staff = await requireAdmin()
   const tier = formData.get('tier')
 
   if (typeof tier !== 'string' || !isTier(tier)) {
-    redirect('/admin/organizations?error=tier')
+    redirectLocalized('/admin/organizations?error=tier', locale)
   }
   if (!hasAdminCredentials()) {
-    redirect('/admin/organizations?error=notConfigured')
+    redirectLocalized('/admin/organizations?error=notConfigured', locale)
   }
 
   try {
     await grantEntitlement(organizationId, tier)
   } catch (err) {
     console.error('grantTier failed:', err instanceof Error ? err.message : err)
-    redirect('/admin/organizations?error=save')
+    redirectLocalized('/admin/organizations?error=save', locale)
   }
 
   const supabase = createAdminClient()
@@ -170,6 +175,6 @@ export async function grantTier(organizationId: string, formData: FormData) {
     })
   }
 
-  revalidatePath('/admin/organizations')
-  redirect('/admin/organizations')
+  revalidateLocalized('/admin/organizations')
+  redirectLocalized('/admin/organizations', locale)
 }

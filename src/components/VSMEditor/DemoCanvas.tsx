@@ -75,6 +75,7 @@ export default function DemoCanvas() {
       customerName: t('customerName'),
       supplierName: t('supplierName'),
       erpLabel: t('erpLabel'),
+      lineLabel: t('lineLabel'),
       processNames: [t('process1'), t('process2'), t('process3'), t('process4'), t('process5')],
     })
   )

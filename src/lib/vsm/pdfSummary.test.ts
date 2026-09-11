@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildKpiSummaryLines, buildPdfSubtitle, buildPdfTitle } from './pdfSummary'
+import {
+  buildKpiSummaryLines,
+  buildPdfSubtitle,
+  buildPdfSubtitleLine,
+  buildPdfTitle,
+} from './pdfSummary'
 
 // Die Beschriftungen kommen seit der Mehrsprachigkeit von aussen herein. Die
 // Tests reichen deutsche Werte durch, damit die erwarteten Zeilen lesbar
@@ -137,5 +142,25 @@ describe('buildPdfSubtitle', () => {
 
   it('falls back to the current state for a blank scenario name', () => {
     expect(buildPdfSubtitle('   ', STATE_LABELS)).toBe('Ist-Zustand')
+  })
+})
+
+describe('buildPdfSubtitleLine', () => {
+  it('appends the header facts to the state line', () => {
+    expect(
+      buildPdfSubtitleLine('Ist-Zustand', ['Drehlinie 2', '2 × 450 min', 'Aufgenommen 09.09.2026'])
+    ).toBe('Ist-Zustand  ·  Drehlinie 2  ·  2 × 450 min  ·  Aufgenommen 09.09.2026')
+  })
+
+  // Ein Blatt, auf dem "Aufgenommen: —" steht, beantwortet die Frage
+  // schlechter als eines, auf dem die Zeile fehlt.
+  it('leaves out what is not known instead of printing a dash', () => {
+    expect(buildPdfSubtitleLine('Ist-Zustand', [null, '2 × 450 min', '  '])).toBe(
+      'Ist-Zustand  ·  2 × 450 min'
+    )
+  })
+
+  it('is just the state line when nothing else is filled in', () => {
+    expect(buildPdfSubtitleLine('Ist-Zustand', [null, null])).toBe('Ist-Zustand')
   })
 })
