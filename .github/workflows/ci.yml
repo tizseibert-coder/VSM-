@@ -1,0 +1,107 @@
+# Was bei jedem Push laeuft.
+#
+# Vorher lief nichts: Die Vitest-Faelle und das Pruefskript unter
+# supabase/tests/ gab es laengst, aber nur wer sie von Hand startete, erfuhr
+# etwas von ihnen. Ein Test, den niemand faehrt, ist eine Datei.
+#
+# Zwei Auftraege, bewusst getrennt: Die Anwendung braucht Node, die Datenbank
+# braucht Postgres. Wer nur an einer von beiden etwas kaputtmacht, soll nicht
+# raten muessen, welche der beiden Haelften rot ist.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Wer zweimal hintereinander pusht, braucht das Ergebnis des ersten Laufs
+# nicht mehr.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  anwendung:
+    name: Anwendung
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Abhaengigkeiten
+        run: npm ci
+
+      # Reihenfolge nach Aussagekraft der Fehlermeldung: Ein Typfehler ist
+      # praezise, ein gescheiterter Build sagt oft nur, dass irgendwo etwas
+      # nicht stimmt. Wer zuerst das Genaue sieht, sucht kuerzer.
+      - name: Typen
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      # Der Build prueft, was `tsc` nicht sieht: ob jede Seite sich bauen
+      # laesst, ob die Routentypen stimmen, ob robots.txt und sitemap.xml
+      # entstehen.
+      #
+      # Die Werte hier sind Platzhalter und muessen es sein. Sie gehen in
+      # keine Auslieferung; gebraucht werden sie nur, weil der Build sonst
+      # ueber fehlende Variablen stolpert, bevor er zum Pruefen kommt. Echte
+      # Schluessel stehen in Vercel, nicht hier — siehe .env.example.
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://beispiel.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_nur_fuer_die_ci
+          NEXT_PUBLIC_SITE_URL: https://beispiel.invalid
+        run: npm run build
+
+  datenbank:
+    name: Datenbank
+    runs-on: ubuntu-latest
+
+    services:
+      # Postgres 17, weil Supabase 17 faehrt. Unter 16 legt Postgres vier
+      # CHECK-Constraints in anderer Schreibweise ab — supabase/README.md
+      # beschreibt das unter "Pruefen". Die CI soll die Produktion nachstellen
+      # und nicht eine zweite Wahrheit ueber das Schema erzeugen.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: pruefung
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      PGURL_BASIS: postgresql://postgres:pruefung@localhost:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Beide Skripte wollen eine leere Datenbank und legen unterschiedliche
+      # Dinge hinein — das Rechte-Skript ersetzt has_org_role() und schreibt
+      # Testdaten. Zwei Datenbanken statt einer, damit keines das andere sieht.
+      - name: Wegwerf-Datenbanken anlegen
+        run: |
+          psql "$PGURL_BASIS/postgres" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE schema_pruefung;'
+          psql "$PGURL_BASIS/postgres" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE rechte_pruefung;'
+
+      # Faehrt alle Migrationen gegen eine leere Datenbank und zaehlt nach:
+      # entsteht das Schema ueberhaupt aus diesem Repository?
+      - name: Schema aus den Migrationen
+        run: ./supabase/tests/leere-datenbank-pruefen.sh "$PGURL_BASIS/schema_pruefung"
+
+      # Und dann: erlaubt das Schema auch das Richtige?
+      - name: Autorisierungsschicht
+        run: ./supabase/tests/rechte-pruefen.sh "$PGURL_BASIS/rechte_pruefung"
