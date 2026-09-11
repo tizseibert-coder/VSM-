@@ -78,11 +78,19 @@ export default defineConfig({
     // eine halbe Stunde gekostet. Ein Neubau je Lauf kostet zwanzig Sekunden.
     reuseExistingServer: false,
     timeout: 300_000,
+    // Platzhalter nur, wenn nichts Echtes da ist. Fest gesetzt liefen die
+    // angemeldeten Tests ins Leere: Der Workflow exportiert die Adresse der
+    // lokalen Supabase-Instanz, dieser Block ueberschrieb sie wieder mit
+    // example.supabase.co, und die Anmeldung endete auf
+    // "/login?error=fetch%20failed". Fuer die oeffentlichen Seiten genuegen
+    // die Platzhalter weiterhin — dort wird nie eine Sitzung geprueft.
     env: {
-      NEXT_PUBLIC_SITE_URL: `http://127.0.0.1:${PORT}`,
-      NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_platzhalter',
-      SUPABASE_SERVICE_ROLE_KEY: 'platzhalter',
+      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? `http://127.0.0.1:${PORT}`,
+      NEXT_PUBLIC_SUPABASE_URL:
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://example.supabase.co',
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_platzhalter',
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'platzhalter',
       VSM_PLAN_ENFORCEMENT: 'off',
     },
   },
