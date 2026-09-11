@@ -8,6 +8,10 @@
 -- Neun Faelle: drei Rollen gegen drei Mindestrollen. Dazu die beiden
 -- Randfaelle, auf die es im Zweifel ankommt.
 --
+-- Setzt eine Instanz voraus, deren `auth.uid()` die Ansprueche aus
+-- `request.jwt.claims` liest — also eine echte Supabase-Instanz oder eine
+-- Nachbildung, die sich genauso verhaelt.
+--
 -- Aufruf: psql "$URL" -v ON_ERROR_STOP=1 -f rangfolge-pruefen.sql
 
 \set ON_ERROR_STOP on
@@ -19,12 +23,16 @@ DECLARE
   fall   record;
   ist    boolean;
 BEGIN
-  -- auth.uid() liefert hier fest diesen Nutzer. In der echten Instanz kommt
-  -- der Wert aus dem JWT; fuer diesen Test genuegt eine feste Antwort.
-  EXECUTE format(
-    'CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $f$ SELECT %L::uuid $f$',
-    nutzer
-  );
+  -- auth.uid() liest die Ansprueche des JWT aus `request.jwt.claims`. Genau
+  -- die werden hier gesetzt, statt die Funktion zu ersetzen: Auf einer echten
+  -- Instanz gehoert das Schema `auth` dem Auth-Dienst, und `postgres` darf
+  -- dort nichts anlegen ("permission denied for schema auth"). Sie zu
+  -- ueberschreiben waere ausserdem genau das, was der Kopf von
+  -- e2e_prisma_nachbildung.sql verbietet.
+  --
+  -- `true` heisst: nur fuer diese Transaktion. Nach dem Block ist die Angabe
+  -- wieder weg.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', nutzer)::text, true);
 
   INSERT INTO public.organizations (id, name) VALUES (org_id, 'Pruefwerk')
     ON CONFLICT (id) DO NOTHING;
