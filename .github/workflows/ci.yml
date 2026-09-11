@@ -68,8 +68,11 @@ jobs:
 
       # Playwright baut und startet die Anwendung selbst (siehe webServer in
       # playwright.config.ts) und setzt dabei seine eigenen Platzhalter.
+      # Mit Projektangabe, sonst zieht Playwright auch `saeen`, `anmelden` und
+      # `angemeldet` mit — die brauchen eine lokale Supabase-Instanz, die es in
+      # diesem Job nicht gibt.
       - name: Browsertests
-        run: npx playwright test
+        run: npx playwright test --project=oeffentlich
 
       - if: failure()
         uses: actions/upload-artifact@v4
@@ -114,12 +117,19 @@ jobs:
       # Deshalb: Migrationen beiseitelegen, Instanz leer hochfahren, die
       # Nachbildung einspielen, dann die Migrationen von Hand — genau den Weg
       # geht supabase/tests/leere-datenbank-pruefen.sh schon, nur ohne Docker.
-      - name: Instanz ohne Migrationen hochfahren
+      # Beiseitegelegt wird beides: `supabase start` wendet nicht nur die
+      # Migrationen an, sondern faehrt danach auch seed.sql — und der schreibt
+      # in `benchmark_reference`, eine Tabelle, die ohne die Migrationen nicht
+      # existiert. Genau daran ist der erste Lauf gescheitert.
+      - name: Instanz ohne Migrationen und Seed hochfahren
         run: |
-          mkdir -p /tmp/migrationen
-          mv supabase/migrations/*.sql /tmp/migrationen/
+          set -euo pipefail
+          mkdir -p /tmp/beiseite
+          mv supabase/migrations/*.sql /tmp/beiseite/
+          mv supabase/seed.sql /tmp/beiseite/
           supabase start
-          mv /tmp/migrationen/*.sql supabase/migrations/
+          mv /tmp/beiseite/*.sql supabase/migrations/
+          mv supabase/migrations/seed.sql supabase/seed.sql
 
       - name: Fremde Objekte nachbilden, dann Migrationen und Seed
         env:
