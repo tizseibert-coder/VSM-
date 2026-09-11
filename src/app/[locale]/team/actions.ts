@@ -3,13 +3,13 @@
 import { getLocale, getTranslations } from 'next-intl/server'
 import { createHash, randomBytes } from 'node:crypto'
 import { headers } from 'next/headers'
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan } from '@/lib/billing/entitlement'
 import { quota } from '@/lib/billing/plans'
 import { MAX_WELCOME_LENGTH, inviteDays } from '@/lib/org/invites'
 import { redirectLocalized } from '@/lib/nav/localeRedirect'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 /** Leeres Feld heisst „nichts hinterlegt", nicht „leerer Text". */
 function textOrNull(formData: FormData, key: string, maxLength: number): string | null {
@@ -118,7 +118,7 @@ export async function createInvite(
     process.env.NEXT_PUBLIC_SITE_URL ??
     'http://localhost:3000'
 
-  revalidatePath('/team')
+  revalidateLocalized('/team')
   return { ok: true, url: `${origin}/invite/${token}`, days }
 }
 
@@ -148,7 +148,7 @@ export async function revokeInvite(invitationId: string) {
     redirectLocalized('/team?error=' + encodeURIComponent(await tErr('inviteRevoke')), locale)
   }
 
-  revalidatePath('/team')
+  revalidateLocalized('/team')
   redirectLocalized('/team', locale)
 }
 

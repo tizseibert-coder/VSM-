@@ -1,7 +1,6 @@
 'use server'
 
 import { getLocale, getTranslations } from 'next-intl/server'
-import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { ACTIVE_ORG_COOKIE, getActiveOrg, loadMemberships } from '@/lib/org/activeOrg'
@@ -12,6 +11,7 @@ import { parseSerializedTransfer } from '@/lib/vsm/demoTransfer'
 import { deriveAvailableMinutes } from '@/lib/vsm/shiftModel'
 import { isSupportedCurrency } from '@/lib/vsm/capital'
 import { redirectLocalized } from '@/lib/nav/localeRedirect'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 export async function signOut() {
   const locale = await getLocale()
@@ -59,7 +59,7 @@ export async function switchOrg(orgId: string) {
     maxAge: 60 * 60 * 24 * 365,
   })
 
-  revalidatePath('/dashboard')
+  revalidateLocalized('/dashboard')
   redirectLocalized('/dashboard', locale)
 }
 
@@ -438,7 +438,7 @@ export async function deleteProject(projectId: string) {
     )
   }
 
-  revalidatePath('/dashboard')
+  revalidateLocalized('/dashboard')
   redirectLocalized('/dashboard', locale)
 }
 

@@ -1,7 +1,6 @@
 'use server'
 
 import { getLocale, getTranslations } from 'next-intl/server'
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import {
@@ -14,6 +13,7 @@ import { isSupportedCurrency } from '@/lib/vsm/capital'
 import { routing } from '@/i18n/routing'
 import type { TablesInsert } from '@/types/database'
 import { redirectLocalized } from '@/lib/nav/localeRedirect'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 /** Leeres Feld heisst „nicht gesetzt", nicht „leerer Text". Sonst
  *  unterscheidet die Datenbank zwischen einem nie ausgefuellten und einem
@@ -145,8 +145,8 @@ export async function saveOrgProfile(formData: FormData) {
   // Die Kopfleiste des Dashboards und das Blatt im Editor zeigen beide das
   // Profil; wer es aendert, soll die Aenderung nicht erst nach dem naechsten
   // harten Neuladen sehen.
-  revalidatePath('/settings')
-  revalidatePath('/dashboard')
+  revalidateLocalized('/settings')
+  revalidateLocalized('/dashboard')
   redirectLocalized('/settings?saved=1', locale)
 }
 

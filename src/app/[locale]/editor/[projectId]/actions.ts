@@ -1,13 +1,13 @@
 'use server'
 
 import { getTranslations } from 'next-intl/server'
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { parseProcessesCsv } from '@/lib/vsm/csvImport'
 import { deriveChainOrder, reconcileChainEdges } from '@/lib/vsm/chainOrder'
 import { isSupportedCurrency } from '@/lib/vsm/capital'
 import { isIntervalBasis } from '@/lib/vsm/supermarketSizing'
 import { deriveAvailableMinutes } from '@/lib/vsm/shiftModel'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 export interface AddProcessInput {
   name: string
@@ -81,7 +81,7 @@ export async function addProcess(projectId: string, scenarioId: string | null, i
     if (boundaryError) throw new Error(boundaryError.message)
   }
 
-  revalidatePath(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}`)
 }
 
 // No scenarioId param — see the comment on updateProcessPosition above.
@@ -116,7 +116,7 @@ export async function deleteProcess(projectId: string, processId: string) {
 
   const { error } = await supabase.from('processes').delete().eq('id', processId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}`)
 }
 
 /**
@@ -228,8 +228,8 @@ export async function importProcessesCsv(projectId: string, scenarioId: string |
     if (createError) throw new Error(createError.message)
   }
 
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 export async function updateAnnualThroughput(projectId: string, annualThroughput: number | null) {
@@ -240,8 +240,8 @@ export async function updateAnnualThroughput(projectId: string, annualThroughput
     .eq('id', projectId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 // Der Wert eines Stuecks — der eine fehlende Faktor zwischen "9 300 Stueck
@@ -257,8 +257,8 @@ export async function updatePieceValue(projectId: string, pieceValue: number | n
     .eq('id', projectId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/compare`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/compare`)
 }
 
 // Bis heute stand die Waehrung fest im Quelltext: "CHF" und de-CH, waehrend
@@ -274,8 +274,8 @@ export async function updateCurrency(projectId: string, currency: string) {
   const { error } = await supabase.from('projects').update({ currency }).eq('id', projectId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/compare`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/compare`)
 }
 
 // Takt time's other input, previously hardcoded to SHIFT_MINUTES with no way
@@ -293,8 +293,8 @@ export async function updateAvailableMinutes(projectId: string, availableMinutes
     .eq('id', projectId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 /**
@@ -323,8 +323,8 @@ export async function updateShiftModel(
     .eq('id', projectId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 /**
@@ -354,8 +354,8 @@ export async function updateProjectHeader(
     .eq('id', projectId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 // No scenarioId here (unlike addProcess/importProcessesCsv/setBufferWip):
@@ -366,7 +366,7 @@ export async function updateProcessPosition(projectId: string, processId: string
   const { error } = await supabase.from('processes').update({ x, y }).eq('id', processId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}`)
 }
 
 // Moves a process to a different parallel row (0 = main line). Position is
@@ -380,7 +380,7 @@ export async function updateProcessLane(projectId: string, processId: string, la
     .eq('id', processId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}`)
 }
 
 // Re-wires the buffer chain to match a new left-to-right order — called
@@ -412,7 +412,7 @@ export async function reorderProcesses(projectId: string, scenarioId: string | n
     if (error) throw new Error(error.message)
   }
 
-  revalidatePath(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}`)
 }
 
 export interface UpdateProcessInput {
@@ -468,8 +468,8 @@ export async function updateProcess(projectId: string, processId: string, input:
     .eq('id', processId)
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 export interface SetBufferWipInput {
@@ -591,8 +591,8 @@ export async function setBufferWip(projectId: string, scenarioId: string | null,
     if (error) throw new Error(error.message)
   }
 
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 // Removes a single connection (Phase 6: Mehrstrang-UI) without touching the
@@ -611,7 +611,7 @@ export async function deleteBufferConnection(projectId: string, bufferId: string
     .eq('project_id', projectId) // belt-and-suspenders scoping, RLS already enforces org ownership
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}`)
 }
 
 export interface UpdateProjectLabelsInput {
@@ -632,7 +632,7 @@ export async function updateProjectLabels(projectId: string, input: UpdateProjec
     })
     .eq('id', projectId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}`)
 }
 
 // --- Future-State-Wizard fields (Q6-8, docs/plan-future-state-wizard.md) ---
@@ -646,16 +646,16 @@ export async function updateHasHeijunka(projectId: string, processId: string, ha
   const supabase = await createClient()
   const { error } = await supabase.from('processes').update({ has_heijunka: hasHeijunka }).eq('id', processId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 export async function updatePitchMinutes(projectId: string, pitchMinutes: number | null) {
   const supabase = await createClient()
   const { error } = await supabase.from('projects').update({ pitch_minutes: pitchMinutes }).eq('id', projectId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 export async function updateKaizenNote(projectId: string, processId: string, kaizenNote: string | null) {
@@ -665,8 +665,8 @@ export async function updateKaizenNote(projectId: string, processId: string, kai
     .update({ kaizen_note: kaizenNote && kaizenNote.trim().length > 0 ? kaizenNote.trim() : null })
     .eq('id', processId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/future-state`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/future-state`)
 }
 
 // Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und

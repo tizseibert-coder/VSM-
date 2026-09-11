@@ -1,7 +1,6 @@
 'use server'
 
 import { getLocale } from 'next-intl/server'
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient, hasAdminCredentials } from '@/lib/supabase/admin'
 import { requireAdmin, requireStaff } from '@/lib/crm/staff'
@@ -9,6 +8,7 @@ import { isStage } from '@/lib/crm/queries'
 import { isTier } from '@/lib/billing/plans'
 import { grantEntitlement } from '@/lib/billing/entitlement'
 import { redirectLocalized } from '@/lib/nav/localeRedirect'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 /**
  * Setzt die Trichterstufe eines Interessenten.
@@ -59,8 +59,8 @@ export async function setLeadStage(leadId: string, formData: FormData) {
     actor_user_id: staff.userId,
   })
 
-  revalidatePath(`/admin/leads/${leadId}`)
-  revalidatePath('/admin/leads')
+  revalidateLocalized(`/admin/leads/${leadId}`)
+  revalidateLocalized('/admin/leads')
   redirectLocalized(`/admin/leads/${leadId}`, locale)
 }
 
@@ -91,7 +91,7 @@ export async function addLeadNote(leadId: string, formData: FormData) {
     .update({ last_activity_at: new Date().toISOString() })
     .eq('id', leadId)
 
-  revalidatePath(`/admin/leads/${leadId}`)
+  revalidateLocalized(`/admin/leads/${leadId}`)
   redirectLocalized(`/admin/leads/${leadId}`, locale)
 }
 
@@ -120,7 +120,7 @@ export async function claimLead(leadId: string, release: boolean) {
     actor_user_id: staff.userId,
   })
 
-  revalidatePath(`/admin/leads/${leadId}`)
+  revalidateLocalized(`/admin/leads/${leadId}`)
   redirectLocalized(`/admin/leads/${leadId}`, locale)
 }
 
@@ -175,6 +175,6 @@ export async function grantTier(organizationId: string, formData: FormData) {
     })
   }
 
-  revalidatePath('/admin/organizations')
+  revalidateLocalized('/admin/organizations')
   redirectLocalized('/admin/organizations', locale)
 }

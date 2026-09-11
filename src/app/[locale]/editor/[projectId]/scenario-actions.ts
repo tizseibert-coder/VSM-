@@ -1,11 +1,11 @@
 'use server'
 
 import { getLocale, getTranslations } from 'next-intl/server'
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { loadPlan } from '@/lib/billing/entitlement'
 import { quota } from '@/lib/billing/plans'
 import { redirectLocalized } from '@/lib/nav/localeRedirect'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 // Creates a new Future-State scenario by deep-copying a source state's
 // processes + inventory_buffers into fresh rows tied to the new scenario —
@@ -168,8 +168,8 @@ export async function updateScenarioMeta(projectId: string, scenarioId: string, 
     })
     .eq('id', scenarioId)
   if (error) throw new Error(error.message)
-  revalidatePath(`/editor/${projectId}`)
-  revalidatePath(`/editor/${projectId}/compare`)
+  revalidateLocalized(`/editor/${projectId}`)
+  revalidateLocalized(`/editor/${projectId}/compare`)
 }
 
 /** Die Szenariengrenze des Tarifs als fertige Meldung, oder null. */

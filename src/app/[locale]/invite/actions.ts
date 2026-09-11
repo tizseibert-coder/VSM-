@@ -1,9 +1,9 @@
 'use server'
 
 import { getLocale } from 'next-intl/server'
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { redirectLocalized } from '@/lib/nav/localeRedirect'
+import { revalidateLocalized } from '@/lib/nav/revalidateLocalized'
 
 // Bewusst eine Action und kein Seitenaufruf: waere das Einloesen ein
 // Nebeneffekt von GET, wuerde die Linkvorschau von Teams, Slack oder WhatsApp
@@ -23,7 +23,7 @@ export async function acceptInvite(token: string) {
   // Bei Erfolg direkt ins Dashboard: dort greift der Organisationsumschalter,
   // und der Nutzer sieht sofort, dass er jetzt in zwei Firmen ist.
   if (data === 'accepted' || data === 'already_member') {
-    revalidatePath('/dashboard')
+    revalidateLocalized('/dashboard')
     redirectLocalized('/dashboard', locale)
   }
 
