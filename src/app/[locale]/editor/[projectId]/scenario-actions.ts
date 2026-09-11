@@ -1,11 +1,11 @@
 'use server'
 
-import { getTranslations } from 'next-intl/server'
-import { redirect } from 'next/navigation'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { loadPlan } from '@/lib/billing/entitlement'
 import { quota } from '@/lib/billing/plans'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 // Creates a new Future-State scenario by deep-copying a source state's
 // processes + inventory_buffers into fresh rows tied to the new scenario —
@@ -17,12 +17,16 @@ import { quota } from '@/lib/billing/plans'
 // #4): the iteration builds on the previous Soll-Zustand instead of always
 // restarting from the Ist-Zustand.
 export async function createScenario(projectId: string, formData: FormData) {
+  const locale = await getLocale()
   const type = formData.get('type') as string | null
   const name = (formData.get('name') as string | null)?.trim()
   const sourceScenarioId = (formData.get('sourceScenarioId') as string | null) || null
 
   if (!type || !['A', 'B', 'C'].includes(type) || !name) {
-    redirect(`/editor/${projectId}?error=` + encodeURIComponent(await tErr('scenarioTypeAndName')))
+    redirectLocalized(
+      `/editor/${projectId}?error=` + encodeURIComponent(await tErr('scenarioTypeAndName')),
+      locale
+    )
   }
 
   const supabase = await createClient()
@@ -31,7 +35,7 @@ export async function createScenario(projectId: string, formData: FormData) {
   // Projekts, nicht am Projekt selbst — deshalb der Umweg ueber `projects`.
   const limitError = await scenarioLimitError(projectId)
   if (limitError) {
-    redirect(`/editor/${projectId}?error=` + encodeURIComponent(limitError))
+    redirectLocalized(`/editor/${projectId}?error=` + encodeURIComponent(limitError), locale)
   }
 
   const { data: scenario, error: scenarioError } = await supabase
@@ -40,9 +44,10 @@ export async function createScenario(projectId: string, formData: FormData) {
     .select('id')
     .single()
   if (scenarioError || !scenario) {
-    redirect(
+    redirectLocalized(
       `/editor/${projectId}?error=` +
-        encodeURIComponent(scenarioError?.message ?? await tErr('scenarioCreate'))
+        encodeURIComponent(scenarioError?.message ?? (await tErr('scenarioCreate'))),
+      locale
     )
   }
 
@@ -54,7 +59,10 @@ export async function createScenario(projectId: string, formData: FormData) {
     ascending: true,
   })
   if (processesError) {
-    redirect(`/editor/${projectId}?error=` + encodeURIComponent(processesError.message))
+    redirectLocalized(
+      `/editor/${projectId}?error=` + encodeURIComponent(processesError.message),
+      locale
+    )
   }
 
   const idMap = new Map<string, string>()
@@ -82,9 +90,10 @@ export async function createScenario(projectId: string, formData: FormData) {
       )
       .select('id, origin_process_id')
     if (copyError || !copiedProcesses) {
-      redirect(
+      redirectLocalized(
         `/editor/${projectId}?error=` +
-          encodeURIComponent(copyError?.message ?? await tErr('scenarioCopyProcesses'))
+          encodeURIComponent(copyError?.message ?? (await tErr('scenarioCopyProcesses'))),
+        locale
       )
     }
     for (const cp of copiedProcesses ?? []) {
@@ -98,7 +107,10 @@ export async function createScenario(projectId: string, formData: FormData) {
     : sourceBuffersQuery.is('scenario_id', null)
   const { data: sourceBuffers, error: buffersError } = await sourceBuffersQuery
   if (buffersError) {
-    redirect(`/editor/${projectId}?error=` + encodeURIComponent(buffersError.message))
+    redirectLocalized(
+      `/editor/${projectId}?error=` + encodeURIComponent(buffersError.message),
+      locale
+    )
   }
 
   if (sourceBuffers && sourceBuffers.length > 0) {
@@ -117,20 +129,24 @@ export async function createScenario(projectId: string, formData: FormData) {
       }))
     )
     if (bufferCopyError) {
-      redirect(`/editor/${projectId}?error=` + encodeURIComponent(bufferCopyError.message))
+      redirectLocalized(
+        `/editor/${projectId}?error=` + encodeURIComponent(bufferCopyError.message),
+        locale
+      )
     }
   }
 
-  redirect(`/editor/${projectId}?scenario=${scenario.id}`)
+  redirectLocalized(`/editor/${projectId}?scenario=${scenario.id}`, locale)
 }
 
 export async function deleteScenario(projectId: string, scenarioId: string) {
+  const locale = await getLocale()
   const supabase = await createClient()
   // FK is ON DELETE CASCADE on both processes.scenario_id and
   // inventory_buffers.scenario_id, so this also removes the scenario's copy.
   const { error } = await supabase.from('scenarios').delete().eq('id', scenarioId)
   if (error) throw new Error(error.message)
-  redirect(`/editor/${projectId}`)
+  redirectLocalized(`/editor/${projectId}`, locale)
 }
 
 // FormData-based (like createScenario above) so it can be used directly as

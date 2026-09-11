@@ -23,7 +23,10 @@ async function anmelden(page: import('@playwright/test').Page, konto: Konto) {
   // etwas mit den Konten nicht, und das soll hier auffallen und nicht erst
   // im naechsten Test als raetselhafte leere Seite.
   //
-  // Das Sprachpraefix ist freigestellt — warum, steht in fixtures/adressen.ts.
+  // Mit Sprachpraefix, und das ist die Zusicherung: Die Anmeldung leitet ueber
+  // redirectLocalized um, landet also auf /de/dashboard. Ginge sie wieder auf
+  // den nackten redirect zurueck, bliebe die Adresse "/dashboard" und dieser
+  // Test faellt.
   await expect(page, `Anmeldung von ${konto.email} blieb haengen`).toHaveURL(DASHBOARD, {
     timeout: 30_000,
   })

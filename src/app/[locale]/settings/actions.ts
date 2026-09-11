@@ -1,8 +1,7 @@
 'use server'
 
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import {
@@ -14,6 +13,7 @@ import {
 import { isSupportedCurrency } from '@/lib/vsm/capital'
 import { routing } from '@/i18n/routing'
 import type { TablesInsert } from '@/types/database'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 /** Leeres Feld heisst „nicht gesetzt", nicht „leerer Text". Sonst
  *  unterscheidet die Datenbank zwischen einem nie ausgefuellten und einem
@@ -39,12 +39,16 @@ function textOrNull(formData: FormData, key: string, maxLength: number): string 
  * von PostgREST statt eines Satzes, der sagt, warum.
  */
 export async function saveOrgProfile(formData: FormData) {
+  const locale = await getLocale()
   const orgResult = await getActiveOrg()
   if ('error' in orgResult) {
-    redirect('/settings?error=' + encodeURIComponent(orgResult.error))
+    redirectLocalized('/settings?error=' + encodeURIComponent(orgResult.error), locale)
   }
   if (orgResult.active.role !== 'owner') {
-    redirect('/settings?error=' + encodeURIComponent(await tErr('settingsOwnersOnly')))
+    redirectLocalized(
+      '/settings?error=' + encodeURIComponent(await tErr('settingsOwnersOnly')),
+      locale
+    )
   }
 
   const organizationId = orgResult.active.organizationId
@@ -54,7 +58,10 @@ export async function saveOrgProfile(formData: FormData) {
 
   const currencyRaw = textOrNull(formData, 'default_currency', 8)
   if (currencyRaw !== null && !isSupportedCurrency(currencyRaw)) {
-    redirect('/settings?error=' + encodeURIComponent(await tErr('currencyUnsupported')))
+    redirectLocalized(
+      '/settings?error=' + encodeURIComponent(await tErr('currencyUnsupported')),
+      locale
+    )
   }
 
   const localeRaw = textOrNull(formData, 'default_locale', 8)
@@ -102,7 +109,7 @@ export async function saveOrgProfile(formData: FormData) {
     update.logo_updated_at = null
   } else if (file instanceof File && file.size > 0) {
     if (file.size > MAX_LOGO_BYTES) {
-      redirect('/settings?error=' + encodeURIComponent(await tErr('logoTooLarge')))
+      redirectLocalized('/settings?error=' + encodeURIComponent(await tErr('logoTooLarge')), locale)
     }
     const bytes = new Uint8Array(await file.arrayBuffer())
     // Nicht `file.type`: Der kommt aus der Dateiendung und ist eine Behauptung.
@@ -117,7 +124,7 @@ export async function saveOrgProfile(formData: FormData) {
           : verdict.reason === 'type'
             ? 'logoType'
             : 'logoEmpty'
-      redirect('/settings?error=' + encodeURIComponent(await tErr(key)))
+      redirectLocalized('/settings?error=' + encodeURIComponent(await tErr(key)), locale)
     }
     update.logo_mime = sniffed
     update.logo_data = base64
@@ -132,7 +139,7 @@ export async function saveOrgProfile(formData: FormData) {
 
   if (error) {
     console.error('saveOrgProfile failed:', error.message)
-    redirect('/settings?error=' + encodeURIComponent(await tErr('settingsSave')))
+    redirectLocalized('/settings?error=' + encodeURIComponent(await tErr('settingsSave')), locale)
   }
 
   // Die Kopfleiste des Dashboards und das Blatt im Editor zeigen beide das
@@ -140,7 +147,7 @@ export async function saveOrgProfile(formData: FormData) {
   // harten Neuladen sehen.
   revalidatePath('/settings')
   revalidatePath('/dashboard')
-  redirect('/settings?saved=1')
+  redirectLocalized('/settings?saved=1', locale)
 }
 
 // Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und

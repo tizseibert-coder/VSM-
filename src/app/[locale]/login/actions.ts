@@ -1,29 +1,33 @@
 'use server'
 
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 import { safeNextPath } from '@/lib/nav/safeNextPath'
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+  const locale = await getLocale()
 
   if (!email || !password) {
-    redirect('/login?error=' + encodeURIComponent(await tErr('credentialsRequired')))
+    redirectLocalized(
+      '/login?error=' + encodeURIComponent(await tErr('credentialsRequired')),
+      locale
+    )
   }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    redirect('/login?error=' + encodeURIComponent(error.message))
+    redirectLocalized('/login?error=' + encodeURIComponent(error.message), locale)
   }
 
   revalidatePath('/', 'layout')
   // Zurueck zur Einladung, falls der Nutzer ueber einen Einladungslink kam.
-  redirect(safeNextPath(formData.get('next') as string | null) ?? '/dashboard')
+  redirectLocalized(safeNextPath(formData.get('next') as string | null) ?? '/dashboard', locale)
 }
 
 // Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und

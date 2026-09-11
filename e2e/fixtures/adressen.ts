@@ -1,21 +1,19 @@
 /**
- * Adressmuster, die das Sprachpraefix freistellen.
+ * Adressmuster mit Sprachpraefix.
  *
- * routing.ts setzt `localePrefix: 'always'` — jede Adresse soll ein `/de` oder
- * `/en` tragen, ausdruecklich damit sie fuer sich allein eindeutig teilbar
- * ist. Elf Action-Dateien unter src/app/[locale] leiten aber mit dem nackten
- * `redirect` aus next/navigation um statt mit dem sprachbewussten aus
- * @/i18n/navigation. Nach dem Anmelden landet man deshalb auf "/dashboard",
- * nach dem Anlegen auf "/editor/<id>".
- *
- * Der Kommentar in src/i18n/navigation.ts kennt diese Schuld und nimmt an,
- * die Middleware fange den fehlenden Praefix mit einem zusaetzlichen Sprung
- * ab. In den CI-Laeufen gemessen tut sie das nicht: Die Adresse bleibt ueber
- * sechzig Abfragen hinweg ohne Praefix.
- *
- * Diese Muster stellen es deshalb frei. Das ist eine Feststellung, keine
- * Billigung — der Umbau der elf Dateien ist ein eigener Schritt mit eigenem
- * Risiko. Wird er gemacht, koennen die Klammern hier wieder weg.
+ * Diese Muster waren eine Zeit lang freigestellt (`/(de\/)?`), weil elf
+ * Action-Dateien mit dem nackten `redirect` aus next/navigation umleiteten und
+ * die Adresse deshalb ohne Praefix stehen blieb. Das ist behoben: Alle
+ * Umleitungen gehen jetzt ueber `redirectLocalized`, und damit sind diese
+ * Muster wieder das, was `localePrefix: 'always'` verspricht — und zugleich
+ * die Regressionsprobe dafuer. Wird die Umstellung irgendwo zurueckgedreht,
+ * faellt sie hier auf.
  */
-export const DASHBOARD = /\/(de\/)?dashboard/
-export const EDITOR = /\/(de\/)?editor\//
+export const DASHBOARD = /\/de\/dashboard/
+export const EDITOR = /\/de\/editor\//
+
+/** Dasselbe auf Englisch. Siehe angemeldet.spec.ts: Liefert getLocale() in
+ *  einer Server Action stillschweigend die Standardsprache, landet ein
+ *  englischer Nutzer auf der deutschen Seite — das faellt nur hier auf. */
+export const DASHBOARD_EN = /\/en\/dashboard/
+export const EDITOR_EN = /\/en\/editor\//

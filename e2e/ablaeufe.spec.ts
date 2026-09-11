@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { buildCsvTemplate } from '../src/lib/vsm/csvTemplate'
 import { FREMD, MITGLIED, PROJEKT_EIGEN } from './fixtures/konten'
-import { EDITOR } from './fixtures/adressen'
+import { DASHBOARD_EN, EDITOR, EDITOR_EN } from './fixtures/adressen'
 
 /**
  * Die Wege, die zuletzt gebaut und nie im echten Editor gesehen wurden.
@@ -20,8 +20,7 @@ test.describe('mit angemeldetem Mitglied', () => {
     await page.fill('#np-demand', '50000')
     await page.getByRole('button', { name: /Wertstrom anlegen/i }).click()
 
-    // Landet auf der Zeichenflaeche. Das Sprachpraefix ist freigestellt —
-    // warum, steht in fixtures/adressen.ts.
+    // Landet auf der Zeichenflaeche — mit Sprachpraefix.
     await expect(page).toHaveURL(EDITOR, { timeout: 30_000 })
 
     // Die Kopfdaten stehen dort — das ist der Teil, den ich gebaut und nie
@@ -82,5 +81,32 @@ test.describe('Berechtigungsgrenze', () => {
       status === 404 || status === 403 || !inhalt.includes('Prüfstrom'),
       `Fremdes Konto bekam Status ${status} und sah den Wertstrom`
     ).toBe(true)
+  })
+})
+
+test.describe('auf Englisch', () => {
+  // Ohne gespeicherte Sitzung: Der Anmeldeweg selbst ist hier der Pruefling.
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('die Umleitungen folgen der Sprache statt der Vorgabe', async ({ page }) => {
+    // Der wichtigste Test dieses Umbaus. Eine Server Action bekommt kein
+    // [locale]-Segment; sie holt die Sprache ueber getLocale(). Liefert das
+    // stillschweigend die Standardsprache, landet ein englischer Nutzer auf
+    // deutschen Seiten — schlimmer als der Zustand davor, weil es wie eine
+    // Behebung aussieht. Genau das faellt hier auf und sonst nirgends.
+    await page.goto('/en/login')
+    await page.fill('#email', MITGLIED.email)
+    await page.fill('#password', MITGLIED.passwort)
+    await page.click('button[formaction], button[type="submit"]')
+
+    await expect(page, 'Anmeldung auf /en landete nicht unter /en').toHaveURL(DASHBOARD_EN, {
+      timeout: 30_000,
+    })
+
+    // Dasselbe fuer die zweite Action, die umleitet: das Anlegen.
+    await page.goto('/en/dashboard/new')
+    await page.fill('#np-name', `Check ${Date.now()}`)
+    await page.getByRole('button', { name: /Wertstrom anlegen|Create value stream/i }).click()
+    await expect(page).toHaveURL(EDITOR_EN, { timeout: 30_000 })
   })
 })

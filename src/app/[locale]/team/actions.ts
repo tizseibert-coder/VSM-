@@ -1,15 +1,15 @@
 'use server'
 
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { createHash, randomBytes } from 'node:crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan } from '@/lib/billing/entitlement'
 import { quota } from '@/lib/billing/plans'
 import { MAX_WELCOME_LENGTH, inviteDays } from '@/lib/org/invites'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 /** Leeres Feld heisst „nichts hinterlegt", nicht „leerer Text". */
 function textOrNull(formData: FormData, key: string, maxLength: number): string | null {
@@ -128,9 +128,10 @@ export async function createInvite(
  * funktioniert, soll die Antwort in der Liste finden.
  */
 export async function revokeInvite(invitationId: string) {
+  const locale = await getLocale()
   const orgResult = await getActiveOrg()
   if ('error' in orgResult) {
-    redirect('/team?error=' + encodeURIComponent(orgResult.error))
+    redirectLocalized('/team?error=' + encodeURIComponent(orgResult.error), locale)
   }
 
   const supabase = await createClient()
@@ -144,11 +145,11 @@ export async function revokeInvite(invitationId: string) {
 
   if (error) {
     console.error('revokeInvite failed:', error.message)
-    redirect('/team?error=' + encodeURIComponent(await tErr('inviteRevoke')))
+    redirectLocalized('/team?error=' + encodeURIComponent(await tErr('inviteRevoke')), locale)
   }
 
   revalidatePath('/team')
-  redirect('/team')
+  redirectLocalized('/team', locale)
 }
 
 /** Die Sitzplatzgrenze des Tarifs als fertige Meldung, oder null. */

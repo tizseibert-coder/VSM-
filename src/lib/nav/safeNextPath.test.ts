@@ -16,6 +16,23 @@ describe('safeNextPath', () => {
     expect(safeNextPath('/team?status=ok#liste')).toBe('/team?status=ok#liste')
   })
 
+  it('strips an existing locale prefix so it is not applied twice', () => {
+    // Der Aufrufer setzt das Praefix selbst (redirectLocalized). Bliebe es
+    // hier stehen, landete /de/login?next=/de/dashboard auf
+    // "/de/de/dashboard" — eine Adresse, die es nicht gibt.
+    expect(safeNextPath('/de/dashboard')).toBe('/dashboard')
+    expect(safeNextPath('/en/invite/abc123')).toBe('/invite/abc123')
+    expect(safeNextPath('/de')).toBe('/')
+    expect(safeNextPath('/en')).toBe('/')
+  })
+
+  it('leaves paths alone that only look like a locale prefix', () => {
+    // "/dentist" faengt mit "de" an, ist aber kein Sprachsegment.
+    expect(safeNextPath('/dentist')).toBe('/dentist')
+    expect(safeNextPath('/demo')).toBe('/demo')
+    expect(safeNextPath('/enterprise')).toBe('/enterprise')
+  })
+
   it('rejects absolute URLs to other hosts', () => {
     expect(safeNextPath('https://phishing.example')).toBeNull()
     expect(safeNextPath('http://phishing.example/x')).toBeNull()

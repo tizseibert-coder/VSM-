@@ -1,13 +1,14 @@
 'use server'
 
 import { getLocale, getTranslations } from 'next-intl/server'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { localizedUrl } from '@/lib/seo/site'
 import { isPurchasableTier, priceIdForTier, stripeClient } from '@/lib/billing/stripe'
 import { visitorCurrency } from '@/lib/billing/currency'
+import { redirect as externalRedirect } from 'next/navigation'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 /** Uebersetzte Fehlermeldungen fuer die ?error=-Anzeige auf der Preisseite. */
 async function tErr(key: string): Promise<string> {
@@ -27,7 +28,7 @@ async function tErr(key: string): Promise<string> {
  * ein Kauf vor der Kontoerstellung wuerde eine Organisation ohne Mitglieder
  * brauchen, die es im Datenmodell nicht gibt.
  *
- * Die `redirect()`-Ziele hier sind bewusst ohne Sprachpraefix (`/pricing`,
+ * Die `redirectLocalized(, locale)`-Ziele hier sind bewusst ohne Sprachpraefix (`/pricing`,
  * nicht `/de/pricing`) — derselbe Weg wie in team/actions.ts und
  * admin/actions.ts: next-intls Middleware faengt den fehlenden Praefix ab
  * und ergaenzt ihn aus Cookie/Accept-Language, nur mit einem zusaetzlichen
@@ -38,22 +39,23 @@ async function tErr(key: string): Promise<string> {
  * Produktionsseite hinaus statt auf sich selbst zurueck.
  */
 export async function startCheckout(tier: string) {
+  const locale = await getLocale()
   if (!isPurchasableTier(tier)) {
-    redirect('/pricing?error=tier')
+    redirectLocalized('/pricing?error=tier', locale)
   }
 
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   if (!claimsData?.claims?.sub) {
-    redirect('/login?next=/pricing')
+    redirectLocalized('/login?next=/pricing', locale)
   }
 
   const orgResult = await getActiveOrg()
   if ('error' in orgResult) {
-    redirect('/pricing?error=noOrg')
+    redirectLocalized('/pricing?error=noOrg', locale)
   }
   if (orgResult.active.role !== 'owner') {
-    redirect('/pricing?error=notOwner')
+    redirectLocalized('/pricing?error=notOwner', locale)
   }
 
   let priceId: string
@@ -61,12 +63,11 @@ export async function startCheckout(tier: string) {
     priceId = priceIdForTier(tier, await visitorCurrency())
   } catch (err) {
     console.error('startCheckout (price) failed:', err instanceof Error ? err.message : err)
-    redirect('/pricing?error=notConfigured')
+    redirectLocalized('/pricing?error=notConfigured', locale)
   }
 
   const organizationId = orgResult.active.organizationId
   const email = claimsData.claims.email as string | undefined
-  const locale = await getLocale()
 
   let sessionUrl: string | null = null
   try {
@@ -112,14 +113,17 @@ export async function startCheckout(tier: string) {
     sessionUrl = session.url
   } catch (err) {
     console.error('startCheckout failed:', err instanceof Error ? err.message : err)
-    redirect('/pricing?error=' + encodeURIComponent(await tErr('checkoutFailed')))
+    redirectLocalized('/pricing?error=' + encodeURIComponent(await tErr('checkoutFailed')), locale)
   }
 
   if (!sessionUrl) {
-    redirect('/pricing?error=' + encodeURIComponent(await tErr('checkoutFailed')))
+    redirectLocalized('/pricing?error=' + encodeURIComponent(await tErr('checkoutFailed')), locale)
   }
 
-  redirect(sessionUrl)
+  // Nackte Umleitung: Das Ziel liegt bei Stripe. next-intl liesse eine
+  // fremde Adresse zwar unberuehrt, aber sie durch eine sprachbewusste
+  // Umleitung zu schicken laese sich wie ein Versehen.
+  externalRedirect(sessionUrl)
 }
 
 /**
@@ -143,18 +147,22 @@ export async function startCheckout(tier: string) {
  * nicht mehr als das.
  */
 export async function openBillingPortal() {
+  const locale = await getLocale()
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   if (!claimsData?.claims?.sub) {
-    redirect('/login?next=/dashboard')
+    redirectLocalized('/login?next=/dashboard', locale)
   }
 
   const orgResult = await getActiveOrg()
   if ('error' in orgResult) {
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('checkoutNoOrg')))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(await tErr('checkoutNoOrg')), locale)
   }
   if (orgResult.active.role !== 'owner') {
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('portalNotOwner')))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent(await tErr('portalNotOwner')),
+      locale
+    )
   }
 
   // `vsm_billing_customers` hat mit Absicht keine Policy fuer `authenticated`
@@ -171,10 +179,12 @@ export async function openBillingPortal() {
     // Der Tarif kann auch von Hand im Verwaltungsbereich vergeben worden
     // sein (BETA, oder eine Ausnahme) — dann gibt es nie einen Stripe-Kunden,
     // und das Portal haette nichts zu zeigen.
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('portalNoCustomer')))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent(await tErr('portalNoCustomer')),
+      locale
+    )
   }
 
-  const locale = await getLocale()
 
   let portalUrl: string | null = null
   try {
@@ -186,8 +196,11 @@ export async function openBillingPortal() {
     portalUrl = session.url
   } catch (err) {
     console.error('openBillingPortal failed:', err instanceof Error ? err.message : err)
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('portalFailed')))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(await tErr('portalFailed')), locale)
   }
 
-  redirect(portalUrl)
+  // Nackte Umleitung: Das Ziel liegt bei Stripe. next-intl liesse eine
+  // fremde Adresse zwar unberuehrt, aber sie durch eine sprachbewusste
+  // Umleitung zu schicken laese sich wie ein Versehen.
+  externalRedirect(portalUrl)
 }

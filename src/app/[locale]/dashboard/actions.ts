@@ -1,7 +1,6 @@
 'use server'
 
-import { getTranslations } from 'next-intl/server'
-import { redirect } from 'next/navigation'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
@@ -12,11 +11,13 @@ import { projectDefaults } from '@/lib/org/orgSettings'
 import { parseSerializedTransfer } from '@/lib/vsm/demoTransfer'
 import { deriveAvailableMinutes } from '@/lib/vsm/shiftModel'
 import { isSupportedCurrency } from '@/lib/vsm/capital'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 export async function signOut() {
+  const locale = await getLocale()
   const supabase = await createClient()
   await supabase.auth.signOut()
-  redirect('/login')
+  redirectLocalized('/login', locale)
 }
 
 // Las die Mitgliedschaft frueher mit `.maybeSingle()` — das wirft, sobald
@@ -26,9 +27,10 @@ export async function signOut() {
 async function currentUserOrgId(): Promise<
   { orgId: string; orgName: string } | { error: string }
 > {
+  const locale = await getLocale()
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
-  if (!data?.claims?.sub) redirect('/login')
+  if (!data?.claims?.sub) redirectLocalized('/login', locale)
 
   const result = await getActiveOrg()
   if ('error' in result) return result
@@ -40,9 +42,13 @@ async function currentUserOrgId(): Promise<
 // leere Projektliste ohne Erklaerung waere die schlechtere Antwort auf einen
 // manipulierten Cookie als eine klare Fehlermeldung.
 export async function switchOrg(orgId: string) {
+  const locale = await getLocale()
   const memberships = await loadMemberships()
   if (!memberships.some((m) => m.organizationId === orgId)) {
-    redirect('/dashboard?error=' + encodeURIComponent('Kein Zugriff auf diese Organisation.'))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent('Kein Zugriff auf diese Organisation.'),
+      locale
+    )
   }
 
   const store = await cookies()
@@ -54,7 +60,7 @@ export async function switchOrg(orgId: string) {
   })
 
   revalidatePath('/dashboard')
-  redirect('/dashboard')
+  redirectLocalized('/dashboard', locale)
 }
 
 /**
@@ -67,14 +73,18 @@ export async function switchOrg(orgId: string) {
  * nicht zu Vorgabewerten — "nicht angegeben" ist eine eigene Aussage.
  */
 export async function createProject(formData: FormData) {
+  const locale = await getLocale()
   const name = (formData.get('name') as string | null)?.trim()
   if (!name) {
-    redirect('/dashboard/new?error=' + encodeURIComponent(await tErr('projectNameEmpty')))
+    redirectLocalized(
+      '/dashboard/new?error=' + encodeURIComponent(await tErr('projectNameEmpty')),
+      locale
+    )
   }
 
   const orgResult = await currentUserOrgId()
   if ('error' in orgResult) {
-    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(orgResult.error), locale)
   }
 
   // Tarifgrenze. Geprueft wird *vor* dem Anlegen, nicht per Datenbank-
@@ -84,7 +94,7 @@ export async function createProject(formData: FormData) {
   // zaehlt das nur mit (siehe lib/billing/entitlement.ts).
   const limitError = await projectLimitError(orgResult.orgId)
   if (limitError) {
-    redirect('/dashboard?error=' + encodeURIComponent(limitError))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(limitError), locale)
   }
 
   // Waehrung, Firmenname und verfuegbare Minuten aus dem Firmenprofil, soweit
@@ -111,7 +121,7 @@ export async function createProject(formData: FormData) {
     // banner — meaningless to a non-technical user mid-workshop. Logged
     // server-side for debugging, generic German text shown to the user.
     if (error) console.error('createProject failed:', error.message)
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('projectCreate')))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(await tErr('projectCreate')), locale)
   }
 
   // Das erste angelegte Projekt ist im Vertrieb das aussagekraeftigste
@@ -125,22 +135,23 @@ export async function createProject(formData: FormData) {
     })
   }
 
-  redirect(`/editor/${project.id}`)
+  redirectLocalized(`/editor/${project.id}`, locale)
 }
 
 // Seeds a small, realistic example VSM (4 processes + 3 buffers) so a new
 // user sees a finished-looking result immediately instead of a blank canvas.
 export async function createExampleProject() {
+  const locale = await getLocale()
   const orgResult = await currentUserOrgId()
   if ('error' in orgResult) {
-    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(orgResult.error), locale)
   }
 
   // Dieselbe Grenze wie beim leeren Projekt: Das Beispiel ist ein Projekt wie
   // jedes andere, es faellt nur schneller vom Himmel.
   const limitError = await projectLimitError(orgResult.orgId)
   if (limitError) {
-    redirect('/dashboard?error=' + encodeURIComponent(limitError))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(limitError), locale)
   }
 
   const supabase = await createClient()
@@ -172,7 +183,7 @@ export async function createExampleProject() {
 
   if (projectError || !project) {
     if (projectError) console.error('createExampleProject (project) failed:', projectError.message)
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('exampleCreate')))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(await tErr('exampleCreate')), locale)
   }
 
   const exampleProcesses = [
@@ -193,7 +204,10 @@ export async function createExampleProject() {
 
   if (processesError) {
     console.error('createExampleProject (processes) failed:', processesError.message)
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('exampleProcesses')))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent(await tErr('exampleProcesses')),
+      locale
+    )
   }
 
   if (insertedProcesses && insertedProcesses.length > 0) {
@@ -219,11 +233,14 @@ export async function createExampleProject() {
     const { error: bufferError } = await supabase.from('inventory_buffers').insert(bufferRows)
     if (bufferError) {
       console.error('createExampleProject (buffers) failed:', bufferError.message)
-      redirect('/dashboard?error=' + encodeURIComponent(await tErr('exampleBuffers')))
+      redirectLocalized(
+        '/dashboard?error=' + encodeURIComponent(await tErr('exampleBuffers')),
+        locale
+      )
     }
   }
 
-  redirect(`/editor/${project.id}`)
+  redirectLocalized(`/editor/${project.id}`, locale)
 }
 
 /**
@@ -253,19 +270,23 @@ export async function createExampleProject() {
  * uebernommene Projekt von dem loesen, was er gesehen hat.
  */
 export async function importDemoProject(formData: FormData) {
+  const locale = await getLocale()
   const orgResult = await currentUserOrgId()
   if ('error' in orgResult) {
-    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(orgResult.error), locale)
   }
 
   const transfer = parseSerializedTransfer(formData.get('transfer') as string | null)
   if (!transfer) {
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('demoImportUnreadable')))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent(await tErr('demoImportUnreadable')),
+      locale
+    )
   }
 
   const limitError = await projectLimitError(orgResult.orgId)
   if (limitError) {
-    redirect('/dashboard?error=' + encodeURIComponent(limitError))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(limitError), locale)
   }
 
   const defaults = await projectDefaults(orgResult.orgId, orgResult.orgName)
@@ -292,7 +313,10 @@ export async function importDemoProject(formData: FormData) {
 
   if (projectError || !project) {
     if (projectError) console.error('importDemoProject (project) failed:', projectError.message)
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('demoImportFailed')))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent(await tErr('demoImportFailed')),
+      locale
+    )
   }
 
   // Wie beim Beispielprojekt: kein .order() auf dem RETURNING — PostgREST
@@ -324,7 +348,10 @@ export async function importDemoProject(formData: FormData) {
     if (processesError) {
       console.error('importDemoProject (processes) failed:', processesError.message)
     }
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('demoImportFailed')))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent(await tErr('demoImportFailed')),
+      locale
+    )
   }
 
   const idAt = (index: number | null): string | null =>
@@ -368,7 +395,7 @@ export async function importDemoProject(formData: FormData) {
   // Browser wegraeumen soll — eine Server Action kann das nicht selbst, sie
   // laeuft nicht dort. Erst hier, nicht schon beim Absenden: Scheitert die
   // Uebernahme oben, ist der Zwischenstand noch da.
-  redirect(`/editor/${project.id}?demoImported=1`)
+  redirectLocalized(`/editor/${project.id}?demoImported=1`, locale)
 }
 
 // Loescht ein VSM samt allem, was daran haengt. Die Kindtabellen (processes,
@@ -379,9 +406,10 @@ export async function importDemoProject(formData: FormData) {
 // Unwiderruflich, deshalb die zweistufige Bestaetigung im Button (dasselbe
 // Muster wie DeleteScenarioButton, UX-Audit Phase 7a Befund #6).
 export async function deleteProject(projectId: string) {
+  const locale = await getLocale()
   const orgResult = await currentUserOrgId()
   if ('error' in orgResult) {
-    redirect('/dashboard?error=' + encodeURIComponent(orgResult.error))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(orgResult.error), locale)
   }
 
   const supabase = await createClient()
@@ -397,21 +425,21 @@ export async function deleteProject(projectId: string) {
 
   if (error) {
     console.error('deleteProject failed:', error.message)
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('projectDelete')))
+    redirectLocalized('/dashboard?error=' + encodeURIComponent(await tErr('projectDelete')), locale)
   }
 
   // count === 0 heisst: nichts getroffen. Entweder war das Projekt schon weg
   // oder der Nutzer hat keine Schreibrechte — in beiden Faellen waere ein
   // stilles "erfolgreich" eine Luege.
   if (count === 0) {
-    redirect(
-      '/dashboard?error=' +
-        encodeURIComponent(await tErr('projectNotFound'))
+    redirectLocalized(
+      '/dashboard?error=' + encodeURIComponent(await tErr('projectNotFound')),
+      locale
     )
   }
 
   revalidatePath('/dashboard')
-  redirect('/dashboard')
+  redirectLocalized('/dashboard', locale)
 }
 
 /**
