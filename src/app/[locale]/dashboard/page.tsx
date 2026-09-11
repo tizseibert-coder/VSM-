@@ -71,7 +71,7 @@ export default async function DashboardPage({
             Bild und drueckte die Identitaetsspalte auf fast null Breite — die
             Anschrift brach dann auf ein Wort je Zeile um, und der Titel lag
             unter den Knoepfen. */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             {activeOrg && profile && (
               <OrgMark logoUrl={logoUrl} name={profile.displayName} />
@@ -84,7 +84,7 @@ export default async function DashboardPage({
               {/* Eine Anschrift ist ein Wort ohne Trennstellen: Ohne
                   `break-words` schiebt eine lange Adresse die Spalte breiter,
                   als der Bildschirm ist, statt umzubrechen. */}
-              <p className="mt-1 break-words text-sm text-zinc-600">
+              <p className="mt-1 text-sm text-zinc-600">
                 {t('signedInAs', { email: claims?.email ?? '' })}
                 {activeOrg && (
                   <>
@@ -95,7 +95,7 @@ export default async function DashboardPage({
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             {staff && (
               <Link href="/admin" className={buttonSecondary}>
                 {t('admin')}
