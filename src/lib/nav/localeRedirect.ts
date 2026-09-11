@@ -1,5 +1,6 @@
 import type { Locale } from 'next-intl'
 import { redirect as navRedirect } from '@/i18n/navigation'
+import { routing } from '@/i18n/routing'
 
 /**
  * Eine Umleitung, die das Sprachpraefix mitnimmt.
@@ -31,5 +32,10 @@ import { redirect as navRedirect } from '@/i18n/navigation'
  * waere die stille Falle — englische Nutzer landeten auf deutschen Seiten.
  */
 export function redirectLocalized(href: string, locale: Locale): never {
-  return navRedirect({ href, locale })
+  // GEGENPROBE, wird unmittelbar zurueckgenommen: Die uebergebene Sprache
+  // wird verworfen und immer die Standardsprache genommen — genau der stille
+  // Rueckfall, den der englische Test fangen soll. Faellt er nicht, prueft er
+  // nichts und dieser ganze Umbau haette eine Luecke.
+  void locale
+  return navRedirect({ href, locale: routing.defaultLocale })
 }
