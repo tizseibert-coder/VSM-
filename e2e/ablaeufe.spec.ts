@@ -68,11 +68,7 @@ test.describe('mit angemeldetem Mitglied', () => {
 })
 
 test.describe('Berechtigungsgrenze', () => {
-  // GEGENPROBE, wird unmittelbar danach zurueckgenommen: Statt des fremden
-  // Kontos meldet sich hier das eigene an, das den Wertstrom sehen DARF.
-  // Der Test muss daran rot werden. Bleibt er gruen, prueft seine Zusicherung
-  // nichts und die Berechtigungsgrenze waere nur scheinbar abgedeckt.
-  test.use({ storageState: MITGLIED.sitzung })
+  test.use({ storageState: FREMD.sitzung })
 
   test('ein fremdes Konto sieht den Wertstrom nicht', async ({ page }) => {
     // Dasselbe Projekt, anderes Konto, andere Organisation. Sieht es der
