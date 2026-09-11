@@ -40,7 +40,19 @@ function convert(soffice: string, file: string, outdir: string): void {
       '--headless',
       '--norestore',
       // 59/34/76/1: Semikolon als Trenner, Anfuehrungszeichen, UTF-8, erste
-      // Tabelle. Ohne diese Angabe raet LibreOffice im Stapelbetrieb Komma.
+      // Tabelle.
+      //
+      // Zweimal, und das ist der Punkt: `--convert-to` beschreibt nur, wie
+      // geschrieben wird. Wie *gelesen* wird, steht in `--infilter`, und ohne
+      // die Angabe raet LibreOffice im Stapelbetrieb Komma. Aus der einen
+      // Kopfzeile wird dann eine einzige Zelle und aus der Zykluszeit "3,4"
+      // werden zwei Spalten — genau der Fehler, gegen den diese Datei
+      // geschrieben ist, nur eben im Test statt im Erzeugnis.
+      // Mit Gleichheitszeichen und als *ein* Argument: Getrennt uebergeben
+      // druckt soffice seine Kurzhilfe und schreibt gar nichts — was der Test
+      // als "LibreOffice nicht benutzbar" lesen und sich selbst ueberspringen
+      // wuerde.
+      '--infilter=CSV:59,34,76,1',
       '--convert-to',
       'csv:Text - txt - csv (StarCalc):59,34,76,1,,0,false,true,true',
       '--outdir',

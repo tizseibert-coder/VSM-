@@ -20,9 +20,9 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -85,7 +85,7 @@ jobs:
       PGURL_BASIS: postgresql://postgres:pruefung@localhost:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Beide Skripte wollen eine leere Datenbank und legen unterschiedliche
       # Dinge hinein — das Rechte-Skript ersetzt has_org_role() und schreibt
@@ -104,15 +104,64 @@ jobs:
       - name: Autorisierungsschicht
         run: ./supabase/tests/rechte-pruefen.sh "$PGURL_BASIS/rechte_pruefung"
 
+  tabellenprogramm:
+    name: Erhebungsbogen durch LibreOffice
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Eigener Auftrag, nicht in "Tests, Linter, Build" mit hinein: LibreOffice
+    # zu installieren dauert laenger als der ganze uebrige Auftrag, und die
+    # schnelle Rueckmeldung ist mehr wert als ein Auftrag weniger.
+    #
+    # Warum ueberhaupt: csvTemplate.libreoffice.test.ts ueberspringt sich
+    # selbst, wenn kein `soffice` da ist — und da bisher nirgends eines stand,
+    # lief er nirgends. Ein Test, der immer uebersprungen wird, meldet sich nie
+    # rot und sieht trotzdem aus wie Abdeckung. Er prueft das Einzige, was die
+    # anderen CSV-Tests nicht koennen: ob ein echtes Tabellenprogramm den
+    # Erhebungsbogen richtig oeffnet (Trennzeichen, BOM, Zeichensatz,
+    # Dezimalkomma).
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # --no-install-recommends: ohne das zieht libreoffice-calc die halbe
+      # Bueroanwendung mit, und gebraucht wird nur die Umwandlung auf der
+      # Kommandozeile.
+      - name: LibreOffice installieren
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-calc
+
+      # Der Test ueberspringt sich selbst, wenn kein brauchbares `soffice` da
+      # ist. Das ist anderswo richtig und hier falsch: In diesem Auftrag steht
+      # eines bereit, ein Ueberspringen heisst also, dass die Einrichtung
+      # kaputt ist — und wuerde sonst gruen aussehen. Genau daran ist dieser
+      # Test monatelang unbemerkt vorbeigelaufen.
+      - name: Erhebungsbogen durch LibreOffice
+        run: |
+          set -euo pipefail
+          ausgabe=$(npx vitest run src/lib/vsm/csvTemplate.libreoffice.test.ts 2>&1)
+          echo "$ausgabe"
+          if grep -q "skipped" <<<"$ausgabe"; then
+            echo "::error::Der Test hat sich uebersprungen, obwohl LibreOffice installiert ist."
+            exit 1
+          fi
+
   browser:
     name: Browsertests
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -148,9 +197,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
