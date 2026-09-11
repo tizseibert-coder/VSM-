@@ -56,6 +56,7 @@ import {
   type PdfBranding,
 } from '@/lib/org/branding'
 import { formatCount, formatDecimal, formatPlain } from '@/lib/vsm/numberFormat'
+import { deriveAvailableMinutes, shiftModelDeviation } from '@/lib/vsm/shiftModel'
 import {
   isIntervalBasis,
   parseUsageSeries,
@@ -72,6 +73,7 @@ import { CLASSIFICATION, classificationMarker, type ClassificationValue } from '
 import {
   buildKpiSummaryLines,
   buildPdfSubtitle,
+  buildPdfSubtitleLine,
   buildPdfTitle,
 } from '@/lib/vsm/pdfSummary'
 import { buildComparisonRows, type ComparisonState } from '@/lib/vsm/scenarioComparison'
@@ -103,6 +105,8 @@ import {
   importProcessesCsv,
   updateAnnualThroughput,
   updateAvailableMinutes,
+  updateShiftModel,
+  updateProjectHeader,
   updateProcess,
   reorderProcesses,
   updateProcessLane,
@@ -403,6 +407,19 @@ export default function VSMCanvas({
   const [pieceValueInput, setPieceValueInput] = useState(
     initialProject.piece_value?.toString() ?? ''
   )
+
+  // Kopfangaben: Linie, Schichtmodell, Aufnahmevermerk. Sie rechnen nichts
+  // ausser den verfuegbaren Minuten — sie sagen, worum es auf dem Blatt
+  // ueberhaupt geht, was ein Wertstrom ohne sie niemandem verraet.
+  const [lineLabelInput, setLineLabelInput] = useState(initialProject.line_label ?? '')
+  const [recordedOnInput, setRecordedOnInput] = useState(initialProject.recorded_on ?? '')
+  const [recordedByInput, setRecordedByInput] = useState(initialProject.recorded_by ?? '')
+  const [shiftCountInput, setShiftCountInput] = useState(
+    initialProject.shift_count?.toString() ?? ''
+  )
+  const [shiftMinutesInput, setShiftMinutesInput] = useState(
+    initialProject.shift_net_minutes?.toString() ?? ''
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Zoom/pan camera state: the world (canvasWidth x canvasHeight, computed
@@ -675,6 +692,23 @@ export default function VSMCanvas({
   // benutzte.
   const totalWipCount = kpis.totalWipCount
   const effectiveAvailableMinutes = liveAvailableMinutes ?? SHIFT_MINUTES
+
+  // Was das Schichtmodell ergaebe, wenn die eingetragenen Minuten nicht dazu
+  // passen. Gerechnet gegen den *live* eingetippten Wert, nicht gegen den
+  // gespeicherten: Der Hinweis soll beim Tippen erscheinen und nicht erst nach
+  // dem Speichern.
+  const shiftDeviation = useMemo(() => {
+    const parse = (raw: string) => {
+      const trimmed = raw.trim()
+      if (trimmed === '') return null
+      const n = Number(trimmed.replace(',', '.'))
+      return Number.isFinite(n) && n > 0 ? n : null
+    }
+    return shiftModelDeviation(effectiveAvailableMinutes, {
+      shiftCount: parse(shiftCountInput),
+      netMinutesPerShift: parse(shiftMinutesInput),
+    })
+  }, [effectiveAvailableMinutes, shiftCountInput, shiftMinutesInput])
   // Each caption names the divisor it actually used. Lead time divides by the
   // *departure* rate (the smaller of Ausbringung and Kundenbedarf), takt by the
   // customer demand — naming both prevents the confusion that produced the old
@@ -1033,11 +1067,42 @@ export default function VSMCanvas({
         pdf.line(margin, margin + 40, pageWidth - margin, margin + 40)
       }
 
+      // Kopfangaben auf derselben Zeile wie der Zustand: Zwischen Untertitel
+      // und Trennlinie liegen acht Punkt, eine zweite Zeile passte dort nicht
+      // hinein, ohne das ganze Blatt nach unten zu schieben. Was nicht
+      // ausgefuellt ist, faellt weg — siehe buildPdfSubtitleLine.
+      const shiftFact =
+        project.shift_count && project.shift_net_minutes
+          ? tPdf('shiftModel', {
+              count: project.shift_count,
+              minutes: formatCount(Number(project.shift_net_minutes), locale),
+            })
+          : null
+      // Datum oder Name genuegt: Wer nur "T. Seibert" eingetragen hat, soll ihn
+      // auf dem Blatt wiederfinden, statt dass die Angabe an einem fehlenden
+      // Datum scheitert.
+      const recordedFact =
+        project.recorded_on || project.recorded_by
+          ? tPdf('recordedOn', {
+              date: project.recorded_on
+                ? new Date(project.recorded_on).toLocaleDateString(locale)
+                : '',
+              by: project.recorded_by ?? '',
+            })
+              // Fehlt eine der beiden Angaben, laesst die Vorlage eine Luecke:
+              // "Aufgenommen  T. Seibert" mit zwei Leerzeichen.
+              .replace(/\s+/g, ' ')
+              .trim()
+          : null
+
       drawHeader(
-        buildPdfSubtitle(scenarioName, {
-          currentState: tPdf('currentState'),
-          futureState: (name) => tPdf('futureState', { name }),
-        })
+        buildPdfSubtitleLine(
+          buildPdfSubtitle(scenarioName, {
+            currentState: tPdf('currentState'),
+            futureState: (name) => tPdf('futureState', { name }),
+          }),
+          [project.line_label, shiftFact, recordedFact]
+        )
       )
 
       // --- Diagramm -------------------------------------------------------
@@ -1592,6 +1657,62 @@ export default function VSMCanvas({
     })
   }
 
+  // Ein vollstaendiges Schichtmodell rechnet die verfuegbaren Minuten aus und
+  // schreibt sie mit; ein unvollstaendiges laesst sie stehen. Sie auf einen
+  // Vorgabewert zurueckzusetzen, weil jemand die Schichtzahl leert, waere eine
+  // stille Aenderung an der Taktzeit und damit an jeder Kennzahl.
+  function handleShiftModelBlur() {
+    const parse = (raw: string) => {
+      const trimmed = raw.trim()
+      if (trimmed === '') return null
+      const n = Number(trimmed.replace(',', '.'))
+      return Number.isFinite(n) && n > 0 ? n : null
+    }
+    const model = {
+      shiftCount: parse(shiftCountInput),
+      netMinutesPerShift: parse(shiftMinutesInput),
+    }
+    setError(null)
+
+    const derived = deriveAvailableMinutes(model)
+    if (derived !== null) setAvailableMinutesInput(String(derived))
+    mutate((st) => vsmOperations.updateShiftModel(st, model))
+    if (isDemo) return
+
+    startTransition(async () => {
+      try {
+        await updateShiftModel(project.id, model)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
+      }
+    })
+  }
+
+  function handleHeaderBlur() {
+    setError(null)
+    mutate((st) =>
+      vsmOperations.updateProjectHeader(st, {
+        lineLabel: lineLabelInput,
+        recordedOn: recordedOnInput,
+        recordedBy: recordedByInput,
+      })
+    )
+    if (isDemo) return
+    startTransition(async () => {
+      try {
+        await updateProjectHeader(project.id, {
+          lineLabel: lineLabelInput,
+          recordedOn: recordedOnInput,
+          recordedBy: recordedByInput,
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('errorSaving'))
+        router.refresh()
+      }
+    })
+  }
+
   function handlePieceValueBlur() {
     const trimmed = pieceValueInput.trim()
     const parsed = trimmed === '' ? null : Number(trimmed)
@@ -1722,6 +1843,79 @@ export default function VSMCanvas({
             Exitrate is derived from Jahresbedarf, so changing Jahresbedarf
             deliberately changes PLT — that's the formula working correctly,
             not a bug. */}
+        {/* Der Kopf des Blatts. Ein Wertstrom ohne diese Angaben zeigt Prozesse
+            und Zahlen, sagt aber nicht, welche Linie gemeint ist, gegen welches
+            Schichtmodell die Taktzeit rechnet und ob die Aufnahme von letzter
+            Woche oder aus dem letzten Jahr stammt — eine Wertstromaufnahme ist
+            ein datierter Befund, keine Dauerwahrheit. Steht vor den
+            Kennzahleneingaben, weil es sie einordnet. */}
+        <div className="mb-4 flex flex-wrap items-end gap-x-6 gap-y-2 border-b border-zinc-100 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="line-label" className="text-sm text-zinc-600">
+              {t('lineLabelLabel')}
+            </label>
+            <input
+              id="line-label"
+              value={lineLabelInput}
+              onChange={(e) => setLineLabelInput(e.target.value)}
+              onBlur={handleHeaderBlur}
+              placeholder={t('lineLabelPlaceholder')}
+              className="w-44 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="shift-count" className="text-sm text-zinc-600">
+              <TermTooltip term="shiftModel">{t('shiftModelLabel')}</TermTooltip>
+            </label>
+            <input
+              id="shift-count"
+              type="number"
+              min={1}
+              value={shiftCountInput}
+              onChange={(e) => setShiftCountInput(e.target.value)}
+              onBlur={handleShiftModelBlur}
+              placeholder={t('shiftCountPlaceholder')}
+              className="w-16 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+              aria-label={t('shiftCountAria')}
+            />
+            <span className="text-sm text-zinc-500">×</span>
+            <input
+              id="shift-minutes"
+              type="number"
+              min={1}
+              value={shiftMinutesInput}
+              onChange={(e) => setShiftMinutesInput(e.target.value)}
+              onBlur={handleShiftModelBlur}
+              placeholder={t('shiftMinutesPlaceholder')}
+              className="w-20 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+              aria-label={t('shiftMinutesAria')}
+            />
+            <span className="text-sm text-zinc-500">{t('unitMin')}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="recorded-on" className="text-sm text-zinc-600">
+              {t('recordedOnLabel')}
+            </label>
+            <input
+              id="recorded-on"
+              type="date"
+              value={recordedOnInput}
+              onChange={(e) => setRecordedOnInput(e.target.value)}
+              onBlur={handleHeaderBlur}
+              className="rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+            <input
+              id="recorded-by"
+              value={recordedByInput}
+              onChange={(e) => setRecordedByInput(e.target.value)}
+              onBlur={handleHeaderBlur}
+              placeholder={t('recordedByPlaceholder')}
+              aria-label={t('recordedByLabel')}
+              className="w-36 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-2">
             <label htmlFor="throughput" className="text-sm text-zinc-600">
@@ -1752,6 +1946,14 @@ export default function VSMCanvas({
               placeholder={t('availableMinutesPlaceholder')}
               className="w-24 rounded-control border border-zinc-300 px-2 py-1.5 text-sm"
             />
+            {/* Von Hand abzuweichen ist erlaubt — eine gemessene Nettozeit
+                schlaegt das Modell. Es soll nur niemandem entgehen, deshalb ein
+                Hinweis und keine stille Korrektur an einer der beiden Angaben. */}
+            {shiftDeviation !== null && (
+              <span className="text-xs text-amber-700">
+                {t('shiftModelDeviation', { derived: formatCount(shiftDeviation, locale) })}
+              </span>
+            )}
           </div>
           {/* Der eine fehlende Faktor: Ohne ihn bleibt der Bestand eine
               Stueckzahl, mit ihm wird er zu Geld, das im Regal liegt. Steht

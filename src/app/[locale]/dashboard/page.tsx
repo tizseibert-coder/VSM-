@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { SITE_NAME } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
-import { signOut, createProject, createExampleProject, switchOrg } from './actions'
+import { signOut, createExampleProject, switchOrg } from './actions'
 import { openBillingPortal } from '@/app/[locale]/pricing/actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
@@ -68,7 +68,13 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="flex items-start justify-between gap-4">
+        {/* Am Telefon uebereinander, ab sm nebeneinander. Die Knopfreihe stand
+            auf `shrink-0` und weigerte sich damit zu schrumpfen: Bei vier
+            Knoepfen (Verwaltung, Firma, Team, Abmelden) lief sie rechts aus dem
+            Bild und drueckte die Identitaetsspalte auf fast null Breite — die
+            Anschrift brach dann auf ein Wort je Zeile um, und der Titel lag
+            unter den Knoepfen. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             {activeOrg && profile && (
               <OrgMark logoUrl={logoUrl} name={profile.displayName} />
@@ -78,7 +84,10 @@ export default async function DashboardPage({
                 {SITE_NAME}
               </p>
               <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
-              <p className="mt-1 text-sm text-zinc-600">
+              {/* Eine Anschrift ist ein Wort ohne Trennstellen: Ohne
+                  `break-words` schiebt eine lange Adresse die Spalte breiter,
+                  als der Bildschirm ist, statt umzubrechen. */}
+              <p className="mt-1 break-words text-sm text-zinc-600">
                 {t('signedInAs', { email: claims?.email ?? '' })}
                 {activeOrg && (
                   <>
@@ -89,7 +98,7 @@ export default async function DashboardPage({
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {staff && (
               <Link href="/admin" className={buttonSecondary}>
                 {t('admin')}
@@ -161,12 +170,24 @@ export default async function DashboardPage({
                 {t(`tier${plan.tier}`)}
               </span>
               <span className="text-sm text-zinc-600">
+                {/* Drei Faelle, nicht zwei. „2 von 1 Wertstroemen" ist
+                    rechnerisch richtig und liest sich wie ein Tippfehler:
+                    „X von Y" verspricht, dass X hineinpasst. Ueber der Grenze
+                    zu liegen ist erlaubt (Durchsetzung aus, Grenze
+                    nachtraeglich gesenkt, Tarif ausgelaufen) und braucht
+                    deshalb einen eigenen Satz statt einer Zahl, die man
+                    zweimal liest. */}
                 {usage.projects.limit === null
                   ? t('planUsageUnlimited', { used: usage.projects.used })
-                  : t('planUsage', {
-                      used: usage.projects.used,
-                      limit: usage.projects.limit,
-                    })}
+                  : usage.projects.used > usage.projects.limit
+                    ? t('planUsageOver', {
+                        used: usage.projects.used,
+                        limit: usage.projects.limit,
+                      })
+                    : t('planUsage', {
+                        used: usage.projects.used,
+                        limit: usage.projects.limit,
+                      })}
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -192,15 +213,14 @@ export default async function DashboardPage({
         )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <form action={createProject} className="flex min-w-0 items-center gap-2">
-            <input
-              name="name"
-              placeholder={t('newProjectPlaceholder')}
-              required
-              className="w-full rounded-control border border-zinc-300 px-3 py-2 text-sm sm:w-72"
-            />
-            <SubmitButton className={buttonPrimary}>{t('create')}</SubmitButton>
-          </form>
+          {/* Fuehrt auf den Anlegeschritt statt sofort anzulegen: Wer einen
+              Wertstrom aufnimmt, traegt dort erst die Kopfdaten ein und nimmt
+              den Erhebungsbogen mit, bevor die leere Zeichenflaeche kommt. Das
+              Namensfeld ist damit hier weggefallen — es steht jetzt als erstes
+              Feld auf der Anlegeseite. */}
+          <Link href="/dashboard/new" className={buttonPrimary}>
+            {t('create')}
+          </Link>
 
           {/* Solange die Liste leer ist, traegt der Leerzustand darunter diese
               Handlung als Primaerknopf. Zweimal dasselbe Angebot auf einem

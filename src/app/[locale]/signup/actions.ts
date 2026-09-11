@@ -2,22 +2,29 @@
 
 import { getLocale, getTranslations } from 'next-intl/server'
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { safeNextPath } from '@/lib/nav/safeNextPath'
 import { ATTRIBUTION_COOKIE, parseAttribution } from '@/lib/crm/attribution'
 import { advanceStage, captureLead, recordLeadEvent } from '@/lib/crm/leads'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 export async function signup(formData: FormData) {
+  const locale = await getLocale()
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const orgName = (formData.get('orgName') as string | null)?.trim()
 
   if (!email || !password) {
-    redirect('/signup?error=' + encodeURIComponent(await tErr('credentialsRequired')))
+    redirectLocalized(
+      '/signup?error=' + encodeURIComponent(await tErr('credentialsRequired')),
+      locale
+    )
   }
   if (password.length < 8) {
-    redirect('/signup?error=' + encodeURIComponent('Passwort muss mindestens 8 Zeichen haben.'))
+    redirectLocalized(
+      '/signup?error=' + encodeURIComponent('Passwort muss mindestens 8 Zeichen haben.'),
+      locale
+    )
   }
 
   const supabase = await createClient()
@@ -28,7 +35,7 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
-    redirect('/signup?error=' + encodeURIComponent(error.message))
+    redirectLocalized('/signup?error=' + encodeURIComponent(error.message), locale)
   }
 
   // Der Uebergang vom Interessenten zum Nutzer. Wer ueber eine Anzeige kam,
@@ -48,11 +55,11 @@ export async function signup(formData: FormData) {
   // Branch on the session explicitly instead of assuming success means
   // an active login — this is the exact gap found earlier in LeanPulse.
   if (!data.session) {
-    redirect('/signup/check-email')
+    redirectLocalized('/signup/check-email', locale)
   }
 
   // Zurueck zur Einladung, falls der Nutzer ueber einen Einladungslink kam.
-  redirect(safeNextPath(formData.get('next') as string | null) ?? '/dashboard')
+  redirectLocalized(safeNextPath(formData.get('next') as string | null) ?? '/dashboard', locale)
 }
 
 /**

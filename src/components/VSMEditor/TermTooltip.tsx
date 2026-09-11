@@ -16,8 +16,14 @@ export function TermTooltip({ term, children }: { term: GlossaryKey; children: R
   const tooltipId = useId()
   const entry = { term: t(`${term}.term`), definition: t(`${term}.definition`) }
 
+  // `flex-wrap`, damit das Abzeichen in die naechste Zeile rutschen darf. Ohne
+  // das kann ein `inline-flex` seinen Inhalt gar nicht umbrechen —
+  // "Wertschoepfungsanteil" samt Abzeichen brauchte 155 px in einer 128 px
+  // breiten Kennzahlenkachel und schob die Demo-Seite bei 320 px aus dem Bild.
+  // Die Kachel raeumt der Beschriftung ausdruecklich zwei Zeilen ein; dieses
+  // eine Wort verhinderte, dass sie genutzt werden.
   return (
-    <span className="relative inline-flex items-center gap-1">
+    <span className="relative inline-flex flex-wrap items-center gap-1 hyphens-auto break-words">
       {children}
       {/* Visible badge stays a compact 16px circle (fits inline in running
           text/labels); the actual tap/click target is widened to ~44px via

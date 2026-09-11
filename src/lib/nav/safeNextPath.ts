@@ -1,3 +1,5 @@
+import { routing } from '@/i18n/routing'
+
 /**
  * Prueft einen `next`-Parameter, bevor er in ein redirect() geht.
  *
@@ -27,6 +29,16 @@ export function safeNextPath(value: string | null | undefined): string | null {
   // "//host" und "/\host" sehen wie Pfade aus, werden vom Browser aber als
   // absolute URL zu einem fremden Host gelesen.
   if (candidate.startsWith('//') || candidate.startsWith('/\\')) return null
+
+  // Ein schon vorhandenes Sprachpraefix muss weg, denn der Aufrufer setzt
+  // seines davor (redirectLocalized). Ohne das wuerde
+  // /de/login?next=/de/dashboard auf "/de/de/dashboard" hinauslaufen — kein
+  // Sicherheitsloch, aber eine tote Seite. Eigene Links erzeugen `next`
+  // ohnehin ohne Praefix; das faengt den gebastelten Fall ab.
+  for (const locale of routing.locales) {
+    if (candidate === `/${locale}`) return '/'
+    if (candidate.startsWith(`/${locale}/`)) return candidate.slice(locale.length + 1)
+  }
 
   return candidate
 }

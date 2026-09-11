@@ -1,0 +1,48 @@
+# Konfiguration der lokalen Supabase-Instanz — ausschliesslich fuer die
+# Browsertests der angemeldeten Seiten.
+#
+# Sie beschreibt *nicht* die Produktion. vsm-builder-prod wird ueber das
+# Supabase-Dashboard und die Migrationen in diesem Verzeichnis gepflegt; was
+# hier steht, faehrt `supabase start` im Workflow hoch und sonst niemand.
+#
+# Die Schluessel einer lokalen Instanz sind fest und oeffentlich dokumentiert.
+# Deshalb braucht der Workflow fuer diesen Teil kein einziges Geheimnis.
+
+project_id = "taktane-e2e"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+# Produktiv laeuft Postgres 17. Die lokale Instanz zieht nach, damit die
+# CHECK-Constraints in derselben Schreibweise abgelegt werden — siehe die
+# Anmerkung zu Postgres 16 gegen 17 in supabase/README.md.
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3123"
+additional_redirect_urls = ["http://127.0.0.1:3123"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Ohne das muesste jedes Testkonto eine Bestaetigungsmail durchlaufen. In der
+# Produktion ist diese Einstellung eine Sicherheitsfrage (siehe die offene
+# Anmerkung zu "Confirm email"), hier ist sie eine Testvorrichtung.
+enable_confirmations = false
+
+[studio]
+enabled = false
+
+[storage]
+enabled = false
+
+[realtime]
+enabled = false

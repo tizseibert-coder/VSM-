@@ -149,8 +149,8 @@ Enthalten:
   und 200 kB Obergrenze ist das die billigere Rechnung; bei Bildern im
   Wertstrom waere sie es nicht.
 - `seed.sql` — die Referenzwerte des Branchenvergleichs.
-- `tests/` — die nachgebildeten fremden Objekte und das Pruefskript. Keine
-  Migrationen; siehe "Pruefen" unten.
+- `tests/` — die nachgebildeten fremden Objekte und die beiden Pruefskripte.
+  Keine Migrationen; siehe "Pruefen" unten.
 
 `20260901174003` und `20260903212855` hiessen bis zum 04.09. `20260901120000` und
 `20260903180000` — Zeitstempel, die beim Schreiben der Datei entstanden und
@@ -192,15 +192,51 @@ eine Luege ueber das Schema.
 
 ## Pruefen
 
+Zwei Skripte, zwei Fragen. Beide brauchen weder Docker noch die Supabase-CLI,
+nur ein `psql`, und beide lehnen es ab, auf eine Supabase-URL zu zeigen. Seit
+dem 11.09.2026 fahrt sie ausserdem die CI bei jedem Push
+(`.github/workflows/ci.yml`, Auftrag "Datenbank", gegen Postgres 17).
+
+**Entsteht das Schema?**
+
 ```bash
 ./supabase/tests/leere-datenbank-pruefen.sh "postgresql://postgres@/wegwerf?host=/pfad/zum/socket&port=5432"
 ```
 
-Das Skript legt die Datenbank neu an, faehrt `tests/fremde_voraussetzungen.sql`
-(nachgebildete Prisma- und Supabase-Objekte, **keine** Migration), dann alle
-Migrationen, dann den Seed, und zaehlt am Ende nach. Es braucht weder Docker
-noch die Supabase-CLI, nur ein `psql`. Auf eine Supabase-URL zu zeigen lehnt es
-ab.
+Das Skript faehrt `tests/fremde_voraussetzungen.sql` (nachgebildete Prisma- und
+Supabase-Objekte, **keine** Migration), dann alle Migrationen, dann den Seed,
+und zaehlt am Ende nach.
+
+**Erlaubt es auch das Richtige?**
+
+```bash
+./supabase/tests/rechte-pruefen.sh "postgresql://postgres@/wegwerf?host=/pfad/zum/socket&port=5432"
+```
+
+Dieselbe Kette, danach zwei weitere Dateien: `tests/fremde_rechtelogik.sql`
+ersetzt die Huelsen `has_org_role()` und `auth.uid()` durch fahrbare Fassungen
+und vergibt die GRANTs, die Supabase produktiv vergibt; `tests/rechte_pruefen.sql`
+legt zwei Firmen mit fuenf Nutzern an und prueft als `authenticated` und `anon`
+nach, was die Policies wirklich erlauben — gut drei Dutzend Pruefungen,
+darunter:
+
+- ein `viewer` liest und schreibt nicht, ein `editor` schreibt, eine `owner`
+  darf alles, was der `editor` darf, und alle drei nur bei sich,
+- ein `editor` kann seinen eigenen Prozess nicht in die fremde Firma umhaengen
+  (die WITH-CHECK-Klausel; ein reiner Lesetest sieht diese Luecke nicht),
+- ein Protokolleintrag laesst sich weder aendern noch loeschen und nicht im
+  Namen eines anderen anlegen,
+- die Branchenreferenz ist fuer Angemeldete lesbar, fuer `anon` nicht,
+- und die sieben Kindtabellen tragen alle dasselbe Muster — geprueft am
+  Katalog, weil bei acht von Hand ausgeschriebenen Policy-Bloecken ein einzelnes
+  falsch kopiertes Wort genuegt.
+
+Die Grenze dieses Tests steht im Kopf von `tests/fremde_rechtelogik.sql` und
+gehoert dazu: Die echte `has_org_role()` liegt in den Prisma-Migrationen von
+LeanPulse Industrial. Was hier geprueft wird, ist "gegeben die Rangfolge
+viewer < editor < admin, haengt die richtige Mindestrolle an der richtigen
+Operation" — nicht, dass die Rangfolge drueben so aussieht. Wer sie dort
+aendert, muss sie hier mitaendern.
 
 Stand 05.09.2026, gegen Postgres 16.13: 10 Tabellen des Baselines, 3
 Vertriebstabellen, 2 Profiltabellen, 28 Policies, 6 Referenzwerte. Spalten (alle 113), Typen, NOT-NULL-Flags, Vorgabewerte,

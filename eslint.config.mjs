@@ -12,6 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Erzeugnisse der Browsertests. Sie stehen zwar in .gitignore, aber die
+    // liest ESLint im Flat-Config-Format nicht — ohne diese Zeilen lintet er
+    // den mitgelieferten Berichts-Bundle und meldet dreitausend Probleme in
+    // fremdem Code.
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
+    "e2e/.sitzungen/**",
   ]),
 ]);
 

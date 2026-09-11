@@ -7,8 +7,10 @@
 // den Service-Role-Client laeuft, zusaetzlich die einzige Kontrolle, weil der
 // RLS umgeht.
 
-import { notFound, redirect } from 'next/navigation'
+import { getLocale } from 'next-intl/server'
+import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 export type StaffRole = 'admin' | 'sales'
 
@@ -65,7 +67,7 @@ export async function requireStaff(): Promise<Staff> {
 
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
-  if (!data?.claims?.sub) redirect('/login?next=/admin')
+  if (!data?.claims?.sub) redirectLocalized('/login?next=/admin', await getLocale())
 
   notFound()
 }

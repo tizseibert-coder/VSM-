@@ -205,7 +205,8 @@
       "process2": "Turning",
       "process3": "Milling",
       "process4": "Deburring",
-      "process5": "Assembly"
+      "process5": "Assembly",
+      "lineLabel": "Turning line 2"
     }
   },
   "Login": {
@@ -382,6 +383,10 @@
     "plt": {
       "term": "PLT (process lead time)",
       "definition": "The process lead time in days, measured on the value stream. Sizing a supermarket counts the lead time without the share this buffer itself contributes — otherwise its own size would feed into its own precondition."
+    },
+    "shiftModel": {
+      "term": "Shift model",
+      "definition": "Shifts per day times net minutes per shift, breaks excluded. It yields the available minutes per day that set the takt time. The model says more than the daily total alone: 900 minutes can be two shifts of 450 or three of 300, and in a workshop those mean quite different things. A manually entered minute figure overrides the model and is flagged as a deviation."
     }
   },
   "Editor": {
@@ -528,7 +533,18 @@
     "sizingNeedsInput": "The target size needs ADU, variation, interval and PLT before it can be worked out.",
     "sizingTarget": "Target size {target} pcs.",
     "sizingReplaces": "{current} pcs are currently sitting there as unsized stock.",
-    "sizingApply": "Use the target size"
+    "sizingApply": "Use the target size",
+    "lineLabelLabel": "Line/area",
+    "lineLabelPlaceholder": "e.g. turning line 2",
+    "shiftModelLabel": "Shift model",
+    "shiftCountPlaceholder": "2",
+    "shiftMinutesPlaceholder": "450",
+    "shiftCountAria": "Shifts per day",
+    "shiftMinutesAria": "Net minutes per shift",
+    "shiftModelDeviation": "Differs from the shift model ({derived} min)",
+    "recordedOnLabel": "Recorded",
+    "recordedByLabel": "Recorded by",
+    "recordedByPlaceholder": "by whom"
   },
   "Canvas": {
     "bottleneck": "⚠ Bottleneck",
@@ -623,7 +639,9 @@
     "footer": "Created with Taktane on {date}",
     "methodCheckHeading": "METHOD CHECK",
     "comparisonSubtitle": "Scenario comparison",
-    "comparisonNote": "All states computed against the same customer demand."
+    "comparisonNote": "All states computed against the same customer demand.",
+    "shiftModel": "{count} × {minutes} min",
+    "recordedOn": "Recorded {date} {by}"
   },
   "CanvasLoader": {
     "loading": "Loading the map…"
@@ -673,8 +691,7 @@
     "team": "Team",
     "signOut": "Sign out",
     "organisation": "Organisation:",
-    "newProjectPlaceholder": "New project, e.g. Assembly X",
-    "create": "Create",
+    "create": "New value stream",
     "loadExample": "Load example VSM",
     "emptyTitle": "Start with the example VSM",
     "emptyBody": "A machine shop with five processes, inventory and calculated metrics. Change a cycle time and watch lead time and takt time respond.",
@@ -691,7 +708,7 @@
     "progressNoteProcesses": "No processes yet: neither lead time nor takt time can be calculated before that.",
     "progressNoteBuffers": "No inventory yet: lead time can only be calculated after that.",
     "progressNoteScenario": "No scenario yet: only the comparison shows what a change actually achieves.",
-    "deleteConfirm": "Really delete “{name}”?",
+    "deleteConfirm": "Really delete?",
     "delete": "Delete",
     "admin": "Admin",
     "tierFREE": "Free",
@@ -708,7 +725,35 @@
     "demoImportBody": "“{name}” with {count} stations. So far it only lives in this browser. Take it over and it belongs to your account — the local copy is then cleared.",
     "demoImportAccept": "Take it over",
     "demoImportDiscard": "Discard",
-    "manageBilling": "Manage subscription"
+    "manageBilling": "Manage subscription",
+    "planUsageOver": "{used} value streams, {limit} included in your plan"
+  },
+  "NewProject": {
+    "back": "← Back to overview",
+    "title": "New value stream",
+    "intro": "Enter what your data sheet says. Everything but the name can be added later on the canvas.",
+    "nameHeading": "Name",
+    "nameLabel": "What should the value stream be called?",
+    "namePlaceholder": "e.g. Turning shop, plant 2",
+    "headerHeading": "Header",
+    "optionalHint": "All optional. They appear in the canvas header and on the PDF.",
+    "lineLabel": "Line or area",
+    "linePlaceholder": "e.g. turning line 2",
+    "shiftCountLabel": "Shifts per day",
+    "shiftMinutesLabel": "Net minutes per shift",
+    "recordedOnLabel": "Recorded on",
+    "recordedByLabel": "Recorded by",
+    "recordedByPlaceholder": "Name",
+    "frameHeading": "Frame data",
+    "frameHint": "These set the takt time and the tied-up capital. Without them the editor draws but does not yet calculate.",
+    "annualDemandLabel": "Annual demand (pieces)",
+    "pieceValueLabel": "Value per piece",
+    "currencyLabel": "Currency",
+    "sheetHeading": "The data sheet",
+    "sheetBody": "You record the stations with cycle time, changeover, OEE, operators and stock at the line. Download the sheet as a spreadsheet, fill it in and import it in the editor — or print it for the clipboard.",
+    "sheetDownload": "Download sheet for Excel",
+    "sheetPrint": "View for printing",
+    "submit": "Create value stream"
   },
   "Team": {
     "title": "Team",
@@ -875,7 +920,8 @@
     "demoImportFailed": "The value stream from the demo could not be imported.",
     "portalNotOwner": "Only owners can manage the subscription.",
     "portalNoCustomer": "This organisation has no Stripe subscription yet.",
-    "portalFailed": "Account management could not be opened. Please try again."
+    "portalFailed": "Account management could not be opened. Please try again.",
+    "csvImportIncomplete": "The import did not complete. Please try again."
   },
   "DataSheet": {
     "metaTitle": "Value stream data collection sheet",

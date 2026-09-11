@@ -1,7 +1,7 @@
 'use server'
 
-import { getTranslations } from 'next-intl/server'
-import { redirect } from 'next/navigation'
+import type { Locale } from 'next-intl'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   updateAnnualThroughput,
@@ -12,6 +12,7 @@ import {
   updatePitchMinutes,
   updateKaizenNote,
 } from '../actions'
+import { redirectLocalized } from '@/lib/nav/localeRedirect'
 
 // Thin FormData-parsing wrappers so the wizard's Server-Component forms can
 // bind straight to projectId/scenarioId without needing client JS — same
@@ -23,8 +24,19 @@ import {
 // page — the wizard had no save feedback at all before, silently redirecting
 // back to the same question after a submit made it unclear whether anything
 // actually happened.
-function backToQuestion(projectId: string, scenarioId: string, questionId: number): never {
-  redirect(`/editor/${projectId}/future-state/${questionId}?scenario=${scenarioId}&saved=1`)
+// Die Sprache wird durchgereicht statt hier geholt: Diese Funktion kehrt
+// nie zurueck und darf deshalb nicht `async` werden — ein Aufrufer, der das
+// `await` vergaesse, wuerde stillschweigend weiterlaufen statt umzuleiten.
+function backToQuestion(
+  projectId: string,
+  scenarioId: string,
+  questionId: number,
+  locale: Locale
+): never {
+  redirectLocalized(
+    `/editor/${projectId}/future-state/${questionId}?scenario=${scenarioId}&saved=1`,
+    locale
+  )
 }
 
 function parsePositiveNumber(value: FormDataEntryValue | null): number | null {
@@ -38,7 +50,7 @@ export async function submitTaktTime(projectId: string, scenarioId: string, form
   if (availableMinutesPerDay !== null) {
     await updateAvailableMinutes(projectId, availableMinutesPerDay)
   }
-  backToQuestion(projectId, scenarioId, 1)
+  backToQuestion(projectId, scenarioId, 1, await getLocale())
 }
 
 // Shared by Q2 (terminal buffer) and Q3/Q4 (internal connections) — a
@@ -59,7 +71,7 @@ export async function submitBuffer(
   // doesn't ask for a WIP value at all and Number(null) would be 0 anyway.
   const wipCount = Number(formData.get('wipCount')) || 0
   await setBufferWip(projectId, scenarioId, { fromProcessId, toProcessId, wipCount, bufferType })
-  backToQuestion(projectId, scenarioId, questionId)
+  backToQuestion(projectId, scenarioId, questionId, await getLocale())
 }
 
 // Sets processId as the pacemaker without disturbing its other fields —
@@ -80,22 +92,22 @@ export async function submitPacemaker(projectId: string, scenarioId: string, for
     isPacemaker: true,
     classification: proc.classification,
   })
-  backToQuestion(projectId, scenarioId, 5)
+  backToQuestion(projectId, scenarioId, 5, await getLocale())
 }
 
 export async function submitHeijunka(projectId: string, scenarioId: string, processId: string, formData: FormData) {
   await updateHasHeijunka(projectId, processId, formData.get('hasHeijunka') === 'on')
-  backToQuestion(projectId, scenarioId, 6)
+  backToQuestion(projectId, scenarioId, 6, await getLocale())
 }
 
 export async function submitPitch(projectId: string, scenarioId: string, formData: FormData) {
   await updatePitchMinutes(projectId, parsePositiveNumber(formData.get('pitchMinutes')))
-  backToQuestion(projectId, scenarioId, 7)
+  backToQuestion(projectId, scenarioId, 7, await getLocale())
 }
 
 export async function submitKaizenNote(projectId: string, scenarioId: string, processId: string, formData: FormData) {
   await updateKaizenNote(projectId, processId, formData.get('kaizenNote') as string | null)
-  backToQuestion(projectId, scenarioId, 8)
+  backToQuestion(projectId, scenarioId, 8, await getLocale())
 }
 
 // Fehlermeldungen der Actions landen ueber ?error= in der Oberflaeche und

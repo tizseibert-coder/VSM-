@@ -13,6 +13,13 @@ import { SITE_NAME } from '@/lib/seo/site'
  * darunter die drei Kennzahlen, die daraus gerechnet werden. Bewusst kein
  * Bildschirmfoto — das veraltet beim naechsten Designwechsel still, waehrend
  * diese Formen bleiben.
+ *
+ * Die Strichzeichnungen stehen als `<img>` und nicht als `next/image` da:
+ * Dieses Bild rendert Satori (ueber `ImageResponse`), und das kennt nur ein
+ * knappes HTML-Teilstueck. An dieser Stelle standen zwei
+ * `eslint-disable`-Zeilen fuer `@next/next/no-img-element` — die Regel gehoert
+ * zum Satz `recommended`, dieses Projekt laedt aber `core-web-vitals`, und
+ * damit waren beide tot und meldeten sich selbst als Warnung.
  */
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
@@ -166,7 +173,6 @@ export default async function OpengraphImage({
             {STATIONS.map((station, i) => (
               <div key={station.name} style={{ display: 'flex', alignItems: 'center' }}>
                 {i > 0 && (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={connectorSrc()} width={104} height={104} alt="" />
                 )}
                 <div
@@ -210,7 +216,6 @@ export default async function OpengraphImage({
           </div>
 
           <div style={{ display: 'flex', marginTop: 22 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={ladderSrc()} width={808} height={52} alt="" />
           </div>
 
