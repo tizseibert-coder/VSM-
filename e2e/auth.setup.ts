@@ -2,6 +2,7 @@ import { expect, test as setup } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { ALLE_KONTEN, type Konto } from './fixtures/konten'
+import { DASHBOARD } from './fixtures/adressen'
 
 /**
  * Meldet jedes Testkonto an und legt den Sitzungsstand ab.
@@ -22,19 +23,10 @@ async function anmelden(page: import('@playwright/test').Page, konto: Konto) {
   // etwas mit den Konten nicht, und das soll hier auffallen und nicht erst
   // im naechsten Test als raetselhafte leere Seite.
   //
-  // Das Sprachpraefix ist hier bewusst freigestellt, und das ist keine
-  // Bequemlichkeit: login/actions.ts leitet mit dem nackten `redirect` aus
-  // next/navigation um, landet also auf "/dashboard" statt "/de/dashboard" —
-  // obwohl routing.ts `localePrefix: 'always'` setzt. Der Kommentar in
-  // src/i18n/navigation.ts kennt diese Schuld und nimmt an, die Middleware
-  // fange den fehlenden Praefix mit einem zusaetzlichen Sprung ab. Im Lauf
-  // gemessen tut sie das nicht: Die Adresse bleibt ueber sechzig Abfragen
-  // hinweg "/dashboard". Elf Action-Dateien haengen daran; das ist ein
-  // eigener Umbau und nicht Aufgabe dieses Testaufbaus.
-  await expect(page, `Anmeldung von ${konto.email} blieb haengen`).toHaveURL(
-    /\/(de\/)?dashboard/,
-    { timeout: 30_000 }
-  )
+  // Das Sprachpraefix ist freigestellt — warum, steht in fixtures/adressen.ts.
+  await expect(page, `Anmeldung von ${konto.email} blieb haengen`).toHaveURL(DASHBOARD, {
+    timeout: 30_000,
+  })
 
   mkdirSync(dirname(konto.sitzung), { recursive: true })
   await page.context().storageState({ path: konto.sitzung })

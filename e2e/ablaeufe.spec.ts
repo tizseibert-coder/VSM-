@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { buildCsvTemplate } from '../src/lib/vsm/csvTemplate'
 import { FREMD, MITGLIED, PROJEKT_EIGEN } from './fixtures/konten'
+import { EDITOR } from './fixtures/adressen'
 
 /**
  * Die Wege, die zuletzt gebaut und nie im echten Editor gesehen wurden.
@@ -19,8 +20,9 @@ test.describe('mit angemeldetem Mitglied', () => {
     await page.fill('#np-demand', '50000')
     await page.getByRole('button', { name: /Wertstrom anlegen/i }).click()
 
-    // Landet auf der Zeichenflaeche.
-    await expect(page).toHaveURL(/\/de\/editor\//, { timeout: 30_000 })
+    // Landet auf der Zeichenflaeche. Das Sprachpraefix ist freigestellt —
+    // warum, steht in fixtures/adressen.ts.
+    await expect(page).toHaveURL(EDITOR, { timeout: 30_000 })
 
     // Die Kopfdaten stehen dort — das ist der Teil, den ich gebaut und nie
     // im laufenden Editor gesehen habe.
