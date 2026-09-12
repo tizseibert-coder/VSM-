@@ -1893,6 +1893,11 @@ export type Database = {
           last_activity_at: string
           locale: string | null
           message: string | null
+          newsletter_confirm_token_expires_at: string | null
+          newsletter_confirm_token_hash: string | null
+          newsletter_confirmed_at: string | null
+          newsletter_consent_text: string | null
+          newsletter_requested_at: string | null
           organization_id: string | null
           owner_user_id: string | null
           phone: string | null
@@ -1920,6 +1925,11 @@ export type Database = {
           last_activity_at?: string
           locale?: string | null
           message?: string | null
+          newsletter_confirm_token_expires_at?: string | null
+          newsletter_confirm_token_hash?: string | null
+          newsletter_confirmed_at?: string | null
+          newsletter_consent_text?: string | null
+          newsletter_requested_at?: string | null
           organization_id?: string | null
           owner_user_id?: string | null
           phone?: string | null
@@ -1947,6 +1957,11 @@ export type Database = {
           last_activity_at?: string
           locale?: string | null
           message?: string | null
+          newsletter_confirm_token_expires_at?: string | null
+          newsletter_confirm_token_hash?: string | null
+          newsletter_confirmed_at?: string | null
+          newsletter_consent_text?: string | null
+          newsletter_requested_at?: string | null
           organization_id?: string | null
           owner_user_id?: string | null
           phone?: string | null

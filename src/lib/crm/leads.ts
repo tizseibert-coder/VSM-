@@ -33,6 +33,7 @@ export type LeadEventKind =
   | 'project_created'
   | 'plan_change'
   | 'system'
+  | 'newsletter_confirmed'
 
 /** Postgres meldet die Verletzung eines UNIQUE-Index so. */
 const UNIQUE_VIOLATION = '23505'

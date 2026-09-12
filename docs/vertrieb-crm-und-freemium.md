@@ -118,9 +118,10 @@ der niemandem etwas wegnimmt.
 
 ## SEO und geteilte Links
 
-- `app/robots.ts` sperrt `/admin`, `/dashboard`, `/editor`, `/invite` und
-  `/auth` (je einmal ohne und einmal mit Sprachpraefix — robots.txt kennt keine
-  regulaeren Ausdruecke ausser `*` und `$`). Der Rest ist ausdruecklich offen:
+- `app/robots.ts` sperrt `/admin`, `/dashboard`, `/editor`, `/settings`,
+  `/team`, `/invite`, `/auth` und `/newsletter/confirm` (je einmal ohne und
+  einmal mit Sprachpraefix — robots.txt kennt keine regulaeren Ausdruecke
+  ausser `*` und `$`). Der Rest ist ausdruecklich offen:
   Verkaufsseite, Preise, Demo und Erhebungsbogen sind der Grund, warum es die
   Datei gibt.
 - `app/sitemap.ts` fuehrt jede oeffentliche Seite je Sprache mit
@@ -143,30 +144,67 @@ Professional 49&nbsp;€/Monat, in `messages/{de,en}.json` unter
 `app/[locale]/pricing/page.tsx`. Enterprise bleibt bei „Preis auf Anfrage" —
 die einzige Stufe, die ein Verkaufsgespräch braucht.
 
-Wichtig: Es gibt noch **keinen Checkout**. Der Knopf hinter Starter/Professional
-führt weiterhin zum Kontaktformular (`ctaContact`, jetzt „Zugang anfragen"
-statt „Angebot anfragen" — der Preis steht ja schon fest, nur die Freischaltung
-ist noch manuell). Ein Stripe-Checkout, der den Tarif in
-`organization_entitlements` automatisch setzt, ist der naechste Schritt, wenn
-sich die Preise in der Praxis bestaetigen. Die Zahlen selbst sind ein
-Vorschlag aus einer Erfahrungsregel (Selbstbedienungsschwelle in deutschen
-Mittelstandsbetrieben, keine getestete Zahlungsbereitschaft) — siehe
-`VSM Builder Wachstumskonzept`.
+**Nachtrag 07.-12.09.2026: Es gibt jetzt einen Checkout.** Der Satz oben
+("Es gibt noch keinen Checkout... ist der naechste Schritt") stimmte am
+04.09., ist seitdem aber ueberholt und stand hier zu lange unkorrigiert.
+Der Knopf hinter Starter/Professional startet ein Stripe-Checkout
+(`pricing/actions.ts`, `startCheckout()`), das je Organisation einen
+Stripe-Kunden anlegt (`vsm_billing_customers`,
+`20260907210944_vsm_billing_customers.sql`) und den Tarif automatisch in
+`organization_entitlements` setzt — der Webhook
+(`app/api/webhooks/stripe/route.ts`) wertet `checkout.session.completed`
+und jede spaetere Abo-Aenderung aus (`lib/billing/stripe.ts`,
+`resolveSubscriptionOutcome()`). Zwei Waehrungen je Tarif (CHF/EUR, siehe
+`lib/billing/currency.ts`), dazu ein Stripe-Kundenportal fuer die
+Kuendigung (`openBillingPortal()`). Enterprise bleibt „Preis auf Anfrage"
+und ohne Checkout — das ist unveraendert richtig, siehe oben. Die Zahlen
+selbst bleiben ein Vorschlag aus einer Erfahrungsregel (siehe
+`VSM Builder Wachstumskonzept`), das aendert der Checkout nicht.
 
-## Was bewusst fehlt
+## Mailversand (12.09.2026)
 
-- **Double-Opt-in.** Das Formular speichert eine einfache Einwilligung mit
-  Wortlaut. Wer daraus einen Newsletter machen will, braucht den
-  Bestaetigungsschritt — und dafuer einen Mailversand, den es hier nicht gibt.
-- **Mailversand ueberhaupt.** Der Verwaltungsbereich schreibt keine Mails; er
-  zeigt Adressen an. Eine Vorlagenverwaltung ohne Versandweg waere ein
-  Formular, das nichts tut.
+Ebenfalls nachgetragen: **Mailversand gibt es jetzt**, ueber Resend
+(`lib/mail/`). `lib/mail/send.ts` ist der einzige Weg, ueber den die
+Anwendung eine Mail verschickt — bewusst allgemein gehalten (Betreff, HTML,
+Text; kein Wissen ueber Interessenten oder irgendeine andere fachliche
+Sache), damit der naechste Bedarf (eine Einladung per Mail statt des
+bisherigen Kopierlinks, ein Passwort-Reset-Hinweis) denselben Weg nutzt statt
+einen zweiten zu bauen.
+
+Erste und bislang einzige Anwendung: der **Newsletter-Doppel-Opt-in**
+(`lib/crm/newsletter.ts`). Das Kontaktformular hat ein zweites, eigenes
+Kaestchen neben der bestehenden Einwilligung ("Ich moechte zusaetzlich den
+Newsletter erhalten") — getrennt, weil beide rechtlich verschiedene Dinge
+sind: Die bestehende Einwilligung deckt das Speichern und Beantworten der
+Anfrage, nicht Werbung. Wer es ankreuzt, bekommt eine Mail mit einem
+Bestaetigungslink (Token nur gehasht in der Datenbank, dieselbe Bauart wie
+`organization_invitations`); erst der Klick zaehlt als Einwilligung
+(`newsletter_confirmed_at`), nicht das Ankreuzen selbst
+(`newsletter_requested_at`) — sonst koennte jeder eine fremde Adresse
+eintragen. Migration: `20260912120000_vsm_newsletter_optin.sql`.
+
+Ohne `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (siehe `.env.example`) speichert
+das Formular den Interessenten trotzdem, nur ohne Bestaetigungsmail —
+dieselbe Linie wie ein fehlender Stripe-Schluessel: Eine unvollstaendige
+Konfiguration darf den Rest nicht mitreissen.
+
+**Was hier bewusst nicht mitkommt:** Der eigentliche Newsletter-*Versand*
+(Inhalte, Vorlagenverwaltung, ein Abmeldelink in jeder einzelnen Ausgabe) —
+`lib/mail/` liefert nur den Versandweg und den Opt-in dafuer. Eine
+Vorlagenverwaltung ohne fortlaufenden Versand waere ein Formular, das nichts
+tut; das ist eine eigene Entscheidung, wenn der Bestand an bestaetigten
+Adressen das rechtfertigt.
+
+## Was weiterhin bewusst fehlt
+
 - **Ein Spiegel von `auth.users`.** Braeuchte einen zweiten Trigger auf einer
   fremden Tabelle — genau die Konstellation, die am 16.08. die Registrierung
   aller drei Produkte lahmgelegt hat. Die Nutzerliste kommt deshalb aus der
   Admin-API.
-- **Bezahlvorgang.** Tarife vergibt der Betreiber von Hand. Ein
-  Zahlungsanbieter ist eine eigene Entscheidung mit eigenen Vertragsfragen.
+- **Bezahlvorgang fuer Enterprise.** Starter und Professional laufen seit dem
+  Checkout ueber Stripe (siehe oben); Enterprise bleibt „Preis auf Anfrage"
+  und der Tarif wird weiterhin von Hand unter `/admin/organizations`
+  vergeben — dort auch BETA und jede sonstige Ausnahme.
 - **Angaben zum Hosting auf der Preisseite.** Aus demselben Grund, aus dem sie
   auf der Startseite fehlen: Sie brauchen belastbare Angaben zu Standort,
   Unterauftragsverarbeitern und AVV. Eine Andeutung waere schlimmer als

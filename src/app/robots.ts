@@ -10,7 +10,10 @@ import { siteUrl } from '@/lib/seo/site'
  * zur Anmeldung (oder, bei `/team`, mit einer leeren Fehlerkarte — siehe
  * dessen eigene `generateMetadata` fuer den Grund), `/editor` ebenso, und
  * `/invite` traegt einen Einmal-Token in der Adresse — der gehoert in
- * keinen Index und in kein Protokoll eines Crawlers.
+ * keinen Index und in kein Protokoll eines Crawlers. `/newsletter/confirm`
+ * genauso (siehe lib/crm/newsletter.ts): Ein Link, der Google indexiert,
+ * ist ein Link, den ein Crawler anklickt und damit verbraucht, bevor der
+ * eigentliche Empfaenger dazu kommt.
  *
  * [SEO-Audit 2026-09-09, S1/S2] `/settings` und `/team` fehlten hier: Die
  * Middleware schuetzt `/settings` genauso wie `/dashboard` (siehe
@@ -28,7 +31,16 @@ import { siteUrl } from '@/lib/seo/site'
  */
 export default function robots(): MetadataRoute.Robots {
   const base = siteUrl()
-  const closed = ['/admin', '/dashboard', '/editor', '/settings', '/team', '/invite', '/auth']
+  const closed = [
+    '/admin',
+    '/dashboard',
+    '/editor',
+    '/settings',
+    '/team',
+    '/invite',
+    '/auth',
+    '/newsletter/confirm',
+  ]
 
   return {
     rules: {

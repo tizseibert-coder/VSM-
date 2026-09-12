@@ -938,7 +938,9 @@
     "errorEmailRequired": "Without an email address we cannot reply.",
     "errorEmailInvalid": "That address does not look complete. Please check it.",
     "errorConsentRequired": "Without your consent we may not store the details.",
-    "errorFailed": "The enquiry could not be saved. Please try again later."
+    "errorFailed": "The enquiry could not be saved. Please try again later.",
+    "newsletterConsent": "I would also like to receive the newsletter (occasional news about the VSM Builder). I will get a confirmation email; only clicking it counts as signing up. I can unsubscribe at any time.",
+    "newsletterThanksBody": "One more click for the newsletter: we've sent you a confirmation email."
   },
   "Pricing": {
     "metaTitle": "Pricing — Value Stream Mapping From €0",
@@ -1154,5 +1156,22 @@
     "reportFooterHint": "Appears in the footer of every exported sheet, between the date and the project name.",
     "save": "Save",
     "toTeam": "To the team"
+  },
+  "Mail": {
+    "newsletterConfirmSubject": "Please confirm your newsletter signup",
+    "newsletterConfirmTitle": "Almost there.",
+    "newsletterConfirmBody": "You signed up for the Taktane newsletter. Click the link below to confirm your signup.",
+    "newsletterConfirmButton": "Confirm signup",
+    "newsletterConfirmFooter": "If you didn't sign up, you can ignore this email — nothing happens unless you click the link."
+  },
+  "NewsletterConfirm": {
+    "confirmedTitle": "Confirmed.",
+    "confirmedBody": "Your newsletter signup is confirmed. Thank you!",
+    "alreadyBody": "This signup was already confirmed — nothing more to do.",
+    "expiredTitle": "Link expired.",
+    "expiredBody": "This confirmation link is no longer valid. Please sign up again using the form on the homepage.",
+    "invalidTitle": "Link invalid.",
+    "invalidBody": "This link is invalid or has already been used. Please sign up again using the form on the homepage.",
+    "backHome": "Back to homepage"
   }
 }

@@ -26,6 +26,9 @@ export default function LeadForm({ source = 'website' }: { source?: 'website' | 
       <div className="rounded-surface border border-brand-200 bg-brand-50 p-6">
         <p className="font-medium text-zinc-950">{t('thanksTitle')}</p>
         <p className="mt-2 text-sm leading-relaxed text-zinc-700">{t('thanksBody')}</p>
+        {state.newsletterRequested && (
+          <p className="mt-3 text-sm leading-relaxed text-zinc-700">{t('newsletterThanksBody')}</p>
+        )}
       </div>
     )
   }
@@ -103,6 +106,19 @@ export default function LeadForm({ source = 'website' }: { source?: 'website' | 
           className="mt-1 h-4 w-4 shrink-0 rounded-control border-zinc-300"
         />
         <span className="text-xs leading-relaxed text-zinc-600">{t('consent')}</span>
+      </label>
+
+      {/* Eigenes Kaestchen, nicht Teil der Einwilligung oben: Wer antworten
+          moechte, muss zustimmen; den Newsletter will nicht jeder, der
+          schreibt. Unabhaengig ankreuzbar, und die Zustimmung dafuer zaehlt
+          ohnehin erst mit dem Klick auf den Bestaetigungslink in der Mail. */}
+      <label className="mt-3 flex items-start gap-3">
+        <input
+          name="newsletter"
+          type="checkbox"
+          className="mt-1 h-4 w-4 shrink-0 rounded-control border-zinc-300"
+        />
+        <span className="text-xs leading-relaxed text-zinc-600">{t('newsletterConsent')}</span>
       </label>
 
       {state?.ok === false && (

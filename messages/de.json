@@ -938,7 +938,9 @@
     "errorEmailRequired": "Ohne E-Mail-Adresse können wir nicht antworten.",
     "errorEmailInvalid": "Diese Adresse sieht nicht vollständig aus. Bitte prüfen Sie sie.",
     "errorConsentRequired": "Ohne Ihre Einwilligung dürfen wir die Angaben nicht speichern.",
-    "errorFailed": "Die Anfrage konnte nicht gespeichert werden. Bitte versuchen Sie es später noch einmal."
+    "errorFailed": "Die Anfrage konnte nicht gespeichert werden. Bitte versuchen Sie es später noch einmal.",
+    "newsletterConsent": "Ich möchte zusätzlich den Newsletter erhalten (gelegentliche Neuigkeiten zum VSM Builder). Ich erhalte dazu eine Bestätigungsmail; erst der Klick darauf gilt als Anmeldung. Ich kann sie jederzeit wieder abbestellen.",
+    "newsletterThanksBody": "Für den Newsletter ist noch ein Klick nötig: Wir haben Ihnen eine Bestätigungsmail geschickt."
   },
   "Pricing": {
     "metaTitle": "Preise — Wertstromanalyse ab 0 €",
@@ -1154,5 +1156,22 @@
     "reportFooterHint": "Steht in der Fußzeile jedes exportierten Blatts, zwischen Datum und Projektname.",
     "save": "Speichern",
     "toTeam": "Zum Team"
+  },
+  "Mail": {
+    "newsletterConfirmSubject": "Bitte bestätigen Sie Ihre Newsletter-Anmeldung",
+    "newsletterConfirmTitle": "Fast geschafft.",
+    "newsletterConfirmBody": "Sie haben sich für den Newsletter von Taktane eingetragen. Mit einem Klick auf den folgenden Link ist die Anmeldung bestätigt.",
+    "newsletterConfirmButton": "Anmeldung bestätigen",
+    "newsletterConfirmFooter": "Wenn Sie sich nicht angemeldet haben, können Sie diese Mail ignorieren — es passiert nichts, ohne den Klick auf den Link."
+  },
+  "NewsletterConfirm": {
+    "confirmedTitle": "Bestätigt.",
+    "confirmedBody": "Die Anmeldung zum Newsletter ist bestätigt. Danke!",
+    "alreadyBody": "Diese Anmeldung war bereits bestätigt — es ist nichts weiter zu tun.",
+    "expiredTitle": "Link abgelaufen.",
+    "expiredBody": "Dieser Bestätigungslink ist nicht mehr gültig. Bitte tragen Sie sich über das Formular auf der Startseite erneut ein.",
+    "invalidTitle": "Link ungültig.",
+    "invalidBody": "Dieser Link ist ungültig oder wurde bereits verwendet. Bitte tragen Sie sich über das Formular auf der Startseite erneut ein.",
+    "backHome": "Zur Startseite"
   }
 }

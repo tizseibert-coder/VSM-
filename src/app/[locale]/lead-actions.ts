@@ -4,8 +4,12 @@ import { cookies, headers } from 'next/headers'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { ATTRIBUTION_COOKIE, parseAttribution } from '@/lib/crm/attribution'
 import { captureLead, recordLeadEvent } from '@/lib/crm/leads'
+import { requestNewsletterConfirmation } from '@/lib/crm/newsletter'
 
-export type LeadFormState = { ok: true } | { ok: false; error: string } | null
+export type LeadFormState =
+  | { ok: true; newsletterRequested: boolean }
+  | { ok: false; error: string }
+  | null
 
 /**
  * Nimmt das Kontaktformular der Verkaufsseite entgegen.
@@ -28,7 +32,7 @@ export async function submitLead(
   // Eintrag: Wer eine Fehlermeldung bekommt, weiss, dass er erkannt wurde,
   // und probiert es anders.
   if ((formData.get('website') as string | null)?.trim()) {
-    return { ok: true }
+    return { ok: true, newsletterRequested: false }
   }
 
   const email = (formData.get('email') as string | null)?.trim() ?? ''
@@ -68,6 +72,8 @@ export async function submitLead(
     return { ok: false, error: t('errorFailed') }
   }
 
+  const newsletter = Boolean(formData.get('newsletter'))
+
   await recordLeadEvent({
     leadId: result.leadId,
     kind: 'form',
@@ -78,10 +84,24 @@ export async function submitLead(
       // Die Seite, auf der das Formular stand — nicht die Landeseite des
       // ersten Besuchs, die in `landing_path` steht.
       path: (await headers()).get('referer') ?? null,
+      newsletterRequested: newsletter,
     },
   })
 
-  return { ok: true }
+  // Fehler beim Mailversand duerfen die Erfassung nicht rueckgaengig machen
+  // — der Interessent hat sein Formular abgeschickt und soll das auch so
+  // sehen. requestNewsletterConfirmation() protokolliert selbst, was
+  // gescheitert ist (fehlende Zugangsdaten oder ein Resend-Fehler).
+  if (newsletter) {
+    await requestNewsletterConfirmation({
+      leadId: result.leadId,
+      email,
+      locale,
+      consentText: t('newsletterConsent'),
+    })
+  }
+
+  return { ok: true, newsletterRequested: newsletter }
 }
 
 /** Nur bekannte Werte. `source` steht als verstecktes Feld im Formular und
