@@ -14,16 +14,16 @@ Monatskapazität  = Tageskapazität × Arbeitstage/Monat
 Load Rate        = Nachfrage/Monat ÷ Monatskapazität
 ```
 
-Ampel (Load Rate):
+Ampel (Load Rate) — **Grenzwerte vom Nutzer bestätigt (2026-09-14): der Schwellwert selbst gehört noch zur günstigeren Farbe**, also `1.00` ist die letzte grüne Stufe, `1.20` die letzte orange:
 
 | Bereich | Farbe | Bedeutung |
 |---|---|---|
 | `< 0.50` | 🔵 Blau | unterausgelastet |
-| `0.50 – 1.00` | 🟢 Grün | ok |
-| `> 1.00 – 1.20` | 🟠 Orange | Achtung |
-| `> 1.20` | 🔴 Rot | überlastet |
+| `0.50 ≤ x ≤ 1.00` | 🟢 Grün | ok |
+| `1.00 < x ≤ 1.20` | 🟠 Orange | Achtung |
+| `x > 1.20` | 🔴 Rot | überlastet |
 
-Gerechnet für alle 12 Monate; der **schlechteste Monat** bestimmt die Ampelfarbe der Linie. (Grenzfall `1.00` selbst zähle ich zu Grün, `1.20` selbst zu Orange — analog zur bestehenden Konvention in `checkCapacity`, wo "genau auf der Grenze" die günstigere Seite ist. **Bitte bestätigen, falls Excel das anders rundet.**)
+Gerechnet für alle 12 Monate; der **schlechteste Monat** bestimmt die Ampelfarbe der Linie.
 
 ---
 
@@ -47,7 +47,9 @@ Das ist zugleich der USP aus der Vorlage: Die Ampel kann als kleines Badge auf d
 
 **Verworfene Alternative:** eine von VSM losgelöste "Linie"-Entität (eigene Tabelle, eigenes Formular, kein Bezug zu `processes`). Das wäre näher am Excel-Original, verdoppelt aber Taktrate/NEE-Pflege und liefert nicht den in der Vorlage gewünschten USP. Für v1 verworfen, als spätere Option offen (z. B. für Nutzer, die CAMA ohne VSM-Diagramm nutzen wollen).
 
-Offene Frage, die ich nicht selbst entscheide: `operator_count` (parallele Bediener an einer Station) fließt heute in die reine Takt-Bottleneck-Prüfung (`capacity.ts`) ein, indem er die effektive Zykluszeit teilt. Für CAMA schlage ich vor, ihn **ebenfalls** in die Taktrate einzurechnen (`Taktrate = 60 / (cycle_time / operator_count)`), weil zwei Bediener real mehr Stück/Stunde produzieren. Bitte bestätigen — sonst zeigt CAMA an Stationen mit mehreren Bedienern eine zu pessimistische Ampel.
+**`operator_count` in der Taktrate — vom Nutzer bestätigt (2026-09-14), mit Bedingung:** Zählt nur, wenn die parallelen Arbeitsplätze **wirklich identisch** sind (flexible Linie / gleichartige Arbeitsplatzgruppen) — dann `Taktrate = 60 / (cycle_time / operator_count)`, weil jeder Arbeitsplatz unabhängig ein volles Stück fertigt. Ist das nicht der Fall (unterschiedliche Arbeitsplätze, die zufällig an derselben Prozessbox liegen), zählt `operator_count` nicht in die Taktrate.
+
+Das deckt sich exakt mit der bestehenden Definition von `operator_count` im Schema (`calculations.ts`: "each operator independently finishes a full unit") — es ist also **keine neue Regel**, sondern die Übernahme der bereits geltenden Konvention. Wichtig für die Eingabemaske: `operator_count` darf nur erhöht werden, wenn dieser Vorbedingung ("wirklich identisch") tatsächlich zutrifft — das ist heute schon so gemeint, aber nirgends im UI-Text erklärt. **Ergänzung fürs UI:** ein Hinweistext/Tooltip direkt am `operator_count`-Feld im `ProcessEditPanel`, der genau das sagt (heute steht dort nur eine nackte Zahl ohne Erklärung der Identitätsbedingung) — kleine, aber wichtige Nachschärfung, die aus dieser Planung folgt und unabhängig von CAMA Bestand hat.
 
 ---
 
@@ -73,8 +75,12 @@ ALTER TABLE public.processes
   ADD COLUMN IF NOT EXISTS shift_model smallint,              -- 1, 2 oder 3; null = nicht erfasst
   ADD COLUMN IF NOT EXISTS monthly_demand jsonb;               -- [Jan..Dez], null = nicht erfasst
 
--- projects: Arbeitstage/Monat, projektweit (ein Werk, ein Kalender)
-ALTER TABLE public.projects
+-- vsm_org_settings: Arbeitstage/Monat, firmenweiter Jahreskalender (nutzerbestätigt 2026-09-14).
+-- Nicht auf `projects`, sondern auf `vsm_org_settings` — dieselbe Tabelle, die schon
+-- default_currency/default_available_minutes als firmenweite Vorgaben trägt (orgSettings.ts).
+-- `organizations` selbst gehört Prisma/LeanPulse, nicht Taktane (siehe orgSettings.ts-Kommentar) —
+-- genau deshalb existiert `vsm_org_settings` als Taktane-eigene 1:1-Nebentabelle.
+ALTER TABLE public.vsm_org_settings
   ADD COLUMN IF NOT EXISTS capacity_workdays jsonb;             -- {"1":21,"2":20,...,"12":22}, null = Vorgabekalender
 
 -- Aktionspläne zu roten/orangen Linien (Owner/Termin — laut Vorlage "wertvoll")
@@ -93,7 +99,12 @@ CREATE TABLE public.capacity_actions (
 
 `monthly_demand` als `jsonb`-Array statt zwölf eigener Spalten oder einer Kindtabelle: eine Zeile pro Prozess bleibt lesbar, keine zusätzliche RLS-Policy nötig (erbt die von `processes`), und der Zugriff ist immer "alle 12 Monate auf einmal" — genau das Zugriffsmuster von CAMA. Nachteil, bewusst in Kauf genommen: keine SQL-seitige Aggregation "welche Linie ist im Juli rot" über Projekte hinweg. Für v1 ausreichend (Vorlage: "Synthese mehrerer Standorte" ist explizit "später").
 
-`capacity_workdays` als `jsonb` auf `projects` statt eigener Kalendertabelle: ein Kalender pro Werk/Projekt, geteilt von allen Linien darin — genau wie die Vorlage es beschreibt ("Aus Kalender"). Fehlt der Wert für einen Monat, greift ein Vorgabekalender (Konstante im Code, z. B. 21 Arbeitstage, editierbar) statt eines stillen `0`.
+`capacity_workdays` als `jsonb` auf `vsm_org_settings`, nicht auf `projects`: **ein** Jahreskalender pro Firma, gilt für alle Projekte/Linien dieser Organisation — Nutzerentscheidung 2026-09-14. Praktische Folgen dieser Wahl:
+
+- **Laden:** Die CAMA-Seite lädt den Kalender einmalig über `loadOrgProfile`/`orgSettings.ts` (wie heute schon `defaultAvailableMinutes`), nicht mehr pro Projekt — ein Join/Read weniger pro Linie, weil alle Linien einer Firma denselben Kalender teilen.
+- **Pflege:** Der Kalender wird auf der Organisations-/Settings-Seite (`src/app/[locale]/settings/page.tsx`, `settings/actions.ts`) gepflegt, analog zu den anderen `vsm_org_settings`-Feldern — **nicht** im Editor. Das ist eine kleine, bewusste UI-Ergänzung dort (12 Zahlenfelder "Arbeitstage" oder ein Kurzformular, das den Vorgabekalender vorbelegt).
+- **RLS:** `vsm_org_settings` hat schon eine Policy für "Mitglied der Organisation darf lesen/schreiben" (aus der Migration, die `default_currency` etc. eingeführt hat) — für `capacity_workdays` reicht dieselbe Policy, keine neue nötig.
+- Fehlt der Wert (keine `vsm_org_settings`-Zeile oder `capacity_workdays` null — der Normalzustand jeder bestehenden Firma), greift ein Vorgabekalender (Konstante im Code, z. B. 21 Arbeitstage/Monat) statt eines stillen `0`.
 
 ---
 
@@ -152,21 +163,34 @@ Tests zuerst (`capacityAnalysis.test.ts`), analog zum Stil von `capacity.test.ts
 
 ---
 
-## Offene Entscheidungen (bitte vor Umsetzung bestätigen)
+## Entscheidungen des Nutzers (2026-09-14)
 
-1. **Rundung an den Ampel-Grenzen** (1.00, 1.20 selbst — welche Farbe?), siehe oben.
-2. **`operator_count` in der Taktrate berücksichtigen?**, siehe oben.
-3. **Kalender projektweit** (wie geplant) oder doch organisationsweit (ein Kalender für alle Projekte einer Firma)? Projektweit ist der kleinere Eingriff und entspricht der Vorlage ("Aus Kalender" pro Werk/Linie-Kontext).
-4. **Ampel-Badge auf dem Canvas** ist der eigentliche USP, aber der aufwendigste Teil (Konva-Zeichenarbeit, Konfliktvermeidung mit dem bestehenden Engpass-Marker). Falls Zeit/Budget knapp: v1 nur als Tabelle/Seite, Badge auf der Box als v1.1 nachziehen — bitte Priorität bestätigen.
+1. **Ampel-Grenzen:** Schwellwert selbst zählt zur günstigeren Farbe (1.00 → noch grün, 1.20 → noch orange). Übernommen oben.
+2. **`operator_count` in der Taktrate:** ja, aber nur bei wirklich identischen parallelen Arbeitsplätzen (flexible Linie/gleichartige Gruppen). Übernommen oben, inkl. UI-Hinweis am Feld.
+3. **Kalender:** organisationsweit (ein Jahreskalender pro Firma), nicht projektweit. Übernommen oben — Migration und Ladepfad entsprechend geändert.
+
+## Noch offen: Frage 4, anders gefragt
+
+Die vierte Frage war zu knapp formuliert — hier konkreter:
+
+Die Ampel als **kleines farbiges Symbol direkt auf der Prozessbox im Canvas** (Punkt "2. Ampel auf der Prozessbox" oben) ist zeichnerisch der aufwendigste Teil dieses Plans — Konva-Code auf der bestehenden Zeichenfläche, plus Sorgfalt, damit er nicht mit dem schon vorhandenen roten Engpass-Rahmen (der eine andere Frage beantwortet, siehe Abgrenzungs-Abschnitt) verwechselt wird. Die **Tabellenseite** (`/editor/[projectId]/capacity` mit Ampel-Spalte, Peak-Monat, Handlungsempfehlung) liefert praktisch denselben Nutzen ohne dieses Zeichenrisiko.
+
+Zwei Wege, beide sauber machbar:
+
+- **A — alles in einem Zug:** Tabellenseite **und** Canvas-Badge kommen zusammen in der ersten Umsetzung.
+- **B — gestaffelt:** zuerst nur die Tabellenseite (Schritte 1–4 unten), das Canvas-Badge als eigener, kleiner Nachzug danach (Schritt 5), sobald die Tabellenseite im Alltag bestätigt hat, dass die Ampel-Logik stimmt.
+
+Für diesen Plan reicht keine der beiden Varianten eine Entscheidung voraus, die ich nicht selbst treffen kann — falls keine Präferenz genannt wird, setze ich bei der Umsetzung **B** um (kleinere, prüfbare Schritte, der Reihenfolge weiter unten folgend), das Canvas-Badge lässt sich jederzeit gefahrlos nachziehen.
 
 ---
 
 ## Umsetzungsreihenfolge (falls freigegeben)
 
-1. Migration (`processes.shift_model`, `processes.monthly_demand`, `projects.capacity_workdays`, `capacity_actions` + RLS).
+1. Migration (`processes.shift_model`, `processes.monthly_demand`, `vsm_org_settings.capacity_workdays`, `capacity_actions` + RLS).
 2. `capacityAnalysis.ts` + Tests (reine Logik zuerst, TDD wie im Rest des Projekts).
-3. Kapazitätsdaten-Eingabepanel am Prozess.
-4. `/editor/[projectId]/capacity`-Seite (Tabelle + Detail + Aktionspläne).
-5. Ampel-Badge auf der Canvas-Box.
-6. `createScenario` um `monthly_demand`/`shift_model` beim Kopieren ergänzen (sonst verliert jede neue RF-Revision die Nachfragedaten der Quelle).
-7. i18n + Glossar.
+3. Kalenderpflege in den Organisations-Settings (`vsm_org_settings.capacity_workdays`).
+4. Kapazitätsdaten-Eingabepanel am Prozess (Schichtmodell, 12 Monatswerte), inkl. Identitäts-Hinweis am `operator_count`-Feld.
+5. `/editor/[projectId]/capacity`-Seite (Tabelle + Detail + Aktionspläne).
+6. Ampel-Badge auf der Canvas-Box — nachgezogen, siehe "Noch offen: Frage 4" (Weg B ist die Vorgabe ohne weitere Rückmeldung).
+7. `createScenario` um `monthly_demand`/`shift_model` beim Kopieren ergänzen (sonst verliert jede neue RF-Revision die Nachfragedaten der Quelle).
+8. i18n + Glossar.
