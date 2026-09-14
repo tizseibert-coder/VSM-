@@ -4,6 +4,17 @@
 
 ---
 
+## Testsystem, nicht Prod (Nutzeranforderung 2026-09-14)
+
+Geklärt: Taktane, Prisma/LeanPulse und die Landing-Page teilen sich **ein einziges** Supabase-Projekt/Postgres (`supabase/README.md`) — es gibt kein separates Test-Supabase-Projekt. Die Trennung Test/Prod läuft also über **Branch und Deployment**, nicht über die Datenbank. Daraus folgt für die Umsetzung:
+
+- **Code:** ausschließlich auf `claude/planning-session-s247kr` (dieser Branch), wie schon jetzt. Kein Merge nach `master` und kein Deploy auf die Produktionsdomain durch mich — das bleibt eine bewusste, separate Entscheidung, die der Nutzer trifft, nicht ein Nebeneffekt dieser Umsetzung.
+- **Migration:** Da es nur die eine, geteilte Datenbank gibt, landet eine spätere Migration zwangsläufig in derselben Datenbank, die auch Prod bedient — genau wie jede bisherige Migration in diesem Repo. Das ist ungefährlich, **solange sie derselben additiven Konvention folgt wie alle bestehenden Migrationen hier** (neue Spalten `nullable`/mit Vorgabewert, keine `NOT NULL` ohne Default, keine Umbenennung/kein Entfernen bestehender Spalten): Prod-Code, der diese neuen Spalten/Tabellen nicht kennt, ist davon unberührt — genau das Muster, das `piece_value`, `currency`, `has_heijunka` etc. schon vorleben. Der Plan oben hält sich bereits daran.
+- **Ausführung der Migration:** Diese Session hat aktuell **keine** Datenbankverbindung (keine `SUPABASE_SERVICE_ROLE_KEY`/Projekt-Referenz gesetzt) — ich kann also ohnehin nichts anwenden, ohne dass mir ein Zugang gegeben wird. Wenn es so weit ist, wende ich die Migration nur nach ausdrücklicher Freigabe an (welches Projekt/welche Verbindung), nicht automatisch als Teil eines Commits.
+- **Sichtbarkeit für echte Nutzer:** Neue Seiten/Panels (Kapazitätsseite, Eingabemaske, Canvas-Badge) sind nur über Code erreichbar, der auf diesem Branch/seiner Preview-Umgebung läuft — auf der Produktionsdomain (Deploy von `master`) taucht nichts davon auf, solange nicht gemerged wird.
+
+---
+
 ## Was CAMA methodisch ist
 
 Eine Kapazitätsampel pro Linie und Monat:
