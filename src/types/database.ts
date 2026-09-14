@@ -298,6 +298,54 @@ export type Database = {
         }
         Relationships: []
       }
+      capacity_actions: {
+        Row: {
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          owner: string | null
+          process_id: string
+          project_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          process_id: string
+          project_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          process_id?: string
+          project_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capacity_actions_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capacity_actions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consulting_leads: {
         Row: {
           company: string | null
@@ -949,12 +997,14 @@ export type Database = {
           is_pacemaker: boolean
           kaizen_note: string | null
           lane: number
+          monthly_demand: Json | null
           name: string
           oee: number
           operator_count: number
           origin_process_id: string | null
           project_id: string
           scenario_id: string | null
+          shift_model: number | null
           updated_at: string
           width: number
           wip: number
@@ -973,12 +1023,14 @@ export type Database = {
           is_pacemaker?: boolean
           kaizen_note?: string | null
           lane?: number
+          monthly_demand?: Json | null
           name: string
           oee?: number
           operator_count?: number
           origin_process_id?: string | null
           project_id: string
           scenario_id?: string | null
+          shift_model?: number | null
           updated_at?: string
           width?: number
           wip?: number
@@ -997,12 +1049,14 @@ export type Database = {
           is_pacemaker?: boolean
           kaizen_note?: string | null
           lane?: number
+          monthly_demand?: Json | null
           name?: string
           oee?: number
           operator_count?: number
           origin_process_id?: string | null
           project_id?: string
           scenario_id?: string | null
+          shift_model?: number | null
           updated_at?: string
           width?: number
           wip?: number
@@ -1974,6 +2028,7 @@ export type Database = {
       vsm_org_settings: {
         Row: {
           brand_color: string | null
+          capacity_workdays: Json | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
@@ -1994,6 +2049,7 @@ export type Database = {
         }
         Insert: {
           brand_color?: string | null
+          capacity_workdays?: Json | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -2014,6 +2070,7 @@ export type Database = {
         }
         Update: {
           brand_color?: string | null
+          capacity_workdays?: Json | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string

@@ -114,6 +114,8 @@ function process(
     width: 0,
     x: null,
     y: null,
+    shift_model: null,
+    monthly_demand: null,
     created_at: T0,
     updated_at: T0,
     ...extra,

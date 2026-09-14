@@ -142,6 +142,8 @@ function newProcess(state: VsmState, input: { name: string; cycleTime: number })
     width: 0,
     x: null,
     y: null,
+    shift_model: null,
+    monthly_demand: null,
     created_at: state.project.created_at,
     updated_at: state.project.updated_at,
   }

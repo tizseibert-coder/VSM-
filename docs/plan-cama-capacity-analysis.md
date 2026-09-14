@@ -197,7 +197,7 @@ Für diesen Plan reicht keine der beiden Varianten eine Entscheidung voraus, die
 
 ## Umsetzungsreihenfolge (falls freigegeben)
 
-1. Migration (`processes.shift_model`, `processes.monthly_demand`, `vsm_org_settings.capacity_workdays`, `capacity_actions` + RLS).
+1. ✅ Migration (`processes.shift_model`, `processes.monthly_demand`, `vsm_org_settings.capacity_workdays`, `capacity_actions` + RLS) — `supabase/migrations/20260914150000_vsm_cama_capacity_analysis.sql`, geschrieben, **noch nicht angewendet** (siehe Abschnitt "Testsystem, nicht Prod" oben). Gegen eine lokale Wegwerf-Postgres (nicht Supabase, weder Test noch Prod) mit `supabase/tests/leere-datenbank-pruefen.sh` geprüft: läuft zweimal fehlerfrei durch (Idempotenz), die neuen CHECK-Constraints (`shift_model` nur 1/2/3, `capacity_actions.status` nur open/done) weisen ungültige Werte zurück, `ON DELETE CASCADE` räumt Aktionen mit auf, wenn die Linie gelöscht wird. `src/types/database.ts` von Hand nachgezogen (wie beim Firmenprofil-Commit üblich) und `tsc --noEmit` bestätigt keine neuen Typfehler — zwei bestehende Prozess-Konstruktoren (`vsmStore.ts`, `demoProject.ts`) mussten die zwei neuen Felder wie jedes andere optionale Feld auf `null` setzen.
 2. `capacityAnalysis.ts` + Tests (reine Logik zuerst, TDD wie im Rest des Projekts).
 3. Kalenderpflege in den Organisations-Settings (`vsm_org_settings.capacity_workdays`).
 4. Kapazitätsdaten-Eingabepanel am Prozess (Schichtmodell, 12 Monatswerte), inkl. Identitäts-Hinweis am `operator_count`-Feld.
