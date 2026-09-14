@@ -27,6 +27,28 @@ function textOrNull(formData: FormData, key: string, maxLength: number): string 
 }
 
 /**
+ * CAMA: liest die zwoelf `capacity_workdays_<monat>`-Felder in das
+ * jsonb-Objekt, das vsm_org_settings.capacity_workdays erwartet. Ein leeres
+ * oder ungueltiges Feld faellt einfach weg (kein Eintrag fuer den Monat)
+ * statt eine 0 zu speichern — der Monat gilt dann als "nicht hinterlegt",
+ * und der Vorgabekalender aus capacityAnalysis.ts greift, genau wie ein
+ * Monat, der nie ausgefuellt wurde. `null` statt `{}`, wenn gar kein Monat
+ * gesetzt ist — dieselbe Konvention wie jedes andere leere Feld hier.
+ */
+function parseCapacityWorkdays(formData: FormData): Record<string, number> | null {
+  const workdays: Record<string, number> = {}
+  for (let month = 1; month <= 12; month++) {
+    const raw = textOrNull(formData, `capacity_workdays_${month}`, 4)
+    if (raw === null) continue
+    const parsed = Number(raw.replace(',', '.'))
+    if (Number.isFinite(parsed) && parsed > 0 && parsed <= 31) {
+      workdays[String(month)] = Math.round(parsed)
+    }
+  }
+  return Object.keys(workdays).length > 0 ? workdays : null
+}
+
+/**
  * Speichert das Firmenprofil.
  *
  * Ein einziges Formular fuer Angaben *und* Logo, obwohl das Bild einen
@@ -86,6 +108,7 @@ export async function saveOrgProfile(formData: FormData) {
     default_available_minutes: defaultMinutes,
     default_locale: defaultLocale,
     report_footer: textOrNull(formData, 'report_footer', 200),
+    capacity_workdays: parseCapacityWorkdays(formData),
   }
 
   // Das Logo hat drei Zustaende, nicht zwei: neu hochgeladen, entfernt, oder
