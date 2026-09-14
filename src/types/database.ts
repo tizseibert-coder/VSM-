@@ -308,6 +308,7 @@ export type Database = {
           process_id: string
           project_id: string
           status: string
+          target_month: number | null
         }
         Insert: {
           created_at?: string
@@ -318,6 +319,7 @@ export type Database = {
           process_id: string
           project_id: string
           status?: string
+          target_month?: number | null
         }
         Update: {
           created_at?: string
@@ -328,6 +330,7 @@ export type Database = {
           process_id?: string
           project_id?: string
           status?: string
+          target_month?: number | null
         }
         Relationships: [
           {

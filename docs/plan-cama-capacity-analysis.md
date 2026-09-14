@@ -36,6 +36,8 @@ Ampel (Load Rate) — **Grenzwerte vom Nutzer bestätigt (2026-09-14): der Schwe
 
 Gerechnet für alle 12 Monate; der **schlechteste Monat** bestimmt die Ampelfarbe der Linie.
 
+**Methodischer Vorbehalt aus der Lean-Durchsicht (2026-09-14): Rüstzeit.** `processes.changeover_time` existiert im Schema bereits (erfasst, in der PDF-Kopfzeile gezeigt), fließt aber **in keiner** bestehenden VSM-Rechnung ein (Takt, Kapazitätsprüfung, CAMA) — kein CAMA-spezifisches Defizit, sondern eine bestehende Lücke des ganzen Werkzeugs. CAMA übernimmt hier bewusst dieselbe Vereinfachung wie `capacityCycleTime` in `calculations.ts`: NEE gilt als ein bereits verdichteter Verfügbarkeits-/Leistungs-/Qualitätsfaktor. Ist Rüstzeit in der gemessenen NEE schon enthalten, ist das korrekt; misst die NEE nur ungeplante Störungen, unterschätzt CAMA bei rüstintensiven Linien (viele Produktwechsel/Monat) die reale Auslastung. Eine sauberere Lösung bräuchte eine eigene Rüstzeit-Eingabe je Monat (Anzahl Rüstungen × Rüstzeit) — das sprengt die 5-Eingangsgrößen-Vorlage bewusst und ist **nicht** Teil dieses Plans, gehört aber als bekannte Grenze in die spätere Nutzerdokumentation der Kapazitätsseite.
+
 ---
 
 ## Kernentscheidung: Was ist eine "Linie"?
@@ -100,13 +102,16 @@ CREATE TABLE public.capacity_actions (
   process_id uuid not null references public.processes(id) on delete cascade,
   description text not null,
   owner text,
-  due_date date,
+  due_date date,             -- Fälligkeit der Umsetzung
+  target_month smallint,     -- welcher CAMA-Monat (1-12) adressiert wird, optional
   status text not null default 'open',   -- 'open' | 'done', UI-Enum wie is_pacemaker/buffer_type
   created_at timestamptz not null default now()
 );
 -- RLS: gleiche Autorisierungskette wie inventory_buffers (über processes -> project -> org),
 -- siehe 20260830160000_vsm_authorization_layer.sql als Vorlage.
 ```
+
+**Nachtrag aus der Lean-Durchsicht (2026-09-14): `target_month`.** Eine Kapazitätsmaßnahme ist in der Praxis oft an einen Zeitpunkt gebunden ("ab Monat 7 Zusatzschicht"), nicht nur an ein Fälligkeitsdatum für ihre Umsetzung. Beides ist unabhängig sinnvoll — eine SMED-Werkstatt muss bis 15. Juni abgeschlossen sein (`due_date`), damit sie im Juli (`target_month`) wirkt. Nullable, weil nicht jede Maßnahme monatsgebunden ist ("Rüstzeiten grundsätzlich senken" betrifft die ganze Linie). Bereits in der Migration nachgezogen (sie war zu diesem Zeitpunkt noch nirgends angewendet, siehe Abschnitt "Testsystem, nicht Prod").
 
 `monthly_demand` als `jsonb`-Array statt zwölf eigener Spalten oder einer Kindtabelle: eine Zeile pro Prozess bleibt lesbar, keine zusätzliche RLS-Policy nötig (erbt die von `processes`), und der Zugriff ist immer "alle 12 Monate auf einmal" — genau das Zugriffsmuster von CAMA. Nachteil, bewusst in Kauf genommen: keine SQL-seitige Aggregation "welche Linie ist im Juli rot" über Projekte hinweg. Für v1 ausreichend (Vorlage: "Synthese mehrerer Standorte" ist explizit "später").
 
@@ -156,7 +161,18 @@ Tests zuerst (`capacityAnalysis.test.ts`), analog zum Stil von `capacity.test.ts
 
 **2. Ampel auf der Prozessbox** — kleines farbiges Badge (Kreis, obere Ecke), gespeist aus `peakMonth.color`. Optisch getrennt vom bestehenden roten Engpass-Rahmen aus `capacity.ts`/`isBottleneck`, mit eigenem Tooltip ("Kapazitätsampel: schlechtester Monat Juli, Load Rate 1.34").
 
-**3. Neue Seite `/editor/[projectId]/capacity`** (Muster: `/compare`) — Tabelle aller Linien (Prozesse) des aktiven Zustands/Szenarios, sortiert nach Load Rate absteigend (rot oben), Spalten: Linie, Peak-Monat, Load Rate, Ampel, Handlungsempfehlung (Textbaustein je Farbe, z. B. "🔴 Kapazitätsproblem — Maßnahme prüfen"). Klick auf eine Zeile → Detailansicht mit 12-Monats-Verlauf (Balken, farbig nach Ampel je Monat — Wiederverwendung des Zeichenmusters aus `BalanceChartPanel.tsx`) und der Aktionsplan-Liste (`capacity_actions`) dieser Linie mit Owner/Termin/Status.
+**3. Neue Seite `/editor/[projectId]/capacity`** (Muster: `/compare`) — Tabelle aller Linien (Prozesse) des aktiven Zustands/Szenarios, sortiert nach Load Rate absteigend (rot oben), Spalten: Linie, Peak-Monat, Load Rate, Ampel, Handlungsempfehlung. Klick auf eine Zeile → Detailansicht mit 12-Monats-Verlauf (Balken, farbig nach Ampel je Monat — Wiederverwendung des Zeichenmusters aus `BalanceChartPanel.tsx`) und der Aktionsplan-Liste (`capacity_actions`) dieser Linie mit Owner/Termin/`target_month`/Status.
+
+**Handlungsempfehlungen je Farbe (Lean-Durchsicht 2026-09-14, ersetzt den Platzhalter "Textbaustein je Farbe"):** Text lebt in `messages/de.json`/`en.json` unter `Capacity.recommendation.<farbe>`, **nicht** in `capacityAnalysis.ts` — die reine Logik liefert nur die Farbe, wie an anderer Stelle in diesem Schema (kein Fachtext in `lib/vsm/*`, das würde die next-intl-Trennung von Logik und Text unterlaufen, die dieses Projekt sonst durchgehend einhält). Inhaltlich, damit „Handlungsempfehlung" mehr ist als eine Wiederholung der Ampelfarbe:
+
+| Farbe | Empfehlung |
+|---|---|
+| 🔵 Blau (`< 0.5`) | Unterausgelastet — vor einer Investition in weitere Kapazität prüfen, ob die freie Zeit dieser Linie anderswo genutzt werden kann (Rüstzeiten senken lohnt sich hier am wenigsten, weil ungenutzte Kapazität ohnehin da ist). |
+| 🟢 Grün (`0.5–1.0`) | Im Zielkorridor — keine Maßnahme nötig, Nachfrageentwicklung weiter beobachten. |
+| 🟠 Orange (`> 1.0–1.2`) | Kapazität eng — kurzfristig wirksame Hebel prüfen: Rüstzeiten senken (SMED), Zusatzschicht/Überstunden im Peak-Monat, Produktion in Monate mit freier Kapazität vorziehen (siehe Nachbarmonate in der 12-Monats-Ansicht). |
+| 🔴 Rot (`> 1.2`) | Kapazitätsproblem, Maßnahme Pflicht — strukturelle Hebel: dauerhafte Zusatzkapazität (Schichtausbau, Investition), Fremdvergabe, oder Nachfrage/Produktmix verschieben, bevor die Liefertreue leidet. |
+
+Die orange/rote Empfehlung ist bewusst die Vorbelegung für eine neu angelegte `capacity_actions`-Zeile (Textvorschlag im Eingabefeld `description`), nicht nur Anzeige — der Unterschied zwischen "hier steht, was zu tun wäre" und "hier ist ein Massnahmenentwurf, den ich nur noch bestätigen muss" ist genau der, den `newProcess`/andere Vorbelegungen in diesem Projekt schon nutzen.
 
 **4. i18n** — neuer Namespace `Capacity` in `messages/de.json`/`en.json` (Titel, Ampel-Labels, Handlungsempfehlungstexte, Schichtmodell-Labels). Bestehendes `TermTooltip`/`glossary.ts` um "NEE", "Load Rate", "CAMA" ergänzen — gleiche Konvention wie bei Heijunka/Pitch/Kaizen in der Future-State-Planung.
 

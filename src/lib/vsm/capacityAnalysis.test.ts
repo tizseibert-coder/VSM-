@@ -121,6 +121,30 @@ describe('calcCamaLine', () => {
     expect(result.months[11].capacity).toBeLessThan(result.months[0].capacity)
     expect(result.peakMonth.month).toBe(12)
   })
+
+  it('picks the earlier month on an exact tie', () => {
+    const demand = [15000, 15000, ...Array(10).fill(8000)]
+    const result = calcCamaLine(input, demand, workdays)
+    expect(result.peakMonth.month).toBe(1)
+  })
+
+  it('treats a too-short or invalid demand array as no demand for the missing months, not NaN', () => {
+    const demand = [11500, 11500] // nur 2 von 12 Monaten geliefert
+    const result = calcCamaLine(input, demand, workdays)
+    expect(result.months).toHaveLength(12)
+    expect(result.months[2].demand).toBe(0)
+    expect(result.months[2].loadRate).toBe(0)
+    expect(result.months[2].color).toBe('blue')
+    expect(Number.isNaN(result.peakMonth.loadRate)).toBe(false)
+  })
+
+  it('treats invalid workdays entries as the default calendar, not NaN', () => {
+    const demand = Array(12).fill(10000)
+    const brokenCalendar = Array(12).fill(21)
+    brokenCalendar[3] = null as unknown as number
+    const result = calcCamaLine(input, demand, brokenCalendar)
+    expect(result.months[3].capacity).toBeCloseTo(calcMonthlyCapacity(input, DEFAULT_WORKDAYS_PER_MONTH), 5)
+  })
 })
 
 describe('resolveMonthlyValues', () => {

@@ -16,6 +16,11 @@
 -- unberuehrt — das gilt hier besonders, weil Test und Prod dasselbe
 -- Supabase-Projekt teilen (supabase/README.md) und diese Migration in genau
 -- der Datenbank landet, die auch Prod bedient.
+--
+-- [Lean-Durchsicht 2026-09-14] Diese Datei war zu diesem Zeitpunkt noch
+-- nirgends angewendet (siehe Plan, Abschnitt "Testsystem, nicht Prod") — die
+-- Nachbesserung (capacity_actions.target_month) ist deshalb direkt hier
+-- eingearbeitet statt als zweite Migration angehaengt.
 
 -- ═══════════════════════════════════════════
 -- 1) processes — Schichtmodell und Monatsnachfrage je Linie/Szenario
@@ -78,24 +83,38 @@ COMMENT ON COLUMN public.vsm_org_settings.capacity_workdays IS
 -- project_org_id(project_id) wertet in einem Schritt aus, ohne durch
 -- processes hindurchzumuessen (siehe project_org_id-Kommentar in
 -- 20260830160000_vsm_authorization_layer.sql).
+-- target_month ist die eine Nachbesserung aus der Lean-Durchsicht vom
+-- 14.09.: eine Massnahme aus der Kapazitaetsplanung ist in der Praxis oft an
+-- einen Zeitpunkt gebunden ("ab Monat 7 Zusatzschicht"), nicht nur an ein
+-- Faelligkeitsdatum fuer ihre Umsetzung (due_date). Beides ist unabhaengig
+-- voneinander sinnvoll: eine SMED-Werkstatt muss bis 15. Juni abgeschlossen
+-- sein (due_date), damit sie im Juli (target_month) wirkt. Nullable, weil
+-- nicht jede Massnahme monatsgebunden ist ("Rüstzeiten grundsaetzlich
+-- senken" betrifft die ganze Linie, keinen Monat).
 CREATE TABLE IF NOT EXISTS public.capacity_actions (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id  uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-  process_id  uuid NOT NULL REFERENCES public.processes(id) ON DELETE CASCADE,
-  description text NOT NULL,
-  owner       text,
-  due_date    date,
-  status      text NOT NULL DEFAULT 'open',
-  created_at  timestamptz NOT NULL DEFAULT now(),
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id   uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  process_id   uuid NOT NULL REFERENCES public.processes(id) ON DELETE CASCADE,
+  description  text NOT NULL,
+  owner        text,
+  due_date     date,
+  target_month smallint,
+  status       text NOT NULL DEFAULT 'open',
+  created_at   timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT capacity_actions_status_check
-    CHECK (status = ANY (ARRAY['open'::text, 'done'::text]))
+    CHECK (status = ANY (ARRAY['open'::text, 'done'::text])),
+  CONSTRAINT capacity_actions_target_month_check
+    CHECK (target_month IS NULL OR target_month BETWEEN 1 AND 12)
 );
 
 CREATE INDEX IF NOT EXISTS idx_capacity_actions_project_id ON public.capacity_actions USING btree (project_id);
 CREATE INDEX IF NOT EXISTS idx_capacity_actions_process_id ON public.capacity_actions USING btree (process_id);
 
 COMMENT ON TABLE public.capacity_actions IS
-  'CAMA: Massnahmen mit Owner/Termin zu einer Linie (Prozess), typischerweise bei orange/roter Ampel angelegt. Kein Bezug zu einem einzelnen Monat — eine Linie hat eine Massnahmenliste, kein Aktionsplan je Monat.';
+  'CAMA: Massnahmen mit Owner/Termin zu einer Linie (Prozess), typischerweise bei orange/roter Ampel angelegt.';
+
+COMMENT ON COLUMN public.capacity_actions.target_month IS
+  'Welcher CAMA-Monat (1-12) diese Massnahme adressiert, z. B. der Peak-Monat, wegen dem sie angelegt wurde. Optional — nicht jede Massnahme ist monatsgebunden. Unabhaengig von due_date, dem Faelligkeitsdatum ihrer Umsetzung.';
 
 ALTER TABLE public.capacity_actions ENABLE ROW LEVEL SECURITY;
 

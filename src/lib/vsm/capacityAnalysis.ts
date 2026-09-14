@@ -46,7 +46,24 @@ export interface CamaLineInput {
    * dieser Funktion. Default 1.
    */
   operatorCount?: number
-  /** NEE als Anteil 0-1 (oee/100), nicht als Prozent. */
+  /**
+   * NEE als Anteil 0-1 (oee/100), nicht als Prozent.
+   *
+   * [Lean-Durchsicht 2026-09-14] Diese Rechnung zieht processes.changeover_time
+   * nirgends separat ab, obwohl Ruestzeit real Kapazitaet kostet — bewusst,
+   * nicht vergessen: NEE ist hier wie ueberall im Schema ein einziger,
+   * bereits verdichteter Verfuegbarkeits-/Leistungs-/Qualitaetsfaktor (siehe
+   * capacityCycleTime in calculations.ts, dieselbe Annahme). Ist Ruestzeit in
+   * der gemessenen NEE schon enthalten, waere ein zusaetzlicher Abzug hier
+   * eine Doppelzaehlung derselben Verlustquelle — exakt der Fehler, den
+   * calculations.ts fuer die Zykluszeit bereits ausdruecklich vermeidet ("An
+   * already-observed time here would count the losses twice"). Ist sie es
+   * nicht (NEE misst nur ungeplante Stoerungen), unterschaetzt CAMA bei
+   * ruestintensiven Linien die Auslastung. Diese Unschaerfe ist bewusst in
+   * Kauf genommen, nicht verschwiegen: eine sauberere Loesung braeuchte eine
+   * explizite Ruestzeit-Eingabe je Monat (Anzahl Ruestungen x Ruestzeit), was
+   * die 5-Eingangsgroessen-Vorlage bewusst nicht vorsieht (siehe Plan).
+   */
   neeFraction: number
   shiftModel: ShiftModel
 }
@@ -112,23 +129,40 @@ export interface CamaLineResult {
 }
 
 /**
- * Rechnet eine Linie ueber alle 12 Monate. `monthlyDemand` und
- * `workdaysByMonth` muessen 12 Eintraege haben (Index 0 = Januar); fehlende
- * Monate sind Sache des Aufrufers (siehe resolveMonthlyValues unten) — diese
- * Funktion bleibt bewusst rein und trifft keine Annahme ueber fehlende Werte.
+ * Rechnet eine Linie ueber alle 12 Monate. Der normale Aufrufweg ist:
+ * resolveMonthlyValues/resolveWorkdaysCalendar zuerst (dort liegt die
+ * Vorgabewert-Politik), dann erst hierhin mit zwei vollstaendigen
+ * 12-Werte-Arrays (Index 0 = Januar).
+ *
+ * Trotzdem haertet diese Funktion zusaetzlich gegen fehlende/ungueltige
+ * Eintraege ab (zu kurzes Array, undefined, NaN) — kein zweites, abweichendes
+ * Regelwerk, sondern dasselbe Sicherheitsnetz wie in resolveMonthlyValues/
+ * resolveWorkdaysCalendar, nur eine Ebene tiefer: ein Aufrufer, der diesen
+ * Weg versehentlich ausliess (z. B. weil ein neuer Lesepfad direkt auf das
+ * rohe jsonb-Array zugreift), soll eine ehrliche 0-Nachfrage/einen
+ * Vorgabekalender bekommen statt stiller NaN-Werte, die sich unbemerkt bis in
+ * peakMonth und die Ampelfarbe fortpflanzen wuerden.
  */
 export function calcCamaLine(
   input: CamaLineInput,
   monthlyDemand: number[],
   workdaysByMonth: number[]
 ): CamaLineResult {
-  const months: CamaMonthResult[] = monthlyDemand.map((demand, index) => {
-    const workdays = workdaysByMonth[index] ?? DEFAULT_WORKDAYS_PER_MONTH
+  const months: CamaMonthResult[] = Array.from({ length: 12 }, (_, index) => {
+    const rawDemand = monthlyDemand[index]
+    const demand = typeof rawDemand === 'number' && Number.isFinite(rawDemand) ? rawDemand : 0
+    const rawWorkdays = workdaysByMonth[index]
+    const workdays =
+      typeof rawWorkdays === 'number' && Number.isFinite(rawWorkdays) && rawWorkdays > 0
+        ? rawWorkdays
+        : DEFAULT_WORKDAYS_PER_MONTH
     const capacity = calcMonthlyCapacity(input, workdays)
     const loadRate = calcLoadRate(demand, capacity)
     return { month: index + 1, demand, capacity, loadRate, color: getCamaColor(loadRate) }
   })
 
+  // Erster Treffer bei Gleichstand (>, nicht >=) — bei zwei gleich roten
+  // Monaten zeigt die Linie den frueheren im Jahr als Peak.
   const peakMonth = months.reduce((worst, month) => (month.loadRate > worst.loadRate ? month : worst))
 
   return { months, peakMonth, color: peakMonth.color }
