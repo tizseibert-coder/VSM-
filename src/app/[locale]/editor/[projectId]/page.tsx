@@ -11,6 +11,7 @@ import type { ComparisonState } from '@/lib/vsm/scenarioComparison'
 import { loadMemberships } from '@/lib/org/activeOrg'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl, type PdfBranding } from '@/lib/org/branding'
+import { DEFAULT_WORKDAYS_PER_MONTH } from '@/lib/vsm/capacityAnalysis'
 import ClearDemoTransfer from '@/components/dashboard/ClearDemoTransfer'
 
 export default async function EditorPage({
@@ -110,6 +111,10 @@ export default async function EditorPage({
     brandColor: profile.brandColor,
     reportFooter: profile.reportFooter,
   }
+  // CAMA: firmenweiter Kalender, aufgeloest auf 12 vollstaendige Werte — die
+  // Live-Vorschau im Kapazitaetsdaten-Panel soll genau das rechnen, was die
+  // spaetere Kapazitaetsseite auch rechnet, nicht "leer = 0 Arbeitstage".
+  const capacityWorkdays = profile.capacityWorkdays.map((value) => value ?? DEFAULT_WORKDAYS_PER_MONTH)
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -184,6 +189,7 @@ export default async function EditorPage({
         initialBuffers={buffers}
         benchmarkReferences={benchmarkReferences ?? []}
         comparisonStates={comparisonStates}
+        capacityWorkdays={capacityWorkdays}
         branding={branding}
       />
     </div>

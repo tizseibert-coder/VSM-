@@ -268,6 +268,13 @@ export interface UpdateProcessInput {
   isPacemaker: boolean
   /** 'va' | 'nva' | 'necessary_nva' | null — see lib/vsm/classification.ts for the allowed set. */
   classification?: string | null
+  /** CAMA: 1/2/3-Schicht. Undefined = nicht mitgeschickt, Spalte bleibt unberührt
+   *  (wie classification) — z. B. der Future-State-Wizard setzt nur den
+   *  Schrittmacher und soll die CAMA-Daten dabei nicht anfassen. */
+  shiftModel?: number | null
+  /** CAMA: 12 Monatswerte, Index 0 = Januar; einzelne Einträge dürfen null sein
+   *  ("dieser Monat nicht erfasst"). Undefined = nicht mitgeschickt, siehe shiftModel. */
+  monthlyDemand?: (number | null)[] | null
 }
 
 // The pacemaker (Schrittmacher) is the one process scheduled directly by
@@ -308,6 +315,8 @@ export async function updateProcess(projectId: string, processId: string, input:
       changeover_time: input.changeoverTime,
       is_pacemaker: input.isPacemaker,
       ...(input.classification !== undefined ? { classification: input.classification } : {}),
+      ...(input.shiftModel !== undefined ? { shift_model: input.shiftModel } : {}),
+      ...(input.monthlyDemand !== undefined ? { monthly_demand: input.monthlyDemand } : {}),
     })
     .eq('id', processId)
 

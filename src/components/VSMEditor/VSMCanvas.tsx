@@ -27,6 +27,13 @@ import {
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
+import {
+  calcCamaLine,
+  resolveWorkdaysCalendar,
+  shiftHoursPerDay,
+  type CamaColor,
+  type ShiftModel as CamaShiftModel,
+} from '@/lib/vsm/capacityAnalysis'
 import { BalanceChartPanel } from './BalanceChartPanel'
 import BenchmarkPanel from './BenchmarkPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
@@ -280,6 +287,13 @@ interface Props {
    */
   comparisonStates?: ComparisonState[]
   /**
+   * CAMA: Arbeitstage/Monat, firmenweiter Kalender (Index 0 = Januar). Nur
+   * fuer die Live-Vorschau im Kapazitaetsdaten-Panel eines Prozesses — nichts
+   * hier wird gespeichert. Fehlt der Wert (oeffentliche Demo, keine
+   * Organisation), greift derselbe Vorgabekalender wie ueberall in CAMA.
+   */
+  capacityWorkdays?: number[]
+  /**
    * Firmenprofil fuers Blatt: Logo, Name, Akzentfarbe, Fusszeile.
    *
    * Nur der PDF-Export benutzt es — die Zeichenflaeche bleibt schwarzweiss.
@@ -338,9 +352,17 @@ export default function VSMCanvas({
   initialBuffers,
   benchmarkReferences = [],
   comparisonStates = [],
+  capacityWorkdays,
   branding = null,
 }: Props) {
   const locale = useLocale()
+  // `capacityWorkdays` kommt vom Aufrufer bereits als vollstaendig aufgeloestes
+  // 12er-Array (resolveWorkdaysCalendar lief serverseitig schon einmal ueber
+  // das rohe jsonb-Objekt aus vsm_org_settings — hier noch einmal darueber zu
+  // laufen wuerde ein Array faelschlich als "kein Kalender" behandeln, siehe
+  // resolveWorkdaysCalendar-Signatur). Fehlt die Prop ganz (oeffentliche Demo,
+  // keine Organisation), gilt derselbe Vorgabekalender wie ueberall in CAMA.
+  const workdaysByMonth = capacityWorkdays ?? resolveWorkdaysCalendar(null)
   // [Bedienbarkeitsprüfung 2026-09-03, B9] Kurz, weil sie oft vorkommen: Jede
   // Zahl, die hier angezeigt wird, geht durch eine der beiden — sonst steht
   // "84.5 Tage" in einer deutschen Oberflaeche, waehrend die Startseite
@@ -2469,6 +2491,7 @@ export default function VSMCanvas({
           onChangeLane={(lane) => handleChangeLane(selectedProcess.id, lane)}
           onClose={() => setSelection(null)}
           onError={setError}
+          workdaysByMonth={workdaysByMonth}
         />
       )}
 
@@ -2671,6 +2694,17 @@ const inputClass = `w-full ${inputSm} focus:outline-none focus:ring-2 focus:ring
 const primaryButtonClass = buttonPrimaryLg
 const secondaryButtonClass = buttonSecondaryLg
 
+/** CAMA-Ampelfarben als Tailwind-Klasse fuer den kleinen Balken unter jedem
+ *  Monatsfeld. Eigene Farbsprache, bewusst getrennt von Rot = Engpass an
+ *  anderer Stelle im Canvas (siehe capacityAnalysis.ts, Abgrenzung zu
+ *  capacity.ts) — derselbe Rotton haette hier eine andere Bedeutung. */
+const CAMA_COLOR_DOT: Record<CamaColor, string> = {
+  blue: 'bg-sky-400',
+  green: 'bg-emerald-500',
+  orange: 'bg-amber-500',
+  red: 'bg-red-500',
+}
+
 function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string; children: ReactNode }) {
   return (
     <div>
@@ -2751,6 +2785,7 @@ function ProcessEditPanel({
   onChangeLane,
   onClose,
   onError,
+  workdaysByMonth,
 }: {
   projectId: string
   scenarioId: string | null
@@ -2772,6 +2807,8 @@ function ProcessEditPanel({
    * Weg bliebe der Fehler ungesehen.
    */
   onError: (message: string) => void
+  /** CAMA: firmenweiter Kalender, nur fuer die Live-Vorschau hier unten. */
+  workdaysByMonth: number[]
 }) {
   const router = useRouter()
   const { mutate, isDemo } = useVsmMutationRequired()
@@ -2782,7 +2819,20 @@ function ProcessEditPanel({
   const [oee, setOee] = useState(String(process.oee))
   const [operatorCount, setOperatorCount] = useState(String(process.operator_count))
   const [changeoverTime, setChangeoverTime] = useState(String(process.changeover_time))
+  // CAMA: Kapazitaetsdaten dieser Linie. Eigener, eingeklappter Abschnitt statt
+  // eigenes Panel (siehe docs/plan-cama-capacity-analysis.md) — teilt sich das
+  // Speichern und die mutate()/startTransition()-Verdrahtung mit dem Rest
+  // dieses Formulars, statt beides ein zweites Mal aufzubauen.
+  const [showCapacity, setShowCapacity] = useState(false)
+  const [shiftModel, setShiftModel] = useState(process.shift_model ? String(process.shift_model) : '')
+  const [monthlyDemand, setMonthlyDemand] = useState<string[]>(() =>
+    Array.from({ length: 12 }, (_, index) => {
+      const raw = Array.isArray(process.monthly_demand) ? process.monthly_demand[index] : undefined
+      return typeof raw === 'number' ? String(raw) : ''
+    })
+  )
   const t = useTranslations('Editor')
+  const tMonths = useTranslations('Settings')
   const tClass = useTranslations('Classification')
   const [isPacemaker, setIsPacemaker] = useState(process.is_pacemaker)
   const [classification, setClassification] = useState(process.classification ?? '')
@@ -2805,6 +2855,33 @@ function ProcessEditPanel({
     !Number.isNaN(liveCycleTimeNum) && !Number.isNaN(liveOperatorCountNum) && liveOperatorCountNum > 1
       ? effectiveCycleTime({ cycleTime: liveCycleTimeNum, operatorCount: liveOperatorCountNum })
       : null
+
+  // CAMA-Vorschau: rechnet mit genau denselben, noch ungespeicherten
+  // Zykluszeit-/Bediener-/NEE-Werten weiter oben im Formular — Aendern der
+  // Zykluszeit bewegt die Ampel hier sofort mit, statt erst nach dem
+  // Speichern zu ueberraschen.
+  const liveShiftModel: CamaShiftModel | null =
+    shiftModel === '1' || shiftModel === '2' || shiftModel === '3' ? (Number(shiftModel) as CamaShiftModel) : null
+  const liveOeeNum = Number(oee)
+  const liveNeeFraction = Number.isFinite(liveOeeNum) ? liveOeeNum / 100 : 0
+  const liveMonthlyDemandNums = monthlyDemand.map((value) => {
+    const n = Number(value.replace(',', '.'))
+    return value.trim() !== '' && Number.isFinite(n) ? n : 0
+  })
+  const capacityPreview =
+    showCapacity && liveShiftModel !== null && Number.isFinite(liveCycleTimeNum) && liveCycleTimeNum > 0
+      ? calcCamaLine(
+          {
+            cycleTimeMinutes: liveCycleTimeNum,
+            operatorCount: liveOperatorCountNum,
+            neeFraction: liveNeeFraction,
+            shiftModel: liveShiftModel,
+          },
+          liveMonthlyDemandNums,
+          workdaysByMonth
+        )
+      : null
+
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -2944,6 +3021,20 @@ function ProcessEditPanel({
     setError(null)
     setIsSaving(true)
 
+    // CAMA: shift_model nur, wenn eine der drei Radiogruppen gewaehlt ist —
+    // sonst bleibt die Linie "nicht erfasst" statt eine Schicht zu behaupten,
+    // die niemand gewaehlt hat. monthly_demand als 12er-Array mit null an
+    // leeren/ungueltigen Stellen; ist wirklich kein einziger Monat gesetzt,
+    // wird die ganze Spalte null (dieselbe Konvention wie die Migration sie
+    // vorsieht: "Null = noch nicht erfasst").
+    const shiftModelNum = liveShiftModel
+    const monthlyDemandArray: (number | null)[] = monthlyDemand.map((value) => {
+      if (value.trim() === '') return null
+      const n = Number(value.replace(',', '.'))
+      return Number.isFinite(n) && n >= 0 ? n : null
+    })
+    const monthlyDemandToSave = monthlyDemandArray.some((v) => v !== null) ? monthlyDemandArray : null
+
     // Dieses Formular bearbeitet nur die beiden Bestandszahlen links und
     // rechts. setBufferWip schreibt aber immer die ganze Zeile und setzt
     // alles, was es nicht mitbekommt, auf den Ausgangswert zurueck — ein
@@ -2962,6 +3053,8 @@ function ProcessEditPanel({
         changeover_time: changeoverTimeNum,
         is_pacemaker: isPacemaker,
         classification: classification || null,
+        shift_model: shiftModelNum,
+        monthly_demand: monthlyDemandToSave,
       })
       const withBefore = vsmOperations.setBufferWip(withProcess, {
         ...beforeBuffer,
@@ -3006,6 +3099,8 @@ function ProcessEditPanel({
           changeoverTime: changeoverTimeNum,
           isPacemaker,
           classification: classification || null,
+          shiftModel: shiftModelNum,
+          monthlyDemand: monthlyDemandToSave,
         })
         if (!skipBefore) {
           await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
@@ -3163,6 +3258,14 @@ function ProcessEditPanel({
               })}
             </p>
           )}
+          {/* [Lean-Durchsicht 2026-09-14, CAMA-Plan] Bediener > 1 zaehlt in
+              Taktrate und Kapazitaets-Check nur dann korrekt, wenn es wirklich
+              identische, unabhaengig arbeitende Arbeitsplaetze sind (flexible
+              Linie/gleichartige Gruppen) — bisher stand hier nirgends, wann
+              das gilt. */}
+          {liveOperatorCountNum > 1 && (
+            <p className="mt-1 text-xs text-amber-700">{t('operatorCountIdentityHint')}</p>
+          )}
         </div>
         <div>
           <label htmlFor="ep-before" className="block text-xs font-medium text-zinc-600">
@@ -3186,6 +3289,83 @@ function ProcessEditPanel({
             className={`mt-1 ${inputClass}`}
           />
         </div>
+      </div>
+
+      {/* CAMA: eingeklappt, weil zwoelf zusaetzliche Felder das ohnehin schon
+          dichte Panel sprengen wuerden (siehe Plan, dieselbe Begruendung wie
+          fuer die ausgelagerte Future-State-Seite) — aber ein eigenes Panel
+          dafuer haette dieselbe mutate()/startTransition()-Verdrahtung ein
+          zweites Mal gebraucht, ohne einen echten Vorteil. */}
+      <div className="mt-3 rounded-control bg-zinc-50 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setShowCapacity((v) => !v)}
+          className="text-xs font-medium text-brand-600 hover:underline"
+        >
+          {showCapacity ? t('capacityDataHide') : t('capacityDataShow')}
+        </button>
+
+        {showCapacity && (
+          <div className="mt-3">
+            <p className="text-xs text-zinc-600">{t('capacityDataIntro')}</p>
+
+            <div className="mt-2 flex flex-wrap gap-3" role="radiogroup" aria-label={t('shiftModelLabel')}>
+              {([1, 2, 3] as const).map((shift) => (
+                <label key={shift} className="flex items-center gap-1.5 text-xs text-zinc-700">
+                  <input
+                    type="radio"
+                    name={`ep-shift-model-${process.id}`}
+                    checked={shiftModel === String(shift)}
+                    onChange={() => setShiftModel(String(shift))}
+                  />
+                  {t(`shiftModelOption${shift}`, { hours: formatDecimal(shiftHoursPerDay(shift), locale) })}
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {monthlyDemand.map((value, index) => {
+                const monthResult = capacityPreview?.months[index]
+                return (
+                  <div key={index}>
+                    <label
+                      htmlFor={`ep-demand-${process.id}-${index}`}
+                      className="block text-[11px] font-medium text-zinc-600"
+                    >
+                      {tMonths(`month${index + 1}`)}
+                    </label>
+                    <input
+                      id={`ep-demand-${process.id}-${index}`}
+                      inputMode="numeric"
+                      value={value}
+                      onChange={(e) => {
+                        const next = [...monthlyDemand]
+                        next[index] = e.target.value
+                        setMonthlyDemand(next)
+                      }}
+                      className={`mt-1 ${inputClass} text-xs`}
+                    />
+                    <span
+                      className={`mt-1 block h-1.5 rounded-full ${monthResult ? CAMA_COLOR_DOT[monthResult.color] : 'bg-zinc-200'}`}
+                      title={monthResult ? `Load Rate ${formatDecimal(monthResult.loadRate, locale, 2)}` : undefined}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+
+            {capacityPreview ? (
+              <p className="mt-2 text-xs text-zinc-500">
+                {t('capacityPeakHint', {
+                  month: tMonths(`month${capacityPreview.peakMonth.month}`),
+                  loadRate: formatDecimal(capacityPreview.peakMonth.loadRate, locale, 2),
+                })}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-zinc-500">{t('capacityDataNeedsShift')}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Mehrstrang (Phase 6): "WIP davor/danach" oben deckt nur die eine

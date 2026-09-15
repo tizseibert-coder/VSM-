@@ -119,6 +119,51 @@ describe('parseTransfer — was zurechtgebogen wird', () => {
     expect(parseTransfer(t, NOW)!.processes[0].cycleTime).toBe(100_000)
   })
 
+  it('laesst nur 1/2/3 als Schichtmodell durch', () => {
+    const t = { ...demoTransfer() }
+    t.processes = [
+      { ...t.processes[0], shiftModel: 2 },
+      { ...t.processes[0], shiftModel: 4 },
+      { ...t.processes[0], shiftModel: 0 },
+    ]
+
+    const parsed = parseTransfer(t, NOW)!
+    expect(parsed.processes[0].shiftModel).toBe(2)
+    expect(parsed.processes[1].shiftModel).toBeNull()
+    expect(parsed.processes[2].shiftModel).toBeNull()
+  })
+
+  it('verwirft eine Monatsnachfrage, die nicht genau 12 Eintraege hat', () => {
+    // Absichtlich falsch typisierte Eingabe (fremdes/handgebautes Feld) —
+    // parseTransfer nimmt `unknown`, nicht TransferProcess, genau dafuer.
+    const t = { ...demoTransfer() }
+    t.processes = [
+      { ...t.processes[0], monthlyDemand: [1, 2, 3] },
+      { ...t.processes[0], monthlyDemand: 'nicht mal ein Array' as unknown as null },
+    ]
+
+    const parsed = parseTransfer(t, NOW)!
+    expect(parsed.processes[0].monthlyDemand).toBeNull()
+    expect(parsed.processes[1].monthlyDemand).toBeNull()
+  })
+
+  it('behaelt gueltige Monatswerte und macht ungueltige einzeln zu null', () => {
+    const t = { ...demoTransfer() }
+    t.processes = [
+      {
+        ...t.processes[0],
+        monthlyDemand: [100, null, 'x', Infinity, -5, 999_999_999, 140, 150, 160, 150, 140, 130] as unknown as (
+          | number
+          | null
+        )[],
+      },
+    ]
+
+    expect(parseTransfer(t, NOW)!.processes[0].monthlyDemand).toEqual([
+      100, null, null, null, 0, 100_000_000, 140, 150, 160, 150, 140, 130,
+    ])
+  })
+
   it('begrenzt die Zahl der Stationen', () => {
     const t = { ...demoTransfer() }
     t.processes = Array.from({ length: 500 }, (_, i) => ({ ...t.processes[0], name: `S${i}` }))
@@ -262,5 +307,29 @@ describe('fromTransfer', () => {
 
     expect(wieder.processes[1].cycle_time).toBe(1.6)
     expect(original.processes[1].cycle_time).toBe(3.4)
+  })
+
+  // [Schritt 4, 2026-09-15] shiftModel/monthlyDemand kamen frueher gar nicht
+  // erst in TransferProcess an — eine Demo-Nutzerin, die CAMA-Daten eintippt
+  // und sich danach anmeldet, haette sie stillschweigend verloren (die
+  // Kapazitaetsdaten-Eingabemaske teilt sich ProcessEditPanel mit dem echten
+  // Editor, siehe DemoCanvas). DEMO_TRANSFER_VERSION deshalb auf 2 erhoeht.
+  it('nimmt CAMA-Kapazitaetsdaten (Schichtmodell, Monatsnachfrage) mit', () => {
+    const original = buildDemoState(DEMO_LABELS_DE)
+    const monthlyDemand = [100, 110, 120, 130, 140, 150, 160, 150, 140, 130, 120, 110]
+    const geaendert = {
+      ...original,
+      processes: original.processes.map((p, i) =>
+        i === 2 ? { ...p, shift_model: 2, monthly_demand: monthlyDemand } : p
+      ),
+    }
+
+    const wieder = fromTransfer(toTransfer(geaendert, NOW), original)
+
+    expect(wieder.processes[2].shift_model).toBe(2)
+    expect(wieder.processes[2].monthly_demand).toEqual(monthlyDemand)
+    // Unveraendert gebliebene Linien bleiben "nicht erfasst", nicht 0.
+    expect(wieder.processes[0].shift_model).toBeNull()
+    expect(wieder.processes[0].monthly_demand).toBeNull()
   })
 })
