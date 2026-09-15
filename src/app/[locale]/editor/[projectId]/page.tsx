@@ -161,6 +161,16 @@ export default async function EditorPage({
           >
             {t('compareScenarios')}
           </Link>
+          <Link
+            href={
+              activeScenario
+                ? `/editor/${projectId}/capacity?scenario=${activeScenario.id}`
+                : `/editor/${projectId}/capacity`
+            }
+            className={buttonSecondary}
+          >
+            {t('capacityAnalysis')}
+          </Link>
         </div>
       </header>
 

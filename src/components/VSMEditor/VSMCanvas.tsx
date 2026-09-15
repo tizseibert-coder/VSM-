@@ -31,9 +31,9 @@ import {
   calcCamaLine,
   resolveWorkdaysCalendar,
   shiftHoursPerDay,
-  type CamaColor,
   type ShiftModel as CamaShiftModel,
 } from '@/lib/vsm/capacityAnalysis'
+import { CAMA_DOT_CLASS } from './camaColors'
 import { BalanceChartPanel } from './BalanceChartPanel'
 import BenchmarkPanel from './BenchmarkPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
@@ -2694,16 +2694,6 @@ const inputClass = `w-full ${inputSm} focus:outline-none focus:ring-2 focus:ring
 const primaryButtonClass = buttonPrimaryLg
 const secondaryButtonClass = buttonSecondaryLg
 
-/** CAMA-Ampelfarben als Tailwind-Klasse fuer den kleinen Balken unter jedem
- *  Monatsfeld. Eigene Farbsprache, bewusst getrennt von Rot = Engpass an
- *  anderer Stelle im Canvas (siehe capacityAnalysis.ts, Abgrenzung zu
- *  capacity.ts) — derselbe Rotton haette hier eine andere Bedeutung. */
-const CAMA_COLOR_DOT: Record<CamaColor, string> = {
-  blue: 'bg-sky-400',
-  green: 'bg-emerald-500',
-  orange: 'bg-amber-500',
-  red: 'bg-red-500',
-}
 
 function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string; children: ReactNode }) {
   return (
@@ -3346,7 +3336,7 @@ function ProcessEditPanel({
                       className={`mt-1 ${inputClass} text-xs`}
                     />
                     <span
-                      className={`mt-1 block h-1.5 rounded-full ${monthResult ? CAMA_COLOR_DOT[monthResult.color] : 'bg-zinc-200'}`}
+                      className={`mt-1 block h-1.5 rounded-full ${monthResult ? CAMA_DOT_CLASS[monthResult.color] : 'bg-zinc-200'}`}
                       title={monthResult ? `Load Rate ${formatDecimal(monthResult.loadRate, locale, 2)}` : undefined}
                     />
                   </div>
