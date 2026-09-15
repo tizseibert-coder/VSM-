@@ -78,6 +78,14 @@ export async function createScenario(projectId: string, formData: FormData) {
           width: p.width,
           height: p.height,
           color: p.color,
+          // CAMA (Schritt 7, docs/plan-cama-capacity-analysis.md): ohne diese
+          // beiden Felder wuerde jede neue Forecast-Revision (RF1/RF2/RF3,
+          // technisch ein Szenario) mit einer leeren Kapazitaetsampel starten
+          // — die Nachfrage der Quelle waere weg, obwohl das Vorlagen-
+          // versprechen genau ist "RF2 aus RF1 ableiten und Nachfrage
+          // anpassen", nicht "RF2 bei null anfangen".
+          shift_model: p.shift_model,
+          monthly_demand: p.monthly_demand,
         }))
       )
       .select('id, origin_process_id')

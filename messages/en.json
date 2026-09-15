@@ -382,6 +382,14 @@
     "plt": {
       "term": "PLT (process lead time)",
       "definition": "The process lead time in days, measured on the value stream. Sizing a supermarket counts the lead time without the share this buffer itself contributes — otherwise its own size would feed into its own precondition."
+    },
+    "cama": {
+      "term": "CAMA (Capacity Analysis)",
+      "definition": "The capacity traffic light for each line and month: does the available capacity cover demand? Uses the same figures as above on the process (cycle time, NEE — the same number as OEE), plus a shift model and monthly demand. Green is ok, orange/red means action needed, blue means underutilised."
+    },
+    "loadRate": {
+      "term": "Load rate",
+      "definition": "Demand ÷ available capacity of a line in one month. Below 0.5 underutilised, up to 1.0 ok, up to 1.2 watch, above that overloaded — the basis of the CAMA traffic light."
     }
   },
   "Editor": {

@@ -382,6 +382,14 @@
     "plt": {
       "term": "PLT (Process Lead Time)",
       "definition": "Die Prozessdurchlaufzeit in Tagen, am Wertstrom gemessen. Für die Bemessung eines Supermarkts zählt der Vorlauf ohne den Beitrag, den dieser Puffer selbst zur Durchlaufzeit leistet — sonst rechnete man die eigene Größe in ihre eigene Voraussetzung hinein."
+    },
+    "cama": {
+      "term": "CAMA (Capacity Analysis)",
+      "definition": "Die Kapazitätsampel je Linie und Monat: reicht die verfügbare Kapazität für die Nachfrage? Rechnet mit denselben Größen wie oben im Prozess (Zykluszeit, NEE — dieselbe Zahl wie OEE), dazu Schichtmodell und Monatsnachfrage. Grün ist ok, Orange/Rot heisst Handlungsbedarf, Blau heisst unterausgelastet."
+    },
+    "loadRate": {
+      "term": "Load Rate",
+      "definition": "Nachfrage ÷ verfügbare Kapazität einer Linie in einem Monat. Unter 0,5 unterausgelastet, bis 1,0 ok, bis 1,2 Achtung, darüber überlastet — die Grundlage der CAMA-Ampel."
     }
   },
   "Editor": {

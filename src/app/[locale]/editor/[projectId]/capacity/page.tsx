@@ -6,6 +6,7 @@ import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { DEFAULT_WORKDAYS_PER_MONTH, type CamaLineResult } from '@/lib/vsm/capacityAnalysis'
 import { CAMA_BADGE_CLASS, CAMA_EMOJI } from '@/components/VSMEditor/camaColors'
 import { computeCamaLine } from '@/components/VSMEditor/camaLine'
+import { TermTooltip } from '@/components/VSMEditor/TermTooltip'
 import { formatDecimal } from '@/lib/vsm/numberFormat'
 import { buttonDangerSm, buttonPrimary, buttonSecondary, inputMd } from '@/components/ui/buttons'
 import { SubmitButton } from '@/components/ui/SubmitButton'
@@ -159,8 +160,12 @@ export default async function CapacityPage({
                     <tr className="border-b border-zinc-200">
                       <th className="p-3 text-left font-medium text-zinc-500">{t('tableLine')}</th>
                       <th className="p-3 text-left font-medium text-zinc-500">{t('tablePeak')}</th>
-                      <th className="p-3 text-left font-medium text-zinc-500">{t('tableLoadRate')}</th>
-                      <th className="p-3 text-left font-medium text-zinc-500">{t('tableAmpel')}</th>
+                      <th className="p-3 text-left font-medium text-zinc-500">
+                        <TermTooltip term="loadRate">{t('tableLoadRate')}</TermTooltip>
+                      </th>
+                      <th className="p-3 text-left font-medium text-zinc-500">
+                        <TermTooltip term="cama">{t('tableAmpel')}</TermTooltip>
+                      </th>
                       <th className="p-3 text-left font-medium text-zinc-500">{t('tableRecommendation')}</th>
                     </tr>
                   </thead>
@@ -272,8 +277,12 @@ async function LineDetail({
                   <th className="p-2 text-left font-medium text-zinc-500">{t('monthColumn')}</th>
                   <th className="p-2 text-left font-medium text-zinc-500">{t('demandColumn')}</th>
                   <th className="p-2 text-left font-medium text-zinc-500">{t('capacityColumn')}</th>
-                  <th className="p-2 text-left font-medium text-zinc-500">{t('loadRateColumn')}</th>
-                  <th className="p-2 text-left font-medium text-zinc-500">{t('ampelColumn')}</th>
+                  <th className="p-2 text-left font-medium text-zinc-500">
+                    <TermTooltip term="loadRate">{t('loadRateColumn')}</TermTooltip>
+                  </th>
+                  <th className="p-2 text-left font-medium text-zinc-500">
+                    <TermTooltip term="cama">{t('ampelColumn')}</TermTooltip>
+                  </th>
                 </tr>
               </thead>
               <tbody>
