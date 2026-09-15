@@ -3,14 +3,9 @@ import { Link } from '@/i18n/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
-import {
-  calcCamaLine,
-  resolveMonthlyValues,
-  DEFAULT_WORKDAYS_PER_MONTH,
-  type CamaLineResult,
-  type ShiftModel,
-} from '@/lib/vsm/capacityAnalysis'
+import { DEFAULT_WORKDAYS_PER_MONTH, type CamaLineResult } from '@/lib/vsm/capacityAnalysis'
 import { CAMA_BADGE_CLASS, CAMA_EMOJI } from '@/components/VSMEditor/camaColors'
+import { computeCamaLine } from '@/components/VSMEditor/camaLine'
 import { formatDecimal } from '@/lib/vsm/numberFormat'
 import { buttonDangerSm, buttonPrimary, buttonSecondary, inputMd } from '@/components/ui/buttons'
 import { SubmitButton } from '@/components/ui/SubmitButton'
@@ -26,22 +21,6 @@ type CapacityAction = Tables<'capacity_actions'>
 interface LineRow {
   process: Process
   result: CamaLineResult | null
-}
-
-function computeLine(process: Process, workdaysByMonth: number[]): CamaLineResult | null {
-  if (process.shift_model !== 1 && process.shift_model !== 2 && process.shift_model !== 3) return null
-
-  const monthlyDemand = resolveMonthlyValues(process.monthly_demand, 0)
-  return calcCamaLine(
-    {
-      cycleTimeMinutes: process.cycle_time,
-      operatorCount: process.operator_count,
-      neeFraction: process.oee / 100,
-      shiftModel: process.shift_model as ShiftModel,
-    },
-    monthlyDemand,
-    workdaysByMonth
-  )
 }
 
 const RECOMMENDATION_KEY = {
@@ -96,7 +75,7 @@ export default async function CapacityPage({
 
   const rows: LineRow[] = processes.map((process) => ({
     process,
-    result: computeLine(process, workdaysByMonth),
+    result: computeCamaLine(process, workdaysByMonth),
   }))
   const configured = rows
     .filter((r): r is LineRow & { result: CamaLineResult } => r.result !== null)
@@ -104,7 +83,7 @@ export default async function CapacityPage({
   const unconfigured = rows.filter((r) => r.result === null)
 
   const selectedProcess = processParam ? processes.find((p) => p.id === processParam) : undefined
-  const selectedResult = selectedProcess ? computeLine(selectedProcess, workdaysByMonth) : null
+  const selectedResult = selectedProcess ? computeCamaLine(selectedProcess, workdaysByMonth) : null
 
   const { data: actionsForSelected } = selectedProcess
     ? await supabase

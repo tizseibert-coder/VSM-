@@ -31,9 +31,11 @@ import {
   calcCamaLine,
   resolveWorkdaysCalendar,
   shiftHoursPerDay,
+  type CamaLineResult,
   type ShiftModel as CamaShiftModel,
 } from '@/lib/vsm/capacityAnalysis'
-import { CAMA_DOT_CLASS } from './camaColors'
+import { CAMA_DOT_CLASS, CAMA_HEX } from './camaColors'
+import { computeCamaLine } from './camaLine'
 import { BalanceChartPanel } from './BalanceChartPanel'
 import BenchmarkPanel from './BenchmarkPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
@@ -2304,6 +2306,11 @@ export default function VSMCanvas({
                   { cycleTime: process.cycle_time, oee: process.oee, operatorCount: process.operator_count },
                   kpis.taktTimeMinutes
                 )
+                // CAMA: eine andere Frage als isBottleneck (Ist-Zustand gegen
+                // die eine Kundentaktzeit) — hier die saisonale 12-Monats-Sicht,
+                // siehe camaLine.ts/capacityAnalysis.ts. null, solange kein
+                // Schichtmodell erfasst ist: keine Badge statt einer erfundenen.
+                const camaResult = computeCamaLine(process, workdaysByMonth)
                 return (
                   <ProcessBox
                     key={process.id}
@@ -2312,6 +2319,7 @@ export default function VSMCanvas({
                     y={pos.y}
                     isSelected={selection?.kind === 'process' && selection.id === process.id}
                     isBottleneck={isBottleneck}
+                    camaResult={camaResult}
                     counterScale={1 / stageScale}
                     onSelect={() => {
                       if (isAwaitingServerId(process.id)) return
@@ -4061,6 +4069,7 @@ function ProcessBox({
   y,
   isSelected,
   isBottleneck,
+  camaResult,
   counterScale,
   onSelect,
 }: {
@@ -4069,6 +4078,9 @@ function ProcessBox({
   y: number
   isSelected: boolean
   isBottleneck: boolean
+  /** CAMA-Ergebnis dieser Linie — null, solange kein Schichtmodell erfasst
+   *  ist. Die Badge unten erscheint nur bei orange/rot (siehe dort). */
+  camaResult: CamaLineResult | null
   /** 1 / stageScale — see the bottleneck badge below. */
   counterScale: number
   onSelect: () => void
@@ -4242,6 +4254,51 @@ function ProcessBox({
           stroke={INK}
           strokeWidth={1.2}
         />
+      )}
+      {camaResult && (camaResult.color === 'orange' || camaResult.color === 'red') && (
+        // CAMA-Ampel dieser Linie (schlechtester Monat, siehe camaLine.ts) —
+        // nur bei orange/rot, dieselbe "Stille heisst in Ordnung"-Konvention
+        // wie beim Engpass-Marker (isBottleneck erscheint auch nur, wenn er
+        // zutrifft). Blau/gruen bleiben auf dem Canvas unsichtbar; die volle
+        // Ampel inkl. dieser beiden Stufen steht im Kapazitaetsdaten-Panel
+        // und auf der Kapazitaetsseite.
+        //
+        // Bewusst UNTERHALB der Box statt in einer der vier Ecken: die sind
+        // alle schon belegt (Engpass oben links, Bedienerzahl oben rechts,
+        // Klassifizierung unten links, Kaizen-Blitz unten rechts,
+        // Schrittmacher-Pin oberhalb) — LANE_GAP (40 Einheiten, autoLayout.ts)
+        // laesst darunter genug Platz, ohne die naechste Spur zu beruehren.
+        // Eigenes Signal, bewusst getrennt vom roten Engpass-Rahmen (siehe
+        // capacityAnalysis.ts, Abgrenzung zu capacity.ts) — beide duerfen
+        // unterschiedliche Ampeln fuer dieselbe Station zeigen.
+        //
+        // [Lean-Durchsicht 2026-09-15] Erster Entwurf zeigte hier das Emoji
+        // aus camaColors.ts (wie im Panel/auf der Kapazitaetsseite) — mit
+        // einer eigens gebauten, Supabase-losen Konva-Seite lokal geprüft
+        // (node_modules/konva + Playwright, kein Netzwerk noetig) und dabei
+        // festgestellt: Farbige Emoji rendern auf einem `<canvas>` nicht
+        // zuverlaessig (fehlende Farb-Emoji-Schriftart je nach System) —
+        // anders als im DOM (Panel, Kapazitaetsseite), wo derselbe Emoji-Text
+        // ganz gewoehnlicher HTML-Text ist. Die Load-Rate-Zahl statt Emoji
+        // ist deshalb hier das "nie nur Farbe"-Signal: reiner Text, genau der
+        // Rendering-Pfad, den Zahlen auf diesem Canvas ohnehin schon nehmen.
+        <Group x={PROCESS_WIDTH / 2} y={PROCESS_HEIGHT + 14}>
+          <Circle radius={11} fill={CAMA_HEX[camaResult.color]} />
+          <Text
+            text={
+              Number.isFinite(camaResult.peakMonth.loadRate)
+                ? formatDecimal(camaResult.peakMonth.loadRate, locale, 1)
+                : '∞'
+            }
+            width={30}
+            offsetX={15}
+            offsetY={5}
+            align="center"
+            fontSize={CANVAS_TEXT.tag}
+            fontStyle="bold"
+            fill="#ffffff"
+          />
+        </Group>
       )}
     </Group>
   )

@@ -33,3 +33,14 @@ export const CAMA_BADGE_CLASS: Record<CamaColor, string> = {
   orange: 'bg-amber-100 text-amber-900',
   red: 'bg-red-100 text-red-800',
 }
+
+/** Dieselben vier Farben als Hex — für den Konva-Canvas, der keine
+ *  Tailwind-Klassen versteht, sondern Farbwerte direkt braucht (`fill`).
+ *  Dieselben Tailwind-Stufen wie CAMA_DOT_CLASS (sky-400/emerald-500/
+ *  amber-500/red-500), nur als Literal statt als Klassenname. */
+export const CAMA_HEX: Record<CamaColor, string> = {
+  blue: '#38bdf8',
+  green: '#10b981',
+  orange: '#f59e0b',
+  red: '#ef4444',
+}
