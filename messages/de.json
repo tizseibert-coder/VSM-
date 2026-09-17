@@ -827,7 +827,6 @@
     "recommendationGreen": "Im Zielkorridor — keine Massnahme nötig, Nachfrageentwicklung weiter beobachten.",
     "recommendationOrange": "Kapazität eng — kurzfristig wirksame Hebel prüfen: Rüstzeiten senken (SMED), Zusatzschicht/Überstunden im Peak-Monat, Produktion in Monate mit freier Kapazität vorziehen.",
     "recommendationRed": "Kapazitätsproblem, Massnahme Pflicht — dauerhafte Zusatzkapazität, Fremdvergabe oder Nachfrage/Produktmix verschieben, bevor die Liefertreue leidet.",
-    "backToTable": "← Zur Übersicht",
     "detailTitle": "Kapazität — {name}",
     "detailPeakHint": "Schlechtester Monat: {month}, Load Rate {loadRate}.",
     "monthColumn": "Monat",
@@ -835,8 +834,6 @@
     "capacityColumn": "Kapazität",
     "loadRateColumn": "Load Rate",
     "ampelColumn": "Ampel",
-    "notConfiguredDetail": "Für diese Linie ist noch kein Schichtmodell hinterlegt. Öffnen Sie sie im Editor unter „Kapazitätsdaten (CAMA) …“, um die 12-Monats-Ansicht zu sehen.",
-    "toEditor": "Im Editor öffnen →",
     "actionPlanTitle": "Aktionsplan",
     "noActions": "Noch keine Massnahmen für diese Linie.",
     "addActionTitle": "Massnahme hinzufügen",
@@ -876,7 +873,11 @@
     "deleteLineConfirm": "{name} endgültig löschen?",
     "deleteLineConfirmLinked": "{name} endgültig löschen? {count} VSM-Prozessbox(en) verlieren die Verknüpfung.",
     "linkedProcessCount": "Verknüpft mit {count} VSM-Prozessbox(en).",
-    "notConfiguredDetailLines": "Taktrate oder Schichtmodell ist für diese Linie noch nicht vollständig erfasst — bitte oben ausfüllen, um die 12-Monats-Ansicht zu sehen."
+    "notConfiguredDetailLines": "Taktrate oder Schichtmodell ist für diese Linie noch nicht vollständig erfasst — bitte oben ausfüllen, um die 12-Monats-Ansicht zu sehen.",
+    "projectViewIntro": "Nur eine Ansicht — Kapazitätsdaten pflegst du zentral unter",
+    "projectViewIntroLink": "Kapazitätsmanagement",
+    "unlinkedSectionTitle": "Ohne verknüpfte Linie",
+    "unlinkedHint": "Im Editor mit einer Linie verknüpfen"
   },
   "Wizard": {
     "backToEditor": "← Zurück zum Editor",

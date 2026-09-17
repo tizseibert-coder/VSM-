@@ -827,7 +827,6 @@
     "recommendationGreen": "Within target range — no action needed, keep watching demand.",
     "recommendationOrange": "Capacity is tight — check short-term levers: reduce changeover time (SMED), an extra shift/overtime in the peak month, or shift production into months with spare capacity.",
     "recommendationRed": "Capacity problem, action required — permanent extra capacity, outsourcing, or shift demand/product mix before delivery reliability suffers.",
-    "backToTable": "← Back to the table",
     "detailTitle": "Capacity — {name}",
     "detailPeakHint": "Worst month: {month}, load rate {loadRate}.",
     "monthColumn": "Month",
@@ -835,8 +834,6 @@
     "capacityColumn": "Capacity",
     "loadRateColumn": "Load rate",
     "ampelColumn": "Traffic light",
-    "notConfiguredDetail": "This line has no shift model yet. Open it in the editor under “Capacity data (CAMA) …” to see the 12-month view.",
-    "toEditor": "Open in editor →",
     "actionPlanTitle": "Action plan",
     "noActions": "No actions for this line yet.",
     "addActionTitle": "Add an action",
@@ -876,7 +873,11 @@
     "deleteLineConfirm": "Delete {name} permanently?",
     "deleteLineConfirmLinked": "Delete {name} permanently? {count} VSM process box(es) will lose the link.",
     "linkedProcessCount": "Linked to {count} VSM process box(es).",
-    "notConfiguredDetailLines": "Cycle time or shift model is not fully set up for this line yet — fill in the fields above to see the 12-month view."
+    "notConfiguredDetailLines": "Cycle time or shift model is not fully set up for this line yet — fill in the fields above to see the 12-month view.",
+    "projectViewIntro": "View only — manage capacity data centrally under",
+    "projectViewIntroLink": "Capacity management",
+    "unlinkedSectionTitle": "Without a linked line",
+    "unlinkedHint": "Link a line in the editor"
   },
   "Wizard": {
     "backToEditor": "← Back to the editor",
