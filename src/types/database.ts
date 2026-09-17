@@ -642,23 +642,32 @@ export type Database = {
       }
       line_capacity: {
         Row: {
+          cycle_time_minutes: number | null
           line_id: string
           monthly_demand: Json | null
           monthly_demand_stretch: Json | null
+          oee: number
+          operator_count: number
           shift_model: number | null
           updated_at: string
         }
         Insert: {
+          cycle_time_minutes?: number | null
           line_id: string
           monthly_demand?: Json | null
           monthly_demand_stretch?: Json | null
+          oee?: number
+          operator_count?: number
           shift_model?: number | null
           updated_at?: string
         }
         Update: {
+          cycle_time_minutes?: number | null
           line_id?: string
           monthly_demand?: Json | null
           monthly_demand_stretch?: Json | null
+          oee?: number
+          operator_count?: number
           shift_model?: number | null
           updated_at?: string
         }

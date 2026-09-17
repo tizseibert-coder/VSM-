@@ -90,8 +90,24 @@ COMMENT ON COLUMN public.vsm_org_settings.capacity_workdays IS
 -- ═══════════════════════════════════════════
 -- 3) line_capacity — CAMA-Kapazitaetsdaten je Linie
 -- ═══════════════════════════════════════════
+-- cycle_time_minutes/operator_count/oee tragen hier eine eigene Kopie derselben
+-- drei Groessen, die processes fuer die Takt-vs-Kundentakt-Pruefung schon hat
+-- (calculations.ts/capacity.ts) — kein Versehen, sondern die direkte Folge der
+-- Entkopplung: eine Linie ohne verknuepftes VSM (der ausdrueckliche
+-- Anwendungsfall aus docs/plan-cama-line-module.md, "Linie B hat nur
+-- Kapazitaetsdaten, kein VSM") hat sonst keine Quelle fuer ihre Taktrate. Die
+-- beiden Werte duerfen auseinanderlaufen, wenn eine Linie *und* ein VSM
+-- existieren — dieselbe bewusste Trennung wie zwischen CAMA- und
+-- Kundentakt-Ampel schon in capacityAnalysis.ts beschrieben ("zwei
+-- verschiedene Fragen, keine Uebereinstimmung noetig"). Beim Anlegen einer
+-- Linie aus einer Prozessbox heraus (spaeterer Schritt, ProcessEditPanel)
+-- werden diese Felder einmalig aus dem Prozess vorbelegt, bleiben danach aber
+-- unabhaengig editierbar.
 CREATE TABLE IF NOT EXISTS public.line_capacity (
   line_id                uuid PRIMARY KEY REFERENCES public.production_lines(id) ON DELETE CASCADE,
+  cycle_time_minutes     numeric,
+  operator_count         integer NOT NULL DEFAULT 1,
+  oee                    numeric NOT NULL DEFAULT 78,
   shift_model            smallint,
   monthly_demand         jsonb,
   monthly_demand_stretch jsonb,
@@ -113,6 +129,15 @@ END $$;
 -- in der Vorfassung begruendet: die bestehenden jsonb-Spalten dieses Schemas
 -- sind durchgehend unbeschraenkt, Form wird an der Oberflaeche/in
 -- capacityAnalysis.ts geprueft.
+COMMENT ON COLUMN public.line_capacity.cycle_time_minutes IS
+  'CAMA: Minuten je Stueck dieser Linie — eigene Kopie, nicht von processes.cycle_time abgeleitet (siehe Tabellenkommentar). Null = noch nicht erfasst.';
+
+COMMENT ON COLUMN public.line_capacity.operator_count IS
+  'CAMA: parallele, wirklich identische Arbeitsplaetze dieser Linie — dieselbe Bedingung wie processes.operator_count (siehe capacityAnalysis.ts:CamaLineInput).';
+
+COMMENT ON COLUMN public.line_capacity.oee IS
+  'CAMA: NEE dieser Linie in Prozent (0-100), skaliert vor der Rechnung wie processes.oee.';
+
 COMMENT ON COLUMN public.line_capacity.shift_model IS
   'CAMA: 1/2/3-Schicht dieser Linie. Bestimmt die Stunden/Tag (8.2/16.4/24, siehe capacityAnalysis.ts:shiftHoursPerDay). Null = noch nicht erfasst.';
 

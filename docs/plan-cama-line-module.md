@@ -61,8 +61,18 @@ CREATE TABLE public.production_lines (
 -- Modul CAMA: Kapazitätsdaten zu einer Linie. 1:1 zu production_lines, eigene Tabelle statt
 -- weiterer Spalten auf production_lines — Downstream-/Upstream-Module bekommen später ihre je
 -- eigene *_capacity-analoge Tabelle, ohne production_lines je zu ändern.
+--
+-- **Korrektur 2026-09-17, während der Umsetzung gefunden:** Der erste Entwurf unten vergaß
+-- Taktrate/Bedienerzahl/NEE — die lagen bisher implizit auf `processes` und sollten dort bleiben.
+-- Das widerspricht aber direkt dem Kern-Use-Case "Linie B hat nur Kapazitätsdaten, kein VSM": ohne
+-- VSM-Prozess gibt es dann keine Quelle für die Taktrate. Line_capacity trägt deshalb eine eigene
+-- Kopie von `cycle_time_minutes`/`operator_count`/`oee` — beim Anlegen einer Linie aus einer
+-- Prozessbox heraus einmalig vorbelegt, danach unabhängig editierbar (siehe Migrationskommentar).
 CREATE TABLE public.line_capacity (
   line_id                 uuid primary key references public.production_lines(id) on delete cascade,
+  cycle_time_minutes      numeric, -- Minuten/Stück dieser Linie, eigene Kopie
+  operator_count          integer not null default 1,
+  oee                     numeric not null default 78,
   shift_model             smallint check (shift_model in (1,2,3)),
   monthly_demand          jsonb,   -- [Jan..Dez], Basisprognose — wie bisher auf processes
   monthly_demand_stretch  jsonb,   -- [Jan..Dez], Stress-/Upside-Szenario (siehe Abschnitt unten)
