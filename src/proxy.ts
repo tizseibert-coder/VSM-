@@ -13,6 +13,27 @@ import { COOKIE_CONSENT_COOKIE } from '@/lib/consent/cookieConsent'
 const handleI18nRouting = createMiddleware(routing)
 
 export async function proxy(request: NextRequest) {
+  // [SEO-Aktion 2026-09-17, GSC-Bericht "Seitenindexierung"] Google hatte
+  // http://taktane.com/ als eigene, gueltig indexierte Adresse gefuehrt,
+  // getrennt von https://taktane.com/ — aus Sicht einer Suchmaschine zwei
+  // Seiten mit identischem Inhalt statt einer. Vercel erzwingt HTTPS am Rand
+  // fuer eigene Domains normalerweise selbst, aber das ist eine
+  // Domain-Einstellung ausserhalb dieses Repositories, nicht etwas, das hier
+  // nachvollziehbar oder testbar waere — diese Weiterleitung gilt unabhaengig
+  // davon. `x-forwarded-proto` traegt das urspruengliche Protokoll: Vercel
+  // reicht die Anfrage intern immer ueber HTTPS an die Funktion weiter, ein
+  // Blick auf `request.nextUrl.protocol` saehe deshalb immer "https:".
+  const forwardedProto = request.headers.get('x-forwarded-proto')
+  if (forwardedProto === 'http') {
+    const url = request.nextUrl.clone()
+    url.protocol = 'https:'
+    // 308, nicht 307: Die Umleitung soll dauerhaft sein (Suchmaschinen sollen
+    // den Indexeintrag verschieben, nicht bei jedem Aufruf neu entscheiden),
+    // und die Methode bleibt dabei erhalten (wichtig fuer POST-Formulare, die
+    // versehentlich ueber http:// abgeschickt werden).
+    return NextResponse.redirect(url, 308)
+  }
+
   // Sprache zuerst: fehlt das Praefix (z. B. /dashboard statt /de/dashboard),
   // leitet next-intl um, und die Supabase-Session-Aktualisierung braucht fuer
   // diesen Sprung gar nicht erst zu laufen — die naechste Anfrage traegt das
