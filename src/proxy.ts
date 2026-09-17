@@ -8,6 +8,7 @@ import {
   readAttributionFromUrl,
   serializeAttribution,
 } from '@/lib/crm/attribution'
+import { COOKIE_CONSENT_COOKIE } from '@/lib/consent/cookieConsent'
 
 const handleI18nRouting = createMiddleware(routing)
 
@@ -44,9 +45,18 @@ export async function proxy(request: NextRequest) {
  *
  * Erstanbieter, kein Dienst von aussen, keine Kennung ueber Webseiten hinweg:
  * Es steht ausschliesslich drin, was in der aufgerufenen Adresse stand.
+ *
+ * Trotzdem kein notwendiges Cookie im Sinne der ePrivacy-Richtlinie — es
+ * dient der Marketingauswertung, nicht dem Betrieb der Seite. Gesetzt wird es
+ * deshalb nur, wenn `vsm_consent` bereits "accepted" ist (Banner, siehe
+ * components/CookieConsentBanner.tsx). Ohne Entscheidung oder bei Ablehnung
+ * bleibt der Besuch ungezaehlt — das kostet im ungünstigsten Fall die
+ * Zuordnung des allerersten Seitenaufrufs, ist aber der Preis einer
+ * Einwilligung, die tatsaechlich *vor* dem Setzen steht statt danach.
  */
 function rememberAttribution(request: NextRequest, response: NextResponse): NextResponse {
   if (request.cookies.has(ATTRIBUTION_COOKIE)) return response
+  if (request.cookies.get(COOKIE_CONSENT_COOKIE)?.value !== 'accepted') return response
 
   const attribution = readAttributionFromUrl(
     request.nextUrl,
