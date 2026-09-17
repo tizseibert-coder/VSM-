@@ -68,7 +68,7 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
             {activeOrg && profile && (
               <OrgMark logoUrl={logoUrl} name={profile.displayName} />
