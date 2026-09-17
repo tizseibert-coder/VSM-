@@ -18,6 +18,7 @@
     "backToDashboard": "← Dashboard",
     "pricing": "Preise",
     "dataSheet": "Erhebungsbogen",
+    "capacityGuide": "Kapazitätsmanagement",
     "imprint": "Impressum",
     "privacy": "Datenschutz"
   },
@@ -895,10 +896,64 @@
     "deleteLineConfirmLinked": "{name} endgültig löschen? {count} VSM-Prozessbox(en) verlieren die Verknüpfung.",
     "linkedProcessCount": "Verknüpft mit {count} VSM-Prozessbox(en).",
     "notConfiguredDetailLines": "Taktrate oder Schichtmodell ist für diese Linie noch nicht vollständig erfasst — bitte oben ausfüllen, um die 12-Monats-Ansicht zu sehen.",
+    "notConfiguredDetail": "Taktrate oder Schichtmodell ist für diese Linie noch nicht vollständig erfasst — bitte oben ausfüllen, um die 12-Monats-Ansicht zu sehen.",
     "projectViewIntro": "Nur eine Ansicht — Kapazitätsdaten pflegst du zentral unter",
     "projectViewIntroLink": "Kapazitätsmanagement",
     "unlinkedSectionTitle": "Ohne verknüpfte Linie",
-    "unlinkedHint": "Im Editor mit einer Linie verknüpfen"
+    "unlinkedHint": "Im Editor mit einer Linie verknüpfen",
+    "actualHoursSectionTitle": "Tatsächlich geleistete Stunden (Ist)",
+    "actualHoursHint": "In Stunden, nicht in Stück — diese Linie kann mehrere Produktvarianten mit unterschiedlicher Taktrate bedienen, Stunden sind die Größe, die über alle Varianten vergleichbar bleibt. Leer lassen, solange ein Monat noch nicht abgeschlossen ist.",
+    "hoursTrendTitle": "Forecast vs. Ist",
+    "hoursTrendHint": "Plan-Stunden aus der Nachfrage-Prognose, verfügbare Stunden laut Schichtmodell und tatsächlich geleistete Stunden — dieselbe Linie, drei Antworten auf die Frage \"reicht die Kapazität\".",
+    "hoursLegendAvailable": "Verfügbare Stunden",
+    "hoursLegendRequired": "Plan-Stunden (Forecast)",
+    "hoursLegendActual": "Ist-Stunden",
+    "hoursTrendAriaLabel": "Forecast- und Ist-Stunden über zwölf Monate für Linie {name}",
+    "guideInlineTitle": "Wie funktioniert das Kapazitätsmanagement?",
+    "guideInlineBody": "Linie anlegen, Taktrate/Bedienerzahl/NEE und Schichtmodell erfassen, dann die monatliche Nachfrage eintragen — die Ampel zeigt sofort, welche Monate eng werden. Ist-Stunden lassen sich laufend nachtragen und erscheinen neben dem Forecast im Diagramm der Linie.",
+    "guideInlineLink": "Ausführliche Anleitung öffnen"
+  },
+  "CapacityGuide": {
+    "metaTitle": "Anleitung: Kapazitätsmanagement (CAMA)",
+    "metaDescription": "Schritt für Schritt: Linien anlegen, Monatskapazität berechnen, die Ampel lesen und den Forecast mit tatsächlich geleisteten Stunden vergleichen.",
+    "eyebrow": "Anleitung",
+    "title": "Kapazitätsmanagement (CAMA) — Schritt für Schritt",
+    "intro": "Kapazitätsmanagement ist ein eigenständiges Modul: Eine Linie existiert unabhängig davon, ob dafür je ein Wertstrom gezeichnet wird. Diese Anleitung zeigt den vollständigen Weg von der ersten Linie bis zum Vergleich zwischen Forecast und tatsächlich geleisteter Arbeit.",
+    "stepsTitle": "So funktioniert es",
+    "steps": [
+      {
+        "title": "Linie anlegen",
+        "body": "Ein Arbeitsplatz oder eine Fertigungslinie, z. B. „Drehen” — organisationsweit, unter Kapazitätsmanagement, nicht in einem einzelnen Projekt."
+      },
+      {
+        "title": "Stammdaten erfassen",
+        "body": "Taktrate (Minuten je Stück), Bedienerzahl, NEE (%) und Schichtmodell (1/2/3-Schicht) — dieselben Größen wie bei einer VSM-Prozessbox, hier aber unabhängig von ihr gepflegt."
+      },
+      {
+        "title": "Monatliche Nachfrage eintragen",
+        "body": "Zwölf Werte, ein Feld je Monat. Optional dazu ein Stresstest (z. B. Nachfrage × 1,2) für ein Upside-Szenario."
+      },
+      {
+        "title": "Die Ampel lesen",
+        "body": "Load Rate = Nachfrage ÷ Kapazität, automatisch je Monat berechnet. Blau/Grün/Orange/Rot zeigen, wie eng die Linie steht — die Handlungsempfehlung passt automatisch zur Farbe."
+      },
+      {
+        "title": "Ist-Stunden nachtragen",
+        "body": "Sobald ein Monat abgeschlossen ist: wie viele Stunden wurde diese Linie tatsächlich bearbeitet — in Stunden, nicht in Stück, weil eine Linie mehrere Produktvarianten mit unterschiedlicher Taktrate bedienen kann."
+      },
+      {
+        "title": "Forecast vs. Ist vergleichen",
+        "body": "Das Diagramm der Linie zeigt Plan-Stunden aus der Nachfrage-Prognose, verfügbare Stunden laut Schichtmodell und die eingetragenen Ist-Stunden nebeneinander — so wird sichtbar, ob ein Jahr wie geplant läuft."
+      },
+      {
+        "title": "Maßnahmen festhalten",
+        "body": "Zu jeder Linie: Beschreibung, Verantwortlich, Termin und optional ein Zielmonat — typischerweise angelegt, sobald eine Ampel auf Orange oder Rot springt."
+      }
+    ],
+    "ampelTitle": "Die Ampel im Detail",
+    "ctaTitle": "Selbst ausprobieren",
+    "ctaBody": "Kapazitätsmanagement ist Teil jedes Taktane-Kontos, unabhängig davon, ob schon ein Wertstrom existiert.",
+    "ctaButton": "Kostenlos starten"
   },
   "Wizard": {
     "backToEditor": "← Zurück zum Editor",

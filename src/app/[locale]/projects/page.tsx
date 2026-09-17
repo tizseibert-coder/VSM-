@@ -248,6 +248,9 @@ export default async function ProjectsPage({
           <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
             {tNav('dataSheet')}
           </Link>
+          <Link href="/capacity-guide" className="hover:text-brand-600 hover:underline">
+            {tNav('capacityGuide')}
+          </Link>
           <Link href="/impressum" className="hover:text-brand-600 hover:underline">
             {tNav('imprint')}
           </Link>

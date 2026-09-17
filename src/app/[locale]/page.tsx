@@ -287,6 +287,12 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
                   </span>
                 ))}
               </div>
+              <Link
+                href="/capacity-guide"
+                className="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline"
+              >
+                {tNav('capacityGuide')}
+              </Link>
             </div>
           </div>
 
@@ -572,6 +578,9 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </Link>
             <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
               {tNav('dataSheet')}
+            </Link>
+            <Link href="/capacity-guide" className="hover:text-brand-600 hover:underline">
+              {tNav('capacityGuide')}
             </Link>
             <Link href="/impressum" className="hover:text-brand-600 hover:underline">
               {tNav('imprint')}

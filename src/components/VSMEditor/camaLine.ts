@@ -1,5 +1,13 @@
 import type { Tables } from '@/types/database'
-import { calcCamaLine, resolveMonthlyValues, type CamaLineResult, type ShiftModel } from '@/lib/vsm/capacityAnalysis'
+import {
+  calcCamaHoursTrend,
+  calcCamaLine,
+  resolveMonthlyActualHours,
+  resolveMonthlyValues,
+  type CamaHoursMonth,
+  type CamaLineResult,
+  type ShiftModel,
+} from '@/lib/vsm/capacityAnalysis'
 
 type LineCapacity = Tables<'line_capacity'>
 
@@ -48,6 +56,38 @@ export function computeCamaStretchLine(
 ): CamaLineResult | null {
   if (!lineCapacity || lineCapacity.monthly_demand_stretch === null) return null
   return computeFrom(lineCapacity, lineCapacity.monthly_demand_stretch, workdaysByMonth)
+}
+
+/**
+ * Wie computeCamaLine, aber die Forecast/Ist-Stundenreihe (calcCamaHoursTrend)
+ * statt der Stueck-Ampel — derselbe Adapter-Grund wie computeCamaLine: die
+ * reine Rechnung in capacityAnalysis.ts kennt `Tables<'line_capacity'>`
+ * nicht. `null` unter denselben Bedingungen wie computeCamaLine
+ * (Schichtmodell/Taktrate fehlen) — ohne sie gibt es weder eine
+ * Kapazitaets- noch eine Plan-Stunden-Zahl.
+ */
+export function computeCamaHoursTrend(
+  lineCapacity: LineCapacity | null,
+  workdaysByMonth: number[]
+): CamaHoursMonth[] | null {
+  if (!lineCapacity) return null
+  if (lineCapacity.shift_model !== 1 && lineCapacity.shift_model !== 2 && lineCapacity.shift_model !== 3) return null
+  if (lineCapacity.cycle_time_minutes === null) return null
+
+  const monthlyDemand = resolveMonthlyValues(lineCapacity.monthly_demand, 0)
+  const actualMonthlyHours = resolveMonthlyActualHours(lineCapacity.monthly_actual_hours)
+
+  return calcCamaHoursTrend(
+    {
+      cycleTimeMinutes: lineCapacity.cycle_time_minutes,
+      operatorCount: lineCapacity.operator_count,
+      neeFraction: lineCapacity.oee / 100,
+      shiftModel: lineCapacity.shift_model as ShiftModel,
+    },
+    monthlyDemand,
+    actualMonthlyHours,
+    workdaysByMonth
+  )
 }
 
 function computeFrom(

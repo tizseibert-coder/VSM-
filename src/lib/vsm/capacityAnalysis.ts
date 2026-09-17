@@ -85,6 +85,43 @@ export function calcMonthlyCapacity(input: CamaLineInput, workdays: number): num
 }
 
 /**
+ * Verfuegbare Stunden/Monat: Stunden/Tag x Arbeitstage — unabhaengig von
+ * Taktrate/NEE/Nachfrage, reine Funktion des Schichtmodells. Die Obergrenze,
+ * an der Ist-Stunden (monthly_actual_hours) und Plan-Stunden (siehe
+ * calcRequiredHours) gemessen werden.
+ */
+export function calcAvailableHours(shiftModel: ShiftModel, workdays: number): number {
+  if (workdays <= 0) return 0
+  return shiftHoursPerDay(shiftModel) * workdays
+}
+
+/**
+ * Plan-Stunden: wie viele Stunden Schichtzeit noetig waeren, um `demand`
+ * Stueck bei dieser Taktrate/NEE zu produzieren — die Umkehrung von
+ * calcMonthlyCapacity (dort: Stunden -> Stueck, hier: Stueck -> Stunden).
+ * Nutzerentscheidung 2026-09-17: Der Forecast/Ist-Vergleich einer Linie
+ * laeuft in Stunden, nicht in Stueck, weil eine Linie mehrere
+ * Produktvarianten mit je eigener Taktrate bedienen kann und Stunden dafuer
+ * die vergleichbare Groesse sind (siehe Migration 20260917200000) — diese
+ * Funktion uebersetzt die vorhandene, stueckbasierte Nachfrage-Prognose in
+ * dieselbe Einheit wie monthly_actual_hours, ohne die Nachfrage-Eingabe
+ * selbst zu aendern.
+ *
+ * 0 statt Infinity/NaN bei ungueltiger Zykluszeit oder NEE = 0, dieselbe
+ * Konvention wie calcMonthlyCapacity: "keine Kapazitaet" braucht hier keine
+ * Plan-Stunden, nicht eine unbestimmte Zahl.
+ */
+export function calcRequiredHours(input: CamaLineInput, demand: number): number {
+  if (input.cycleTimeMinutes <= 0 || input.neeFraction <= 0 || demand <= 0) return 0
+
+  const operatorCount = input.operatorCount && input.operatorCount > 0 ? input.operatorCount : 1
+  const effectiveCycleTime = input.cycleTimeMinutes / operatorCount
+  const piecesPerHour = 60 / effectiveCycleTime
+
+  return demand / (piecesPerHour * input.neeFraction)
+}
+
+/**
  * Load Rate = Nachfrage / Monatskapazitaet. Ohne Nachfrage ist die Zahl 0
  * (unterausgelastet), unabhaengig von der Kapazitaet — keine Nachfrage heisst
  * nicht "unbekannt". Mit Nachfrage aber ohne Kapazitaet (0) ist die Linie
@@ -168,6 +205,61 @@ export function calcCamaLine(
   return { months, peakMonth, color: peakMonth.color }
 }
 
+export interface CamaHoursMonth {
+  /** 1 = Januar .. 12 = Dezember. */
+  month: number
+  /** Plan-Stunden aus der Nachfrage-Prognose, siehe calcRequiredHours. */
+  requiredHours: number
+  /** Verfuegbare Stunden laut Schichtmodell, siehe calcAvailableHours. */
+  availableHours: number
+  /** Tatsaechlich geleistete Stunden (monthly_actual_hours). `null` =
+   *  fuer diesen Monat noch nicht erfasst — anders als eine 0, die "keine
+   *  einzige Stunde gearbeitet" bedeuten wuerde. */
+  actualHours: number | null
+}
+
+/**
+ * Die Forecast/Ist-Reihe einer Linie ueber alle 12 Monate — das Pendant zu
+ * calcCamaLine (dort: Ampelfarbe aus Stueck-Nachfrage/-Kapazitaet), hier:
+ * drei Stunden-Groessen fuer den Vergleich "was haben wir geplant, was
+ * konnten wir leisten, was haben wir tatsaechlich gearbeitet" (Nutzergespraech
+ * 2026-09-17). Bewusst eine eigene Funktion statt eines vierten Feldes an
+ * CamaMonthResult: unterschiedliche Frage (Stunden vs. Stueck/Ampel), siehe
+ * auch die Abgrenzung CAMA vs. capacity.ts oben im Datei-Kommentar.
+ *
+ * `actualMonthlyHours` traegt `number | null` je Monat statt nur `number`,
+ * weil "dieser Monat ist noch offen" ein eigener Zustand ist und keine 0
+ * Stunden sein darf — der normale Aufrufweg loest das rohe jsonb-Array vorher
+ * mit resolveMonthlyActualHours() auf (dieselbe Aufteilung wie
+ * resolveMonthlyValues/calcCamaLine). Trotzdem haertet diese Funktion
+ * zusaetzlich gegen zu kurze Arrays/NaN ab, aus demselben Grund wie dort.
+ */
+export function calcCamaHoursTrend(
+  input: CamaLineInput,
+  monthlyDemand: number[],
+  actualMonthlyHours: (number | null)[],
+  workdaysByMonth: number[]
+): CamaHoursMonth[] {
+  return Array.from({ length: 12 }, (_, index) => {
+    const rawDemand = monthlyDemand[index]
+    const demand = typeof rawDemand === 'number' && Number.isFinite(rawDemand) ? rawDemand : 0
+    const rawWorkdays = workdaysByMonth[index]
+    const workdays =
+      typeof rawWorkdays === 'number' && Number.isFinite(rawWorkdays) && rawWorkdays > 0
+        ? rawWorkdays
+        : DEFAULT_WORKDAYS_PER_MONTH
+    const rawActual = actualMonthlyHours[index]
+    const actualHours = typeof rawActual === 'number' && Number.isFinite(rawActual) ? rawActual : null
+
+    return {
+      month: index + 1,
+      requiredHours: calcRequiredHours(input, demand),
+      availableHours: calcAvailableHours(input.shiftModel, workdays),
+      actualHours,
+    }
+  })
+}
+
 /**
  * Fuellt einen luecken- oder leerhaften Kalender (processes.monthly_demand
  * bzw. vsm_org_settings.capacity_workdays, beide jsonb und ungeprueft — siehe
@@ -180,6 +272,20 @@ export function resolveMonthlyValues(raw: unknown, fallback: number): number[] {
   return Array.from({ length: 12 }, (_, index) => {
     const value = array[index]
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  })
+}
+
+/**
+ * Wie resolveMonthlyValues, aber ohne Fallback-Zahl: jeder Monat bleibt
+ * `null`, wenn er im jsonb-Array fehlt oder ungueltig ist — fuer
+ * monthly_actual_hours, wo "nicht erfasst" ein eigener Zustand ist und keine
+ * 0 sein darf (siehe calcCamaHoursTrend).
+ */
+export function resolveMonthlyActualHours(raw: unknown): (number | null)[] {
+  const array = Array.isArray(raw) ? raw : []
+  return Array.from({ length: 12 }, (_, index) => {
+    const value = array[index]
+    return typeof value === 'number' && Number.isFinite(value) ? value : null
   })
 }
 

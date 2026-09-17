@@ -91,6 +91,32 @@ function monthlyArrayFromForm(formData: FormData, prefix: string): number[] | nu
 }
 
 /**
+ * Wie monthlyArrayFromForm, aber ein leeres Feld bleibt `null` statt 0 — für
+ * monthly_actual_hours, wo ein noch nicht vergangener oder noch nicht
+ * erfasster Monat kein Ist-Wert 0 werden darf, sonst zeigte das Diagramm auf
+ * capacity/page.tsx einen unbearbeiteten Monat als "0 Stunden geleistet"
+ * statt als offen (siehe capacityAnalysis.ts, calcCamaHoursTrend/
+ * resolveMonthlyActualHours). `null` insgesamt nur, wenn *kein einziges*
+ * Feld gesetzt ist — derselbe Fall wie bei monthlyArrayFromForm.
+ */
+function monthlyActualHoursFromForm(formData: FormData): (number | null)[] | null {
+  const values: (number | null)[] = []
+  let anySet = false
+  for (let month = 1; month <= 12; month++) {
+    const raw = formData.get(`actual_hours_${month}`)
+    const trimmed = typeof raw === 'string' ? raw.trim() : ''
+    if (trimmed === '') {
+      values.push(null)
+      continue
+    }
+    anySet = true
+    const parsed = Number(trimmed.replace(',', '.'))
+    values.push(Number.isFinite(parsed) ? parsed : null)
+  }
+  return anySet ? values : null
+}
+
+/**
  * Speichert Name, Taktrate/Bedienerzahl/NEE, Schichtmodell und die
  * Monatsnachfrage einer Linie in einem Zug — ein Formular, zwei
  * Absende-Knöpfe (siehe capacity/page.tsx): `useStretchFactor=false`
@@ -115,6 +141,7 @@ export async function saveLineCapacity(lineId: string, useStretchFactor: boolean
   const monthlyDemandStretch = useStretchFactor
     ? (monthlyDemand ? monthlyDemand.map((value) => Math.round(value * 1.2)) : null)
     : monthlyArrayFromForm(formData, 'stretch')
+  const monthlyActualHours = monthlyActualHoursFromForm(formData)
 
   const supabase = await createClient()
 
@@ -131,6 +158,7 @@ export async function saveLineCapacity(lineId: string, useStretchFactor: boolean
     shift_model: shiftModel,
     monthly_demand: monthlyDemand,
     monthly_demand_stretch: monthlyDemandStretch,
+    monthly_actual_hours: monthlyActualHours,
   }
   const { error } = await supabase.from('line_capacity').upsert(update, { onConflict: 'line_id' })
   if (error) {

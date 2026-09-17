@@ -18,6 +18,7 @@
     "backToDashboard": "← Dashboard",
     "pricing": "Pricing",
     "dataSheet": "Data sheet",
+    "capacityGuide": "Capacity management",
     "imprint": "Legal notice",
     "privacy": "Privacy"
   },
@@ -895,10 +896,64 @@
     "deleteLineConfirmLinked": "Delete {name} permanently? {count} VSM process box(es) will lose the link.",
     "linkedProcessCount": "Linked to {count} VSM process box(es).",
     "notConfiguredDetailLines": "Cycle time or shift model is not fully set up for this line yet — fill in the fields above to see the 12-month view.",
+    "notConfiguredDetail": "Cycle time or shift model is not fully set up for this line yet — fill in the fields above to see the 12-month view.",
     "projectViewIntro": "View only — manage capacity data centrally under",
     "projectViewIntroLink": "Capacity management",
     "unlinkedSectionTitle": "Without a linked line",
-    "unlinkedHint": "Link a line in the editor"
+    "unlinkedHint": "Link a line in the editor",
+    "actualHoursSectionTitle": "Actual hours worked",
+    "actualHoursHint": "In hours, not pieces — this line can serve several product variants with different cycle times, and hours are the one figure that stays comparable across all of them. Leave a month blank while it isn't closed yet.",
+    "hoursTrendTitle": "Forecast vs. actual",
+    "hoursTrendHint": "Required hours from the demand forecast, available hours from the shift model, and actual hours worked — the same line, three answers to \"is there enough capacity\".",
+    "hoursLegendAvailable": "Available hours",
+    "hoursLegendRequired": "Required hours (forecast)",
+    "hoursLegendActual": "Actual hours",
+    "hoursTrendAriaLabel": "Forecast and actual hours over twelve months for line {name}",
+    "guideInlineTitle": "How does capacity management work?",
+    "guideInlineBody": "Create a line, enter cycle time/operator count/OEE and shift model, then the monthly demand — the traffic light immediately shows which months get tight. Actual hours can be added as each month closes and then show up next to the forecast in the line's chart.",
+    "guideInlineLink": "Open the full guide"
+  },
+  "CapacityGuide": {
+    "metaTitle": "Guide: capacity management (CAMA)",
+    "metaDescription": "Step by step: create lines, calculate monthly capacity, read the traffic light, and compare the forecast against actual hours worked.",
+    "eyebrow": "Guide",
+    "title": "Capacity management (CAMA) — step by step",
+    "intro": "Capacity management is a standalone module: a line exists independently of whether a value stream is ever drawn for it. This guide walks through the full path, from the first line to comparing forecast against actual work.",
+    "stepsTitle": "How it works",
+    "steps": [
+      {
+        "title": "Create a line",
+        "body": "A workstation or production line, e.g. \"Turning\" — organization-wide, under capacity management, not tied to a single project."
+      },
+      {
+        "title": "Enter master data",
+        "body": "Cycle time (minutes per piece), operator count, OEE (%), and shift model (1/2/3-shift) — the same figures as a VSM process box, but maintained independently of it here."
+      },
+      {
+        "title": "Enter monthly demand",
+        "body": "Twelve values, one field per month. Optionally add a stress test (e.g. demand × 1.2) for an upside scenario."
+      },
+      {
+        "title": "Read the traffic light",
+        "body": "Load rate = demand ÷ capacity, calculated automatically per month. Blue/green/orange/red show how tight the line is — the recommended action matches the color automatically."
+      },
+      {
+        "title": "Add actual hours",
+        "body": "Once a month is closed: how many hours this line actually worked — in hours, not pieces, because a line can serve several product variants with different cycle times."
+      },
+      {
+        "title": "Compare forecast vs. actual",
+        "body": "The line's chart shows required hours from the demand forecast, available hours from the shift model, and the actual hours entered, side by side — making it visible whether a year is tracking to plan."
+      },
+      {
+        "title": "Track actions",
+        "body": "For each line: description, owner, due date, and optionally a target month — typically created as soon as a traffic light turns orange or red."
+      }
+    ],
+    "ampelTitle": "The traffic light in detail",
+    "ctaTitle": "Try it yourself",
+    "ctaBody": "Capacity management is part of every Taktane account, whether or not a value stream exists yet.",
+    "ctaButton": "Get started free"
   },
   "Wizard": {
     "backToEditor": "← Back to the editor",

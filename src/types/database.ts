@@ -644,6 +644,7 @@ export type Database = {
         Row: {
           cycle_time_minutes: number | null
           line_id: string
+          monthly_actual_hours: Json | null
           monthly_demand: Json | null
           monthly_demand_stretch: Json | null
           oee: number
@@ -654,6 +655,7 @@ export type Database = {
         Insert: {
           cycle_time_minutes?: number | null
           line_id: string
+          monthly_actual_hours?: Json | null
           monthly_demand?: Json | null
           monthly_demand_stretch?: Json | null
           oee?: number
@@ -664,6 +666,7 @@ export type Database = {
         Update: {
           cycle_time_minutes?: number | null
           line_id?: string
+          monthly_actual_hours?: Json | null
           monthly_demand?: Json | null
           monthly_demand_stretch?: Json | null
           oee?: number

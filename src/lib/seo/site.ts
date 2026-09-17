@@ -117,6 +117,7 @@ export const PUBLIC_PATHS = [
   { path: '/pricing', priority: 0.9, changeFrequency: 'monthly' as const },
   { path: '/demo', priority: 0.9, changeFrequency: 'monthly' as const },
   { path: '/data-sheet', priority: 0.5, changeFrequency: 'yearly' as const },
+  { path: '/capacity-guide', priority: 0.5, changeFrequency: 'yearly' as const },
   { path: '/signup', priority: 0.4, changeFrequency: 'yearly' as const },
   { path: '/login', priority: 0.2, changeFrequency: 'yearly' as const },
   { path: '/impressum', priority: 0.1, changeFrequency: 'yearly' as const },

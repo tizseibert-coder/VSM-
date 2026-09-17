@@ -4,14 +4,15 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
-import { DEFAULT_WORKDAYS_PER_MONTH, type CamaLineResult } from '@/lib/vsm/capacityAnalysis'
+import { DEFAULT_WORKDAYS_PER_MONTH, type CamaHoursMonth, type CamaLineResult } from '@/lib/vsm/capacityAnalysis'
 import { CAMA_BADGE_CLASS, CAMA_EMOJI } from '@/components/VSMEditor/camaColors'
-import { computeCamaLine, computeCamaStretchLine } from '@/components/VSMEditor/camaLine'
+import { computeCamaHoursTrend, computeCamaLine, computeCamaStretchLine } from '@/components/VSMEditor/camaLine'
 import { TermTooltip } from '@/components/VSMEditor/TermTooltip'
 import { formatDecimal } from '@/lib/vsm/numberFormat'
 import { buttonPrimary, buttonSecondary, inputMd } from '@/components/ui/buttons'
 import { SubmitButton } from '@/components/ui/SubmitButton'
 import DeleteLineButton from '@/components/capacity/DeleteLineButton'
+import HoursTrendChart from '@/components/capacity/HoursTrendChart'
 import type { Tables } from '@/types/database'
 import {
   addCapacityAction,
@@ -141,6 +142,19 @@ export default async function CapacityLinesPage({
         <h1 className="mt-1 text-2xl font-semibold text-zinc-950">{t('linesTitle')}</h1>
         <p className="mt-1 text-sm text-zinc-600">{t('linesIntro', { org: active.organizationName })}</p>
 
+        {/* Kurzer In-App-Einstieg plus Link auf die ausfuehrliche oeffentliche
+            Anleitung (Nutzerentscheidung 2026-09-17, "Beides") — <details>
+            statt eines eigenen Zustands/Client-Skripts, aufklappbar und
+            standardmaessig zu, damit er niemandem im Weg steht, der die
+            Seite schon kennt. */}
+        <details className="mt-4 rounded-surface border border-zinc-200 bg-white px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-medium text-zinc-950">{t('guideInlineTitle')}</summary>
+          <p className="mt-2 leading-relaxed text-zinc-600">{t('guideInlineBody')}</p>
+          <Link href="/capacity-guide" className="mt-2 inline-block font-medium text-brand-600 hover:underline">
+            {t('guideInlineLink')}
+          </Link>
+        </details>
+
         {error && <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         {saved && !error && (
           <p className="mt-4 rounded-control bg-brand-50 px-3 py-2 text-sm text-brand-700">{t('saved')}</p>
@@ -150,6 +164,7 @@ export default async function CapacityLinesPage({
           <LineDetail
             row={selectedRow}
             stretchResult={computeCamaStretchLine(selectedRow.capacity, workdaysByMonth)}
+            hoursTrend={computeCamaHoursTrend(selectedRow.capacity, workdaysByMonth)}
             actions={actionsForSelected ?? []}
             canWrite={canWrite}
             locale={locale}
@@ -266,6 +281,7 @@ function capitalize(value: string): string {
 async function LineDetail({
   row,
   stretchResult,
+  hoursTrend,
   actions,
   canWrite,
   locale,
@@ -275,6 +291,7 @@ async function LineDetail({
 }: {
   row: LineRow
   stretchResult: CamaLineResult | null
+  hoursTrend: CamaHoursMonth[] | null
   actions: CapacityAction[]
   canWrite: boolean
   locale: string
@@ -378,6 +395,28 @@ async function LineDetail({
           </div>
 
           <div>
+            <span className={FIELD_LABEL}>{t('actualHoursSectionTitle')}</span>
+            <p className="mt-1 text-xs text-zinc-500">{t('actualHoursHint')}</p>
+            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                <label key={month} className="flex flex-col gap-1">
+                  <span className="text-xs text-zinc-500">{tMonths(`month${month}`)}</span>
+                  <input
+                    name={`actual_hours_${month}`}
+                    inputMode="decimal"
+                    defaultValue={
+                      Array.isArray(capacity?.monthly_actual_hours)
+                        ? ((capacity?.monthly_actual_hours as (number | null)[])[month - 1] ?? '')
+                        : ''
+                    }
+                    className={inputMd}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <span className={FIELD_LABEL}>{t('stretchSectionTitle')}</span>
             <p className="mt-1 text-xs text-zinc-500">{t('stretchHint')}</p>
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
@@ -466,6 +505,29 @@ async function LineDetail({
         <p className="mt-6 rounded-surface border border-dashed border-zinc-300 p-6 text-sm text-zinc-500">
           {t('notConfiguredDetail')}
         </p>
+      )}
+
+      {/* Forecast vs. Ist (Nutzergespraech 2026-09-17): eigener Block statt
+          einer weiteren Tabellenspalte oben — andere Einheit (Stunden statt
+          Stueck/Ampel), siehe capacityAnalysis.ts, calcCamaHoursTrend. Nur
+          unter derselben Bedingung wie die Ampel-Tabelle (Taktrate und
+          Schichtmodell erfasst), deshalb kein eigener Leerzustand noetig. */}
+      {hoursTrend && (
+        <div className="mt-6 rounded-surface border border-zinc-200 p-4">
+          <h3 className="text-sm font-semibold text-zinc-950">{t('hoursTrendTitle')}</h3>
+          <p className="mt-1 text-xs text-zinc-500">{t('hoursTrendHint')}</p>
+          <div className="mt-4">
+            <HoursTrendChart
+              months={hoursTrend}
+              monthLabels={Array.from({ length: 12 }, (_, i) => tMonths(`month${i + 1}`).slice(0, 3))}
+              locale={locale}
+              legendAvailable={t('hoursLegendAvailable')}
+              legendRequired={t('hoursLegendRequired')}
+              legendActual={t('hoursLegendActual')}
+              ariaLabel={t('hoursTrendAriaLabel', { name: line.name })}
+            />
+          </div>
+        </div>
       )}
 
       <div className="mt-6 rounded-surface border border-zinc-200 p-4">
