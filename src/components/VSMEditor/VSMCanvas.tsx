@@ -27,14 +27,8 @@ import {
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
-import {
-  calcCamaLine,
-  resolveWorkdaysCalendar,
-  shiftHoursPerDay,
-  type CamaLineResult,
-  type ShiftModel as CamaShiftModel,
-} from '@/lib/vsm/capacityAnalysis'
-import { CAMA_DOT_CLASS, CAMA_HEX } from './camaColors'
+import { resolveWorkdaysCalendar, type CamaLineResult } from '@/lib/vsm/capacityAnalysis'
+import { CAMA_BADGE_CLASS, CAMA_EMOJI, CAMA_HEX } from './camaColors'
 import { computeCamaLine } from './camaLine'
 import { BalanceChartPanel } from './BalanceChartPanel'
 import BenchmarkPanel from './BenchmarkPanel'
@@ -126,6 +120,8 @@ type Project = Tables<'projects'>
 type Process = Tables<'processes'>
 type BenchmarkReference = Tables<'benchmark_reference'>
 type Buffer = Tables<'inventory_buffers'>
+type ProductionLine = Tables<'production_lines'>
+type LineCapacity = Tables<'line_capacity'>
 
 const INK = '#18181b' // zinc-900 — used for all VSM line-art instead of pure black
 const ACCENT = '#17786c' // brand-500 — Auswahl, die einzige Schmuckfarbe auf dem Canvas
@@ -296,6 +292,18 @@ interface Props {
    */
   capacityWorkdays?: number[]
   /**
+   * CAMA: alle Linien der Organisation, fuer das Verknuepfungs-Dropdown im
+   * Bearbeitungspanel einer Prozessbox — seit der Linien-Umstellung
+   * (docs/plan-cama-line-module.md) sind Kapazitaetsdaten nicht mehr
+   * Prozess-Eigenschaften, eine Prozessbox verknuepft sich stattdessen
+   * optional auf eine bestehende Linie. Leer in der oeffentlichen Demo (keine
+   * Organisation).
+   */
+  productionLines?: ProductionLine[]
+  /** CAMA: Kapazitaetsdaten aller Linien aus `productionLines`, fuer die
+   *  Ampel-Vorschau auf der Prozessbox und im Bearbeitungspanel. */
+  lineCapacities?: LineCapacity[]
+  /**
    * Firmenprofil fuers Blatt: Logo, Name, Akzentfarbe, Fusszeile.
    *
    * Nur der PDF-Export benutzt es — die Zeichenflaeche bleibt schwarzweiss.
@@ -355,6 +363,8 @@ export default function VSMCanvas({
   benchmarkReferences = [],
   comparisonStates = [],
   capacityWorkdays,
+  productionLines = [],
+  lineCapacities = [],
   branding = null,
 }: Props) {
   const locale = useLocale()
@@ -365,6 +375,13 @@ export default function VSMCanvas({
   // resolveWorkdaysCalendar-Signatur). Fehlt die Prop ganz (oeffentliche Demo,
   // keine Organisation), gilt derselbe Vorgabekalender wie ueberall in CAMA.
   const workdaysByMonth = capacityWorkdays ?? resolveWorkdaysCalendar(null)
+  // CAMA: line_id -> Kapazitaetsdaten, fuer die Ampel auf der Prozessbox und im
+  // Bearbeitungspanel. useMemo, weil sie in Abhaengigkeitslisten weiter unten
+  // stehen (siehe workdaysByMonth-Kommentar oben zum selben Problem).
+  const lineCapacityByLineId = useMemo(
+    () => new Map(lineCapacities.map((c) => [c.line_id, c])),
+    [lineCapacities]
+  )
   // [Bedienbarkeitsprüfung 2026-09-03, B9] Kurz, weil sie oft vorkommen: Jede
   // Zahl, die hier angezeigt wird, geht durch eine der beiden — sonst steht
   // "84.5 Tage" in einer deutschen Oberflaeche, waehrend die Startseite
@@ -2308,9 +2325,15 @@ export default function VSMCanvas({
                 )
                 // CAMA: eine andere Frage als isBottleneck (Ist-Zustand gegen
                 // die eine Kundentaktzeit) — hier die saisonale 12-Monats-Sicht,
-                // siehe camaLine.ts/capacityAnalysis.ts. null, solange kein
-                // Schichtmodell erfasst ist: keine Badge statt einer erfundenen.
-                const camaResult = computeCamaLine(process, workdaysByMonth)
+                // siehe camaLine.ts/capacityAnalysis.ts. Kapazitaetsdaten kommen
+                // seit der Linien-Umstellung von der verknuepften Linie, nicht
+                // mehr vom Prozess selbst; null ohne Verknuepfung oder solange
+                // die Linie kein Schichtmodell/keine Taktrate hat: keine Badge
+                // statt einer erfundenen.
+                const camaResult = computeCamaLine(
+                  process.line_id ? (lineCapacityByLineId.get(process.line_id) ?? null) : null,
+                  workdaysByMonth
+                )
                 return (
                   <ProcessBox
                     key={process.id}
@@ -2500,6 +2523,8 @@ export default function VSMCanvas({
           onClose={() => setSelection(null)}
           onError={setError}
           workdaysByMonth={workdaysByMonth}
+          productionLines={productionLines}
+          lineCapacityByLineId={lineCapacityByLineId}
         />
       )}
 
@@ -2784,6 +2809,8 @@ function ProcessEditPanel({
   onClose,
   onError,
   workdaysByMonth,
+  productionLines,
+  lineCapacityByLineId,
 }: {
   projectId: string
   scenarioId: string | null
@@ -2805,8 +2832,12 @@ function ProcessEditPanel({
    * Weg bliebe der Fehler ungesehen.
    */
   onError: (message: string) => void
-  /** CAMA: firmenweiter Kalender, nur fuer die Live-Vorschau hier unten. */
+  /** CAMA: firmenweiter Kalender, fuer die Ampel der verknuepften Linie. */
   workdaysByMonth: number[]
+  /** CAMA: alle Linien der Organisation, fuer das Verknuepfungs-Dropdown. */
+  productionLines: ProductionLine[]
+  /** CAMA: line_id -> Kapazitaetsdaten, fuer die Ampel der ausgewaehlten Linie. */
+  lineCapacityByLineId: Map<string, LineCapacity>
 }) {
   const router = useRouter()
   const { mutate, isDemo } = useVsmMutationRequired()
@@ -2817,18 +2848,14 @@ function ProcessEditPanel({
   const [oee, setOee] = useState(String(process.oee))
   const [operatorCount, setOperatorCount] = useState(String(process.operator_count))
   const [changeoverTime, setChangeoverTime] = useState(String(process.changeover_time))
-  // CAMA: Kapazitaetsdaten dieser Linie. Eigener, eingeklappter Abschnitt statt
-  // eigenes Panel (siehe docs/plan-cama-capacity-analysis.md) — teilt sich das
-  // Speichern und die mutate()/startTransition()-Verdrahtung mit dem Rest
-  // dieses Formulars, statt beides ein zweites Mal aufzubauen.
-  const [showCapacity, setShowCapacity] = useState(false)
-  const [shiftModel, setShiftModel] = useState(process.shift_model ? String(process.shift_model) : '')
-  const [monthlyDemand, setMonthlyDemand] = useState<string[]>(() =>
-    Array.from({ length: 12 }, (_, index) => {
-      const raw = Array.isArray(process.monthly_demand) ? process.monthly_demand[index] : undefined
-      return typeof raw === 'number' ? String(raw) : ''
-    })
-  )
+  // CAMA: Verknuepfung auf eine firmenweite Linie statt eigener Kapazitaetsdaten
+  // — seit der Linien-Umstellung (docs/plan-cama-line-module.md) haelt diese
+  // Prozessbox keine Kapazitaetsdaten mehr selbst, nur noch den Verweis. Die
+  // Kapazitaetsdaten der ausgewaehlten Linie werden hier nur gelesen (fuer die
+  // Ampel-Vorschau), nicht bearbeitet — das passiert auf /capacity.
+  const [lineId, setLineId] = useState(process.line_id ?? '')
+  const selectedLineCapacity = lineId ? (lineCapacityByLineId.get(lineId) ?? null) : null
+  const selectedLineResult = computeCamaLine(selectedLineCapacity, workdaysByMonth)
   const t = useTranslations('Editor')
   const tMonths = useTranslations('Settings')
   const tClass = useTranslations('Classification')
@@ -2852,32 +2879,6 @@ function ProcessEditPanel({
   const liveEffectiveCycleTime =
     !Number.isNaN(liveCycleTimeNum) && !Number.isNaN(liveOperatorCountNum) && liveOperatorCountNum > 1
       ? effectiveCycleTime({ cycleTime: liveCycleTimeNum, operatorCount: liveOperatorCountNum })
-      : null
-
-  // CAMA-Vorschau: rechnet mit genau denselben, noch ungespeicherten
-  // Zykluszeit-/Bediener-/NEE-Werten weiter oben im Formular — Aendern der
-  // Zykluszeit bewegt die Ampel hier sofort mit, statt erst nach dem
-  // Speichern zu ueberraschen.
-  const liveShiftModel: CamaShiftModel | null =
-    shiftModel === '1' || shiftModel === '2' || shiftModel === '3' ? (Number(shiftModel) as CamaShiftModel) : null
-  const liveOeeNum = Number(oee)
-  const liveNeeFraction = Number.isFinite(liveOeeNum) ? liveOeeNum / 100 : 0
-  const liveMonthlyDemandNums = monthlyDemand.map((value) => {
-    const n = Number(value.replace(',', '.'))
-    return value.trim() !== '' && Number.isFinite(n) ? n : 0
-  })
-  const capacityPreview =
-    showCapacity && liveShiftModel !== null && Number.isFinite(liveCycleTimeNum) && liveCycleTimeNum > 0
-      ? calcCamaLine(
-          {
-            cycleTimeMinutes: liveCycleTimeNum,
-            operatorCount: liveOperatorCountNum,
-            neeFraction: liveNeeFraction,
-            shiftModel: liveShiftModel,
-          },
-          liveMonthlyDemandNums,
-          workdaysByMonth
-        )
       : null
 
   const [error, setError] = useState<string | null>(null)
@@ -3019,19 +3020,9 @@ function ProcessEditPanel({
     setError(null)
     setIsSaving(true)
 
-    // CAMA: shift_model nur, wenn eine der drei Radiogruppen gewaehlt ist —
-    // sonst bleibt die Linie "nicht erfasst" statt eine Schicht zu behaupten,
-    // die niemand gewaehlt hat. monthly_demand als 12er-Array mit null an
-    // leeren/ungueltigen Stellen; ist wirklich kein einziger Monat gesetzt,
-    // wird die ganze Spalte null (dieselbe Konvention wie die Migration sie
-    // vorsieht: "Null = noch nicht erfasst").
-    const shiftModelNum = liveShiftModel
-    const monthlyDemandArray: (number | null)[] = monthlyDemand.map((value) => {
-      if (value.trim() === '') return null
-      const n = Number(value.replace(',', '.'))
-      return Number.isFinite(n) && n >= 0 ? n : null
-    })
-    const monthlyDemandToSave = monthlyDemandArray.some((v) => v !== null) ? monthlyDemandArray : null
+    // CAMA: leerer String heisst "keine Linie verknuepft" — dieselbe
+    // Konvention wie ein leeres Klassifizierungs-Feld zwei Zeilen weiter unten.
+    const lineIdToSave = lineId || null
 
     // Dieses Formular bearbeitet nur die beiden Bestandszahlen links und
     // rechts. setBufferWip schreibt aber immer die ganze Zeile und setzt
@@ -3051,8 +3042,7 @@ function ProcessEditPanel({
         changeover_time: changeoverTimeNum,
         is_pacemaker: isPacemaker,
         classification: classification || null,
-        shift_model: shiftModelNum,
-        monthly_demand: monthlyDemandToSave,
+        line_id: lineIdToSave,
       })
       const withBefore = vsmOperations.setBufferWip(withProcess, {
         ...beforeBuffer,
@@ -3097,8 +3087,7 @@ function ProcessEditPanel({
           changeoverTime: changeoverTimeNum,
           isPacemaker,
           classification: classification || null,
-          shiftModel: shiftModelNum,
-          monthlyDemand: monthlyDemandToSave,
+          lineId: lineIdToSave,
         })
         if (!skipBefore) {
           await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
@@ -3289,79 +3278,66 @@ function ProcessEditPanel({
         </div>
       </div>
 
-      {/* CAMA: eingeklappt, weil zwoelf zusaetzliche Felder das ohnehin schon
-          dichte Panel sprengen wuerden (siehe Plan, dieselbe Begruendung wie
-          fuer die ausgelagerte Future-State-Seite) — aber ein eigenes Panel
-          dafuer haette dieselbe mutate()/startTransition()-Verdrahtung ein
-          zweites Mal gebraucht, ohne einen echten Vorteil. */}
+      {/* CAMA: seit der Linien-Umstellung nur noch eine Verknuepfung, keine
+          eigene Eingabe mehr — Kapazitaetsdaten gehoeren der Linie
+          (production_lines/line_capacity), nicht der Prozessbox, siehe
+          docs/plan-cama-line-module.md. Gelesen, nicht bearbeitet: Taktrate,
+          Schichtmodell und Monatsnachfrage pflegt man auf /capacity. */}
       <div className="mt-3 rounded-control bg-zinc-50 px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setShowCapacity((v) => !v)}
-          className="text-xs font-medium text-brand-600 hover:underline"
+        <label htmlFor="ep-line" className="block text-xs font-medium text-zinc-600">
+          {t('linkedLineLabel')}
+        </label>
+        <select
+          id="ep-line"
+          value={lineId}
+          onChange={(e) => setLineId(e.target.value)}
+          className={`mt-1 ${inputClass}`}
         >
-          {showCapacity ? t('capacityDataHide') : t('capacityDataShow')}
-        </button>
+          <option value="">{t('linkedLineNoneOption')}</option>
+          {productionLines.map((line) => (
+            <option key={line.id} value={line.id}>
+              {line.name}
+            </option>
+          ))}
+        </select>
 
-        {showCapacity && (
-          <div className="mt-3">
-            <p className="text-xs text-zinc-600">{t('capacityDataIntro')}</p>
+        {/* isDemo: die oeffentliche Demo hat keine Organisation, /capacity
+            wuerde dort nur "keine Organisation gefunden" zeigen — der
+            Kurzweg ist also nur ausserhalb der Demo ein echter Weg. */}
+        {productionLines.length === 0 && !isDemo && (
+          <p className="mt-2 text-xs text-zinc-500">
+            {t('linkedLineNoLines')}{' '}
+            <Link href="/capacity" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">
+              {t('linkedLineCreateLink')}
+            </Link>
+          </p>
+        )}
 
-            <div className="mt-2 flex flex-wrap gap-3" role="radiogroup" aria-label={t('shiftModelLabel')}>
-              {([1, 2, 3] as const).map((shift) => (
-                <label key={shift} className="flex items-center gap-1.5 text-xs text-zinc-700">
-                  <input
-                    type="radio"
-                    name={`ep-shift-model-${process.id}`}
-                    checked={shiftModel === String(shift)}
-                    onChange={() => setShiftModel(String(shift))}
-                  />
-                  {t(`shiftModelOption${shift}`, { hours: formatDecimal(shiftHoursPerDay(shift), locale) })}
-                </label>
-              ))}
-            </div>
-
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {monthlyDemand.map((value, index) => {
-                const monthResult = capacityPreview?.months[index]
-                return (
-                  <div key={index}>
-                    <label
-                      htmlFor={`ep-demand-${process.id}-${index}`}
-                      className="block text-[11px] font-medium text-zinc-600"
-                    >
-                      {tMonths(`month${index + 1}`)}
-                    </label>
-                    <input
-                      id={`ep-demand-${process.id}-${index}`}
-                      inputMode="numeric"
-                      value={value}
-                      onChange={(e) => {
-                        const next = [...monthlyDemand]
-                        next[index] = e.target.value
-                        setMonthlyDemand(next)
-                      }}
-                      className={`mt-1 ${inputClass} text-xs`}
-                    />
-                    <span
-                      className={`mt-1 block h-1.5 rounded-full ${monthResult ? CAMA_DOT_CLASS[monthResult.color] : 'bg-zinc-200'}`}
-                      title={monthResult ? `Load Rate ${formatDecimal(monthResult.loadRate, locale, 2)}` : undefined}
-                    />
-                  </div>
-                )
-              })}
-            </div>
-
-            {capacityPreview ? (
-              <p className="mt-2 text-xs text-zinc-500">
+        {lineId && (
+          <div className="mt-2">
+            {selectedLineResult ? (
+              <p className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-control px-2 py-0.5 font-medium ${CAMA_BADGE_CLASS[selectedLineResult.color]}`}
+                >
+                  {CAMA_EMOJI[selectedLineResult.color]}
+                </span>
                 {t('capacityPeakHint', {
-                  month: tMonths(`month${capacityPreview.peakMonth.month}`),
-                  loadRate: formatDecimal(capacityPreview.peakMonth.loadRate, locale, 2),
+                  month: tMonths(`month${selectedLineResult.peakMonth.month}`),
+                  loadRate: formatDecimal(selectedLineResult.peakMonth.loadRate, locale, 2),
                 })}
               </p>
             ) : (
-              <p className="mt-2 text-xs text-zinc-500">{t('capacityDataNeedsShift')}</p>
+              <p className="text-xs text-zinc-500">{t('linkedLineNotConfigured')}</p>
             )}
+            <Link
+              href={`/capacity?line=${lineId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-xs text-brand-600 hover:underline"
+            >
+              {t('linkedLineManage')}
+            </Link>
           </div>
         )}
       </div>

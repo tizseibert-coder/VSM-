@@ -116,6 +116,21 @@ export default async function EditorPage({
   // spaetere Kapazitaetsseite auch rechnet, nicht "leer = 0 Arbeitstage".
   const capacityWorkdays = profile.capacityWorkdays.map((value) => value ?? DEFAULT_WORKDAYS_PER_MONTH)
 
+  // CAMA: alle Linien der Organisation plus ihre Kapazitaetsdaten, fuer das
+  // Verknuepfungs-Dropdown im Bearbeitungspanel und die Ampel auf der
+  // Prozessbox (docs/plan-cama-line-module.md). Zwei Abfragen statt eines
+  // PostgREST-Embeds, wie loadMemberships() in activeOrg.ts es begruendet.
+  const { data: productionLines } = await supabase
+    .from('production_lines')
+    .select('*')
+    .eq('organization_id', project.organization_id)
+    .order('name', { ascending: true })
+  const lineIds = (productionLines ?? []).map((l) => l.id)
+  const { data: lineCapacities } =
+    lineIds.length > 0
+      ? await supabase.from('line_capacity').select('*').in('line_id', lineIds)
+      : { data: [] }
+
   return (
     <div className="min-h-screen bg-zinc-50">
       {/* [Marketing-Audit 2026-09-07, A2] Zeichnet nichts: raeumt nur den
@@ -200,6 +215,8 @@ export default async function EditorPage({
         benchmarkReferences={benchmarkReferences ?? []}
         comparisonStates={comparisonStates}
         capacityWorkdays={capacityWorkdays}
+        productionLines={productionLines ?? []}
+        lineCapacities={lineCapacities ?? []}
         branding={branding}
       />
     </div>
