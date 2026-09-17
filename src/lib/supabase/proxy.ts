@@ -53,11 +53,18 @@ export async function updateSession(request: NextRequest, baseResponse: NextResp
   const { locale, rest: pathWithoutLocale } = splitLocale(request.nextUrl.pathname)
   const isProtectedRoute =
     pathWithoutLocale.startsWith('/dashboard') ||
+    // Die Projektliste (docs/plan-company-overview-modules.md) — dieselbe
+    // Seite, die frueher nur unter /dashboard stand.
+    pathWithoutLocale.startsWith('/projects') ||
     pathWithoutLocale.startsWith('/editor') ||
     // Die Firmeneinstellungen. Wie beim Team-Bereich entscheidet danach die
     // Rolle, ob jemand aendern darf — hier geht es nur darum, dass ein
     // Nichtangemeldeter zur Anmeldung kommt statt in eine leere Seite.
     pathWithoutLocale.startsWith('/settings') ||
+    // Kapazitaetsmanagement (docs/plan-cama-line-module.md), org-weit wie
+    // /settings — ohne diese Zeile bekam ein Nichtangemeldeter dort eine
+    // Fehlerkarte statt einer Weiterleitung zur Anmeldung.
+    pathWithoutLocale.startsWith('/capacity') ||
     // Der Verwaltungsbereich. Angemeldet zu sein reicht dafuer nicht — wer
     // nicht in `vsm_staff` steht, bekommt dort 404 (siehe lib/crm/staff.ts).
     // Diese Weiche erspart dem Nichtangemeldeten nur den Umweg ueber ein 404,

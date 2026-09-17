@@ -19,6 +19,11 @@ import { siteUrl } from '@/lib/seo/site'
  * Verschwendung von Crawl-Budget, bei `/team` zusaetzlich eine crawlbare
  * Seite ohne eigenen Inhalt.
  *
+ * [Nachtrag 2026-09-17] `/capacity` (Kapazitaetsmanagement,
+ * docs/plan-cama-line-module.md) und `/projects` (Projektliste,
+ * docs/plan-company-overview-modules.md) sind derselbe Fall wie
+ * `/dashboard`/`/settings` — beim Anlegen schlicht vergessen.
+ *
  * Bewusst *kein* pauschales `Disallow` fuer den Rest: Die Verkaufsseite, die
  * Demo und der Erhebungsbogen sind der Grund, warum es diese Datei gibt.
  *
@@ -28,7 +33,17 @@ import { siteUrl } from '@/lib/seo/site'
  */
 export default function robots(): MetadataRoute.Robots {
   const base = siteUrl()
-  const closed = ['/admin', '/dashboard', '/editor', '/settings', '/team', '/invite', '/auth']
+  const closed = [
+    '/admin',
+    '/dashboard',
+    '/projects',
+    '/editor',
+    '/settings',
+    '/capacity',
+    '/team',
+    '/invite',
+    '/auth',
+  ]
 
   return {
     rules: {
