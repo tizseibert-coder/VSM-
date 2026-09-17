@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 import { SITE_NAME } from "@/lib/seo/site";
 import "../globals.css";
 
@@ -94,6 +95,7 @@ export default async function RootLayout({
         <NextIntlClientProvider>
           {children}
           <LocaleSwitcher />
+          <CookieConsentBanner />
         </NextIntlClientProvider>
       </body>
     </html>

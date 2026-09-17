@@ -80,6 +80,11 @@ function demoProject(labels: DemoLabels): Project {
     // entscheidet — und beide sollen in derselben Demo zu sehen sein.
     piece_value: 50,
     currency: 'EUR',
+    line_label: null,
+    shift_count: null,
+    shift_net_minutes: null,
+    recorded_on: null,
+    recorded_by: null,
     created_at: T0,
     updated_at: T0,
   }
@@ -114,6 +119,7 @@ function process(
     width: 0,
     x: null,
     y: null,
+    line_id: null,
     created_at: T0,
     updated_at: T0,
     ...extra,

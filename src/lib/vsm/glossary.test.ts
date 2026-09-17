@@ -68,4 +68,8 @@ describe('glossary', () => {
   it('covers the future-state-wizard terms (questions 6-8)', () => {
     covers('heijunka', 'pitch', 'kaizenBlitz')
   })
+
+  it('covers the CAMA terms', () => {
+    covers('cama', 'loadRate')
+  })
 })

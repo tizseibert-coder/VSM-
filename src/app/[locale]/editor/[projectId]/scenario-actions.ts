@@ -78,6 +78,12 @@ export async function createScenario(projectId: string, formData: FormData) {
           width: p.width,
           height: p.height,
           color: p.color,
+          // CAMA (docs/plan-cama-line-module.md): line_id ist nur ein Verweis,
+          // keine Kapazitaetsdaten mehr — die kopierte Prozessbox bleibt mit
+          // derselben physischen Linie verknuepft wie ihre Quelle, ohne dass
+          // hier irgendetwas dupliziert werden muss (anders als zu der Zeit,
+          // als Schichtmodell/Monatsnachfrage noch am Prozess selbst hingen).
+          line_id: p.line_id,
         }))
       )
       .select('id, origin_process_id')

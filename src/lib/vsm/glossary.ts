@@ -42,6 +42,8 @@ export const GLOSSARY_KEYS = [
   'adu',
   'aduStdDev',
   'plt',
+  'cama',
+  'loadRate',
 ] as const
 
 export type GlossaryKey = (typeof GLOSSARY_KEYS)[number]

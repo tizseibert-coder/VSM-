@@ -5,6 +5,7 @@ import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { DEFAULT_BRAND_COLOR, orgLogoUrl } from '@/lib/org/branding'
 import { SUPPORTED_CURRENCIES } from '@/lib/vsm/capital'
+import { DEFAULT_WORKDAYS_PER_MONTH } from '@/lib/vsm/capacityAnalysis'
 import { routing } from '@/i18n/routing'
 import LogoPicker from '@/components/settings/LogoPicker'
 import { buttonPrimary, buttonSecondary, inputMd } from '@/components/ui/buttons'
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
 }
 
 const FIELD_LABEL = 'text-xs font-medium text-zinc-700'
+
+/** 1 = Januar .. 12 = Dezember, wie processes.monthly_demand und
+ *  vsm_org_settings.capacity_workdays selbst. */
+const CAPACITY_MONTHS = Array.from({ length: 12 }, (_, index) => index + 1)
 
 export default async function SettingsPage({
   searchParams,
@@ -233,6 +238,28 @@ export default async function SettingsPage({
                 />
                 <span className="text-xs text-zinc-500">{t('reportFooterHint')}</span>
               </label>
+            </section>
+
+            <section>
+              <h2 className="text-base font-semibold text-zinc-950">{t('sectionCalendar')}</h2>
+              <p className="mt-1 text-sm text-zinc-600">
+                {t('sectionCalendarBody', { default: DEFAULT_WORKDAYS_PER_MONTH })}
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {CAPACITY_MONTHS.map((month) => (
+                  <label key={month} className="flex flex-col gap-1">
+                    <span className={FIELD_LABEL}>{t(`month${month}`)}</span>
+                    <input
+                      name={`capacity_workdays_${month}`}
+                      inputMode="numeric"
+                      defaultValue={profile.capacityWorkdays[month - 1] ?? ''}
+                      placeholder={String(DEFAULT_WORKDAYS_PER_MONTH)}
+                      className={inputMd}
+                    />
+                  </label>
+                ))}
+              </div>
             </section>
 
             {isOwner && (

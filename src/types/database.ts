@@ -298,6 +298,57 @@ export type Database = {
         }
         Relationships: []
       }
+      capacity_actions: {
+        Row: {
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          line_id: string
+          owner: string | null
+          process_id: string | null
+          status: string
+          target_month: number | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          line_id: string
+          owner?: string | null
+          process_id?: string | null
+          status?: string
+          target_month?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          line_id?: string
+          owner?: string | null
+          process_id?: string | null
+          status?: string
+          target_month?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capacity_actions_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "production_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capacity_actions_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consulting_leads: {
         Row: {
           company: string | null
@@ -585,6 +636,50 @@ export type Database = {
             columns: ["organizationId"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      line_capacity: {
+        Row: {
+          cycle_time_minutes: number | null
+          line_id: string
+          monthly_actual_hours: Json | null
+          monthly_demand: Json | null
+          monthly_demand_stretch: Json | null
+          oee: number
+          operator_count: number
+          shift_model: number | null
+          updated_at: string
+        }
+        Insert: {
+          cycle_time_minutes?: number | null
+          line_id: string
+          monthly_actual_hours?: Json | null
+          monthly_demand?: Json | null
+          monthly_demand_stretch?: Json | null
+          oee?: number
+          operator_count?: number
+          shift_model?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cycle_time_minutes?: number | null
+          line_id?: string
+          monthly_actual_hours?: Json | null
+          monthly_demand?: Json | null
+          monthly_demand_stretch?: Json | null
+          oee?: number
+          operator_count?: number
+          shift_model?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_capacity_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: true
+            referencedRelation: "production_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -949,6 +1044,7 @@ export type Database = {
           is_pacemaker: boolean
           kaizen_note: string | null
           lane: number
+          line_id: string | null
           name: string
           oee: number
           operator_count: number
@@ -973,6 +1069,7 @@ export type Database = {
           is_pacemaker?: boolean
           kaizen_note?: string | null
           lane?: number
+          line_id?: string | null
           name: string
           oee?: number
           operator_count?: number
@@ -997,6 +1094,7 @@ export type Database = {
           is_pacemaker?: boolean
           kaizen_note?: string | null
           lane?: number
+          line_id?: string | null
           name?: string
           oee?: number
           operator_count?: number
@@ -1010,6 +1108,13 @@ export type Database = {
           y?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "processes_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "production_lines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "processes_origin_process_id_fkey"
             columns: ["origin_process_id"]
@@ -1068,6 +1173,38 @@ export type Database = {
           },
         ]
       }
+      production_lines: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           annual_throughput: number | null
@@ -1079,11 +1216,16 @@ export type Database = {
           description: string | null
           erp_label: string
           id: string
+          line_label: string | null
           name: string
           organization_id: string
           piece_value: number | null
           pitch_minutes: number | null
           product_name: string | null
+          recorded_by: string | null
+          recorded_on: string | null
+          shift_count: number | null
+          shift_net_minutes: number | null
           supplier_name: string
           updated_at: string
         }
@@ -1097,11 +1239,16 @@ export type Database = {
           description?: string | null
           erp_label?: string
           id?: string
+          line_label?: string | null
           name: string
           organization_id: string
           piece_value?: number | null
           pitch_minutes?: number | null
           product_name?: string | null
+          recorded_by?: string | null
+          recorded_on?: string | null
+          shift_count?: number | null
+          shift_net_minutes?: number | null
           supplier_name?: string
           updated_at?: string
         }
@@ -1115,11 +1262,16 @@ export type Database = {
           description?: string | null
           erp_label?: string
           id?: string
+          line_label?: string | null
           name?: string
           organization_id?: string
           piece_value?: number | null
           pitch_minutes?: number | null
           product_name?: string | null
+          recorded_by?: string | null
+          recorded_on?: string | null
+          shift_count?: number | null
+          shift_net_minutes?: number | null
           supplier_name?: string
           updated_at?: string
         }
@@ -1974,6 +2126,7 @@ export type Database = {
       vsm_org_settings: {
         Row: {
           brand_color: string | null
+          capacity_workdays: Json | null
           contact_email: string | null
           contact_phone: string | null
           created_at: string
@@ -1994,6 +2147,7 @@ export type Database = {
         }
         Insert: {
           brand_color?: string | null
+          capacity_workdays?: Json | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -2014,6 +2168,7 @@ export type Database = {
         }
         Update: {
           brand_color?: string | null
+          capacity_workdays?: Json | null
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
