@@ -726,7 +726,15 @@
     "demoImportAccept": "Übernehmen",
     "demoImportDiscard": "Verwerfen",
     "manageBilling": "Abo verwalten",
-    "capacity": "Kapazität"
+    "capacity": "Kapazität",
+    "vsmTileTitle": "Wertstromanalyse (VSM)",
+    "vsmTileEmpty": "Noch kein Wertstrom angelegt.",
+    "vsmTileOpen": "Projekte öffnen →",
+    "capacityTileTitle": "Kapazitätsmanagement",
+    "capacityTileEmpty": "Noch keine Linie angelegt.",
+    "capacityTileOk": "{count} Linien, alle im grünen Bereich.",
+    "capacityTileCritical": "{count} Linien, {critical} davon kritisch.",
+    "capacityTileOpen": "Kapazität öffnen →"
   },
   "Team": {
     "title": "Team",

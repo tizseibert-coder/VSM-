@@ -726,7 +726,15 @@
     "demoImportAccept": "Take it over",
     "demoImportDiscard": "Discard",
     "manageBilling": "Manage subscription",
-    "capacity": "Capacity"
+    "capacity": "Capacity",
+    "vsmTileTitle": "Value stream mapping (VSM)",
+    "vsmTileEmpty": "No value stream set up yet.",
+    "vsmTileOpen": "Open projects →",
+    "capacityTileTitle": "Capacity management",
+    "capacityTileEmpty": "No line set up yet.",
+    "capacityTileOk": "{count} lines, all within range.",
+    "capacityTileCritical": "{count} lines, {critical} of them critical.",
+    "capacityTileOpen": "Open capacity →"
   },
   "Team": {
     "title": "Team",

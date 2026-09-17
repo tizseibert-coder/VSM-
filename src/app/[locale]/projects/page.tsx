@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { SITE_NAME } from '@/lib/seo/site'
 import { createClient } from '@/lib/supabase/server'
-import { signOut, createProject, createExampleProject, switchOrg } from '../dashboard/actions'
+import { createProject, createExampleProject } from '../dashboard/actions'
 import { openBillingPortal } from '@/app/[locale]/pricing/actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
@@ -11,9 +11,8 @@ import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 import DemoImportBanner from '@/components/dashboard/DemoImportBanner'
 import FirstValueStreamProgress from '@/components/dashboard/FirstValueStreamProgress'
-import OrgMark from '@/components/org/OrgMark'
+import OrgHeaderBar from '@/components/dashboard/OrgHeaderBar'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
-import { orgLogoUrl } from '@/lib/org/branding'
 import VsmSketch from '@/components/marketing/VsmSketch'
 import { buttonPrimary, buttonPrimaryLg, buttonSecondary } from '@/components/ui/buttons'
 import { SubmitButton } from '@/components/ui/SubmitButton'
@@ -69,86 +68,22 @@ export default async function ProjectsPage({
   const profile = activeOrg
     ? await loadOrgProfile(activeOrg.organizationId, activeOrg.organizationName)
     : null
-  const logoUrl =
-    profile?.hasLogo ? orgLogoUrl(profile.organizationId, profile.logoVersion) : null
 
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto max-w-3xl">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            {activeOrg && profile && (
-              <OrgMark logoUrl={logoUrl} name={profile.displayName} />
-            )}
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
-                {SITE_NAME}
-              </p>
-              <h1 className="mt-0.5 text-2xl font-semibold text-zinc-950">{t('title')}</h1>
-              <p className="mt-1 text-sm text-zinc-600">
-                {t('signedInAs', { email: claims?.email ?? '' })}
-                {activeOrg && (
-                  <>
-                    {' '}
-                    · {profile?.displayName ?? activeOrg.organizationName} ({activeOrg.role})
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {staff && (
-              <Link href="/admin" className={buttonSecondary}>
-                {t('admin')}
-              </Link>
-            )}
-            <Link href="/capacity" className={buttonSecondary}>
-              {t('capacity')}
-            </Link>
-            <Link href="/settings" className={buttonSecondary}>
-              {t('settings')}
-            </Link>
-            <Link
-              href="/team"
-              className={buttonSecondary}
-            >
-              {t('team')}
-            </Link>
-            <form action={signOut}>
-              <SubmitButton className={buttonSecondary}>{t('signOut')}</SubmitButton>
-            </form>
-          </div>
-        </div>
+        <OrgHeaderBar
+          activeOrg={activeOrg}
+          allOrgs={allOrgs}
+          profile={profile}
+          staff={staff}
+          email={claims?.email ?? null}
+        />
 
         {error && (
           <p className="mt-4 rounded-control bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
-        )}
-
-        {/* Nur sichtbar, wenn es etwas zu wechseln gibt. Ein Umschalter mit
-            genau einem Eintrag waere Ballast — und das ist bis auf Weiteres
-            der Normalfall. Ein Formular je Organisation statt eines Selects:
-            kein Client-JavaScript noetig, und bei zwei bis drei Firmen ist es
-            auch schneller zu bedienen. */}
-        {allOrgs.length > 1 && (
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-zinc-500">{t('organisation')}</span>
-            {allOrgs.map((org) => (
-              <form key={org.organizationId} action={switchOrg.bind(null, org.organizationId)}>
-                <SubmitButton
-                  aria-current={org.organizationId === activeOrg?.organizationId ? 'true' : undefined}
-                  className={
-                    org.organizationId === activeOrg?.organizationId
-                      ? 'rounded-control bg-brand-600 px-3 py-1.5 text-xs font-medium text-white'
-                      : 'rounded-control border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100'
-                  }
-                >
-                  {org.organizationName}
-                </SubmitButton>
-              </form>
-            ))}
-          </div>
         )}
 
         {/* [Marketing-Audit 2026-09-07, A2] Ueber dem Tarifstreifen und ueber
