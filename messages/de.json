@@ -17,7 +17,8 @@
     "signup": "Kostenlos starten",
     "backToDashboard": "← Dashboard",
     "pricing": "Preise",
-    "dataSheet": "Erhebungsbogen"
+    "dataSheet": "Erhebungsbogen",
+    "impressum": "Impressum"
   },
   "Home": {
     "heroTitle": "Wertstromanalyse, die rechnet.",
@@ -1154,5 +1155,27 @@
     "reportFooterHint": "Steht in der Fußzeile jedes exportierten Blatts, zwischen Datum und Projektname.",
     "save": "Speichern",
     "toTeam": "Zum Team"
+  },
+  "Impressum": {
+    "metaTitle": "Impressum",
+    "metaDescription": "Angaben zum Anbieter von Taktane gemäss Art. 3 Abs. 1 lit. s UWG.",
+    "title": "Impressum",
+    "intro": "Angaben gemäss Art. 3 Abs. 1 lit. s des Bundesgesetzes gegen den unlauteren Wettbewerb (UWG).",
+    "providerTitle": "Anbieter",
+    "providerName": "[Platzhalter: Vor- und Nachname]",
+    "providerTrade": "Tätig unter dem Namen „Taktane“ (Einzelunternehmen, nicht im Handelsregister eingetragen)",
+    "providerAddress": "[Platzhalter: Strasse und Hausnummer, PLZ Ort, Schweiz]",
+    "contactTitle": "Kontakt",
+    "contactEmail": "[Platzhalter: E-Mail-Adresse]",
+    "registerTitle": "Handelsregister und UID",
+    "registerBody": "Taktane wird derzeit als Einzelunternehmen unterhalb der gesetzlichen Eintragungsgrenze von CHF 100'000 Jahresumsatz betrieben und ist deshalb weder im Handelsregister eingetragen noch UID-pflichtig. Handelsregisternummer und UID-Nummer werden hier ergänzt, sobald die Eintragung erfolgt ist.",
+    "liabilityTitle": "Haftung für Inhalte",
+    "liabilityBody": "Die Inhalte dieser Website wurden mit Sorgfalt erstellt. Für ihre Richtigkeit, Vollständigkeit und Aktualität wird jedoch keine Gewähr übernommen. Als Anbieter ist der Betreiber gemäss den allgemeinen gesetzlichen Bestimmungen für eigene Inhalte auf dieser Website verantwortlich, nicht jedoch für fremde Inhalte, auf die lediglich verwiesen wird.",
+    "linksTitle": "Haftung für Links",
+    "linksBody": "Diese Website kann Verweise auf Websites Dritter enthalten. Auf deren Inhalte hat der Betreiber keinen Einfluss und übernimmt dafür keine Verantwortung. Für die Inhalte verlinkter Seiten ist stets deren jeweiliger Anbieter verantwortlich.",
+    "copyrightTitle": "Urheberrecht",
+    "copyrightBody": "Die auf dieser Website veröffentlichten Inhalte unterliegen dem Schweizer Urheberrecht. Jede Verwendung, die dieses nicht ausdrücklich erlaubt, bedarf der vorherigen schriftlichen Zustimmung des Betreibers.",
+    "lastUpdated": "Stand: {date}",
+    "placeholderNotice": "Diese Seite ist ein Gerüst: Die eckig geklammerten Angaben sind Platzhalter und müssen vor dem Livegang durch die echten Angaben ersetzt werden."
   }
 }
