@@ -38,8 +38,13 @@ import type { VsmState } from './vsmStore'
 export const DEMO_TRANSFER_KEY = 'vsm_demo_transfer'
 
 /** Aendert sich die Form, faellt Aelteres beim Zuruecklesen durch.
- *  2 (2026-09-15): shiftModel/monthlyDemand fuer CAMA ergaenzt. */
-export const DEMO_TRANSFER_VERSION = 2
+ *  2 (2026-09-15): shiftModel/monthlyDemand fuer CAMA ergaenzt.
+ *  3 (2026-09-17): shiftModel/monthlyDemand wieder entfernt — CAMA-Daten
+ *  haengen seit der Linien-Umstellung (docs/plan-cama-line-module.md) an
+ *  einer firmenweiten Linie, nicht mehr am Prozess. Eine anonyme Demo hat
+ *  keine Organisation und kann also nie eine Linie verknuepfen; es gibt
+ *  hier schlicht nichts mehr zu uebertragen. */
+export const DEMO_TRANSFER_VERSION = 3
 
 /** Sieben Tage. Lang genug fuer „ich schaue morgen im Buero nochmal drauf",
  *  kurz genug, dass niemand von einem halbjahresalten Entwurf ueberrascht
@@ -72,10 +77,6 @@ export type TransferProcess = {
   classification: string | null
   x: number | null
   y: number | null
-  /** CAMA: 1/2/3-Schicht, null = nicht erfasst. */
-  shiftModel: number | null
-  /** CAMA: 12 Monatswerte (Index 0 = Januar), einzelne Eintraege duerfen null sein. */
-  monthlyDemand: (number | null)[] | null
 }
 
 export type TransferBuffer = {
@@ -111,17 +112,6 @@ export type DemoTransfer = {
 // ─────────────────────────────────────────────────────────────────────
 // Hinschreiben
 // ─────────────────────────────────────────────────────────────────────
-
-/** processes.monthly_demand ist ein ungeprueftes jsonb-Feld (Json | null) —
- *  hier auf genau die Form gebracht, die dieses Format tragen darf. Alles,
- *  was kein 12-elementiges Array aus Zahlen/null ist, wird null: derselbe
- *  Datensatz, der schon in die Datenbank ging, muss nicht zweifelnd erneut
- *  geprueft werden, aber ein spaeter fremdes/kaputtes Feld soll nicht als
- *  12 Nullen durchrutschen. */
-function monthlyDemandForTransfer(raw: unknown): (number | null)[] | null {
-  if (!Array.isArray(raw) || raw.length !== 12) return null
-  return raw.map((entry) => (typeof entry === 'number' && Number.isFinite(entry) ? entry : null))
-}
 
 /**
  * Den Zustand der Demo in die Form bringen, die den Weg ueberlebt.
@@ -161,8 +151,6 @@ export function toTransfer(state: VsmState, now: number = Date.now()): DemoTrans
       classification: p.classification,
       x: p.x,
       y: p.y,
-      shiftModel: p.shift_model,
-      monthlyDemand: monthlyDemandForTransfer(p.monthly_demand),
     })),
     buffers: state.buffers.map((b) => ({
       fromIndex: b.from_process_id ? (indexById.get(b.from_process_id) ?? null) : null,
@@ -223,20 +211,6 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T | nul
     : null
 }
 
-/** CAMA: 1/2/3, sonst null — kein `num()`-Clamping, weil 0 oder 4 keine
- *  "naechstbeste" Schicht sind, sondern schlicht keine gueltige Eingabe. */
-function shiftModelOrNull(value: unknown): number | null {
-  return value === 1 || value === 2 || value === 3 ? value : null
-}
-
-/** CAMA: exakt 12 Eintraege erwartet (unser eigener Schreibpfad liefert immer
- *  genau so viele) — alles andere ist fremde/kaputte Eingabe und wird ganz
- *  verworfen, statt auf 12 aufgefuellt zu werden. */
-function monthlyDemandOrNull(value: unknown): (number | null)[] | null {
-  if (!Array.isArray(value) || value.length !== 12) return null
-  return value.map((entry) => numOrNull(entry, 0, 100_000_000))
-}
-
 /**
  * Fremde Eingabe in ein gueltiges Uebertragungsobjekt — oder `null`.
  *
@@ -278,8 +252,6 @@ export function parseTransfer(input: unknown, now: number = Date.now()): DemoTra
       classification: oneOf(p.classification, CLASSIFICATIONS),
       x: numOrNull(p.x, -100_000, 100_000),
       y: numOrNull(p.y, -100_000, 100_000),
-      shiftModel: shiftModelOrNull(p.shiftModel),
-      monthlyDemand: monthlyDemandOrNull(p.monthlyDemand),
     }
   })
 
@@ -394,8 +366,10 @@ export function fromTransfer(transfer: DemoTransfer, template: VsmState): VsmSta
     classification: p.classification,
     x: p.x,
     y: p.y,
-    shift_model: p.shiftModel,
-    monthly_demand: p.monthlyDemand,
+    // CAMA (docs/plan-cama-line-module.md): eine uebertragene Demo-Prozessbox
+    // hat nie eine Linie verknuepft — die Demo lief ohne Organisation, konnte
+    // also nie eine production_lines-Zeile anlegen.
+    line_id: null,
     created_at: t0,
     updated_at: t0,
   }))

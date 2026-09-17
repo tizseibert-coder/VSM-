@@ -181,25 +181,43 @@ zweiten Chart-Linie (Balkendiagramm-Konvention dieses Projekts, siehe Lean-Durch
 
 ---
 
-## Umsetzungsreihenfolge (bei Freigabe, Schritt für Schritt wie beim ersten CAMA-Aufbau)
+## Umsetzungsreihenfolge — Stand: alle Schritte fertig ✅ (2026-09-17)
 
-1. **Migration überarbeiten** — `20260914150000_vsm_cama_capacity_analysis.sql` umschreiben:
-   `production_lines`, `line_capacity`, `processes.line_id`, `capacity_actions.line_id` (+
-   `process_id` nullable machen), RLS-Policies für die zwei neuen Tabellen. Gegen die
-   Wegwerf-Postgres geprüft (wie beim ersten Mal), danach im Testsystem angewendet.
-2. **`camaLine.ts`-Adapter umstellen** auf `production_lines`+`line_capacity`, `capacityAnalysis.ts`
-   selbst unverändert. Bestehende Tests des Adapters entsprechend angepasst.
-3. **Org-weite Kapazitätsseite** `/[locale]/capacity` — Linien anlegen/verwalten, Basis- und
-   Stress-Kapazitätsdaten pflegen, Aktionspläne.
-4. **`ProcessEditPanel` umstellen** — CAMA-Eingabe raus, Linien-Verknüpfungs-Dropdown rein.
-5. **Canvas-Badge** auf den neuen Adapter umstellen (reiner Datenquellenwechsel, Zeichencode
-   unverändert).
-6. **`/editor/[projectId]/capacity` zur Ansicht umbauen** (verlinkte Linien dieses Projekts, Link zur
-   Bearbeitung auf der org-weiten Seite) statt eigener Eingabe.
-7. **`demoTransfer.ts`/`scenario-actions.ts` aufräumen** — CAMA-Felder entfernen (siehe "Was dadurch
-   einfacher wird"), `DEMO_TRANSFER_VERSION` erneut erhöhen (Formatänderung).
-8. **i18n** — neue Texte für Linienverwaltung, Verknüpfungs-Dropdown, Lösch-Warnung, Stresswert-Felder.
+1. ✅ **Migration überarbeitet** — `20260914150000_vsm_cama_capacity_analysis.sql` umgeschrieben:
+   `production_lines`, `line_capacity`, `processes.line_id`, `capacity_actions.line_id`. Zweifach
+   gegen die Wegwerf-Postgres geprüft (idempotent), im Testsystem angewendet, vorhandene Testzeile
+   ("Drehen") ins neue Modell übertragen statt verworfen. **Nachbesserung noch im selben Schritt:**
+   `line_capacity` bekam zusätzlich eine eigene Kopie von `cycle_time_minutes`/`operator_count`/`oee`
+   — ohne die hätte eine Linie ohne verknüpftes VSM gar keine Taktrate gehabt, siehe
+   Korrektur-Abschnitt oben.
+2. ✅ **`camaLine.ts`-Adapter umgestellt** — `computeCamaLine` liest jetzt ausschließlich von
+   `line_capacity` (kein Prozess-Parameter mehr nötig, da Taktrate/NEE dort mit hinzugekommen sind).
+   `computeCamaStretchLine` als zweite, kleine Funktion für die Stresslinie ergänzt (liest
+   `monthly_demand_stretch` statt `monthly_demand`, sonst identisch).
+3. ✅ **Org-weite Kapazitätsseite** `/capacity` — Linien anlegen/umbenennen/löschen (mit Warnung bei
+   VSM-Verknüpfungen), Taktrate/Bedienerzahl/NEE/Schichtmodell, 12 Monatswerte Basis + optionale
+   Stresslinie (Kurzweg "× 1,2"), Aktionspläne. Lesend für alle Mitglieder, schreibend ab
+   Editor-Rolle. Von der Dashboard-Kopfzeile aus verlinkt.
+4. ✅ **`ProcessEditPanel` umgestellt** — CAMA-Eingabe raus, Dropdown "Verknüpfte Linie" rein
+   (inkl. Kurzweg zu `/capacity`, ausgeblendet in der Demo ohne Organisation). Verknüpft zeigt das
+   Panel die aktuelle Ampel read-only plus Link zur Bearbeitung.
+5. ✅ **Canvas-Badge umgestellt** — kam beim Verdrahten von Schritt 4 praktisch gratis mit (eine
+   Zeile: liest jetzt über `process.line_id` statt direkt vom Prozess), kein eigener Schritt mehr
+   nötig.
+6. ✅ **`/editor/[projectId]/capacity` zur Ansicht umgebaut** — zeigt nur noch die im aktiven Zustand
+   verknüpften Linien (Ampel, Peak-Monat), Bearbeitung verlinkt auf `/capacity`. Die alte
+   `actions.ts` dieser Route (Aktionsplan-CRUD, project_id/process_id-basiert) ist überflüssig und
+   gelöscht — dieselben Handlungen gibt es linienbasiert bereits unter `app/[locale]/capacity/actions.ts`.
+7. ✅ **`demoTransfer.ts`/`scenario-actions.ts` aufgeräumt** — `scenario-actions.ts` kopiert beim
+   Anlegen eines neuen Szenarios jetzt nur noch `line_id` (ein Verweis, keine Daten mehr zum
+   Duplizieren). `demoTransfer.ts`: `shiftModel`/`monthlyDemand` komplett aus dem Wire-Format
+   entfernt (eine anonyme Demo hat nie eine Organisation, kann also nie eine Linie verknüpfen — es
+   gab schlicht nichts mehr zu übertragen), `DEMO_TRANSFER_VERSION` auf 3 erhöht. Vier obsolete Tests
+   entfernt, ein neuer ergänzt (übertragene Demo-Prozessbox kommt immer unverknüpft an).
+8. ✅ **i18n** — neue Texte für Linienverwaltung, Verknüpfungs-Dropdown, Lösch-Warnung,
+   Stresswert-Felder in `Capacity`/`Editor`/`Errors`/`Dashboard`, de/en durchgehend synchron
+   gehalten; orphane Alt-Keys (Schichtmodell-Radio-Texte, alte Projektansicht-Detailseite) entfernt.
 
-Wie beim ersten CAMA-Aufbau: jeder Schritt einzeln zur Freigabe, keiner setzt den nächsten voraus,
-außer in der angegebenen Reihenfolge (Schritt 2 braucht Schritt 1, Schritt 4/5 brauchen Schritt 3
-nicht zwingend, könnten parallel laufen, werden hier aber sequenziell gehalten wie beim ersten Mal).
+**Verifikation am Ende:** `tsc --noEmit` sauber (nur ein vorbestehender, unabhängiger `LayoutProps`-
+Fehler in `layout.tsx`), volle Testsuite 475/475 grün, `eslint` sauber, vollständiger
+`next build` erfolgreich — `/capacity` erscheint korrekt in der Routentabelle.
