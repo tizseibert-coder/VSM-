@@ -727,7 +727,8 @@
     "demoImportBody": "“{name}” with {count} stations. So far it only lives in this browser. Take it over and it belongs to your account — the local copy is then cleared.",
     "demoImportAccept": "Take it over",
     "demoImportDiscard": "Discard",
-    "manageBilling": "Manage subscription"
+    "manageBilling": "Manage subscription",
+    "capacity": "Capacity"
   },
   "Team": {
     "title": "Team",
@@ -851,7 +852,33 @@
     "statusDone": "Done",
     "markDone": "Done",
     "reopen": "Reopen",
-    "delete": "Delete"
+    "delete": "Delete",
+    "linesTitle": "Capacity management",
+    "linesIntro": "Lines of {org} — independent of whether a VSM exists for them.",
+    "newLineNamePlaceholder": "New line, e.g. Turning",
+    "newLineCreate": "Create",
+    "linesEmpty": "No lines set up yet.",
+    "lineNameLabel": "Name",
+    "cycleTimeLabel": "Cycle time (min/piece)",
+    "operatorCountLabel": "Operator count",
+    "oeeLabel": "OEE (%)",
+    "shiftModelLabel": "Shift model",
+    "shift1Label": "1 shift",
+    "shift2Label": "2 shifts",
+    "shift3Label": "3 shifts (continuous)",
+    "demandSectionTitle": "Monthly demand (base)",
+    "stretchSectionTitle": "Stress test (optional)",
+    "stretchHint": "Demand under an upside scenario, e.g. +20% — a concept taken from the CAMA playbook. Leave blank if no stress test is needed.",
+    "stretchPrefillButton": "Save with stress = base × 1.2",
+    "stretchAmpelColumn": "Signal (stress)",
+    "save": "Save",
+    "saved": "Saved.",
+    "backToLines": "← Back to overview",
+    "deleteLine": "Delete line",
+    "deleteLineConfirm": "Delete {name} permanently?",
+    "deleteLineConfirmLinked": "Delete {name} permanently? {count} VSM process box(es) will lose the link.",
+    "linkedProcessCount": "Linked to {count} VSM process box(es).",
+    "notConfiguredDetailLines": "Cycle time or shift model is not fully set up for this line yet — fill in the fields above to see the 12-month view."
   },
   "Wizard": {
     "backToEditor": "← Back to the editor",
@@ -941,7 +968,9 @@
     "demoImportFailed": "The value stream from the demo could not be imported.",
     "portalNotOwner": "Only owners can manage the subscription.",
     "portalNoCustomer": "This organisation has no Stripe subscription yet.",
-    "portalFailed": "Account management could not be opened. Please try again."
+    "portalFailed": "Account management could not be opened. Please try again.",
+    "capacityEditorsOnly": "Only members with edit rights can change capacity management.",
+    "capacityLineNameRequired": "Please enter a name for the line."
   },
   "DataSheet": {
     "metaTitle": "Value stream data collection sheet",

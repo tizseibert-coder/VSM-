@@ -95,6 +95,9 @@ export default async function DashboardPage({
                 {t('admin')}
               </Link>
             )}
+            <Link href="/capacity" className={buttonSecondary}>
+              {t('capacity')}
+            </Link>
             <Link href="/settings" className={buttonSecondary}>
               {t('settings')}
             </Link>

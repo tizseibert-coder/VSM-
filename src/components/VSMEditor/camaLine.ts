@@ -31,10 +31,34 @@ export function computeCamaLine(
   workdaysByMonth: number[]
 ): CamaLineResult | null {
   if (!lineCapacity) return null
+  return computeFrom(lineCapacity, lineCapacity.monthly_demand, workdaysByMonth)
+}
+
+/**
+ * Wie computeCamaLine, aber mit der Stress-/Upside-Nachfrage
+ * (line_capacity.monthly_demand_stretch) statt der Basisprognose — das
+ * "Load Ratio with Demands Forecast +20%"-Konzept aus dem Schneider-CAMA-
+ * Playbook (docs/plan-cama-line-module.md, Abschnitt "Stresslinie"). `null`,
+ * wenn kein Stresswert hinterlegt ist — kein fester Faktor zur Basisnachfrage,
+ * jede Firma waehlt ihren eigenen Aufschlag beim Eintragen.
+ */
+export function computeCamaStretchLine(
+  lineCapacity: LineCapacity | null,
+  workdaysByMonth: number[]
+): CamaLineResult | null {
+  if (!lineCapacity || lineCapacity.monthly_demand_stretch === null) return null
+  return computeFrom(lineCapacity, lineCapacity.monthly_demand_stretch, workdaysByMonth)
+}
+
+function computeFrom(
+  lineCapacity: LineCapacity,
+  rawDemand: unknown,
+  workdaysByMonth: number[]
+): CamaLineResult | null {
   if (lineCapacity.shift_model !== 1 && lineCapacity.shift_model !== 2 && lineCapacity.shift_model !== 3) return null
   if (lineCapacity.cycle_time_minutes === null) return null
 
-  const monthlyDemand = resolveMonthlyValues(lineCapacity.monthly_demand, 0)
+  const monthlyDemand = resolveMonthlyValues(rawDemand, 0)
   return calcCamaLine(
     {
       cycleTimeMinutes: lineCapacity.cycle_time_minutes,

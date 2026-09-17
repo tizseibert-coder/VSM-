@@ -727,7 +727,8 @@
     "demoImportBody": "„{name}“ mit {count} Stationen. Er liegt bisher nur in diesem Browser. Übernehmen Sie ihn, dann gehört er Ihrem Konto — und der Zwischenstand wird gelöscht.",
     "demoImportAccept": "Übernehmen",
     "demoImportDiscard": "Verwerfen",
-    "manageBilling": "Abo verwalten"
+    "manageBilling": "Abo verwalten",
+    "capacity": "Kapazität"
   },
   "Team": {
     "title": "Team",
@@ -851,7 +852,33 @@
     "statusDone": "Erledigt",
     "markDone": "Erledigt",
     "reopen": "Wieder öffnen",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "linesTitle": "Kapazitätsmanagement",
+    "linesIntro": "Linien von {org} — unabhängig davon, ob dafür ein VSM existiert.",
+    "newLineNamePlaceholder": "Neue Linie, z. B. Drehen",
+    "newLineCreate": "Anlegen",
+    "linesEmpty": "Noch keine Linien angelegt.",
+    "lineNameLabel": "Name",
+    "cycleTimeLabel": "Taktrate (Min./Stück)",
+    "operatorCountLabel": "Bedienerzahl",
+    "oeeLabel": "NEE (%)",
+    "shiftModelLabel": "Schichtmodell",
+    "shift1Label": "1-Schicht",
+    "shift2Label": "2-Schicht",
+    "shift3Label": "3-Schicht (durchlaufend)",
+    "demandSectionTitle": "Monatliche Nachfrage (Basis)",
+    "stretchSectionTitle": "Stresstest (optional)",
+    "stretchHint": "Nachfrage in einem Upside-Szenario, z. B. +20 % — aus dem CAMA-Playbook übernommenes Konzept. Leer lassen, wenn kein Stresstest gewünscht ist.",
+    "stretchPrefillButton": "Speichern mit Stress = Basis × 1,2",
+    "stretchAmpelColumn": "Ampel (Stress)",
+    "save": "Speichern",
+    "saved": "Gespeichert.",
+    "backToLines": "← Zurück zur Übersicht",
+    "deleteLine": "Linie löschen",
+    "deleteLineConfirm": "{name} endgültig löschen?",
+    "deleteLineConfirmLinked": "{name} endgültig löschen? {count} VSM-Prozessbox(en) verlieren die Verknüpfung.",
+    "linkedProcessCount": "Verknüpft mit {count} VSM-Prozessbox(en).",
+    "notConfiguredDetailLines": "Taktrate oder Schichtmodell ist für diese Linie noch nicht vollständig erfasst — bitte oben ausfüllen, um die 12-Monats-Ansicht zu sehen."
   },
   "Wizard": {
     "backToEditor": "← Zurück zum Editor",
@@ -941,7 +968,9 @@
     "demoImportFailed": "Der Wertstrom aus der Demo konnte nicht übernommen werden.",
     "portalNotOwner": "Nur Inhaber können das Abo verwalten.",
     "portalNoCustomer": "Zu dieser Organisation gibt es noch kein Abo bei Stripe.",
-    "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut."
+    "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.",
+    "capacityEditorsOnly": "Nur Mitglieder mit Bearbeitungsrecht können das Kapazitätsmanagement ändern.",
+    "capacityLineNameRequired": "Bitte einen Namen für die Linie eingeben."
   },
   "DataSheet": {
     "metaTitle": "Erhebungsbogen Wertstromanalyse",
