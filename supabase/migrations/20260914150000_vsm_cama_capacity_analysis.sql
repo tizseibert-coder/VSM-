@@ -1,73 +1,86 @@
--- CAMA: die Kapazitaetsampel (2026-09-14).
+-- CAMA: die Kapazitaetsampel, als eigenstaendiges Linien-Modul (2026-09-14,
+-- ueberarbeitet 2026-09-17).
 --
--- Plan und Begruendung: docs/plan-cama-capacity-analysis.md. Diese Migration
--- setzt nur den ersten Schritt der dort festgehaltenen Umsetzungsreihenfolge
--- um (Schema) — reine Logik, Eingabemasken und die Kapazitaetsseite folgen
--- in eigenen Schritten.
+-- Plan und Begruendung: docs/plan-cama-line-module.md. Ersetzt die urspruengliche
+-- Fassung dieser Datei (Kernentscheidung "eine CAMA-Linie ist ein VSM-Prozess",
+-- siehe docs/plan-cama-capacity-analysis.md), bevor diese je auf einer Datenbank
+-- ausserhalb des Testsystems lief (siehe dort, Abschnitt "Testsystem, nicht
+-- Prod") — eine Migration, die noch nirgends Ist-Zustand war, braucht keine
+-- Reparaturmigration, sie wird direkt korrigiert. Der Dateiname/Zeitstempel
+-- bleibt, die Git-Historie zeigt die Ueberarbeitung.
 --
--- Eine CAMA-Linie ist ein bestehender VSM-Prozess: Taktrate leitet sich aus
--- `cycle_time` ab (Minuten/Stueck, bereits vorhanden), NEE ist `oee` (bereits
--- 0-100 %). Neu sind nur, was CAMA zusaetzlich zur bestehenden VSM-Erfassung
--- braucht: das Schichtmodell und die Monatsnachfrage je Linie, ein
--- firmenweiter Jahreskalender, und ein Aktionsplan zu roten/orangen Linien.
+-- Nutzerentscheidung 2026-09-17: Kapazitaet ist eine Eigenschaft der Linie, nicht
+-- des VSM-Szenarios. Eine Linie (z. B. "Drehen") existiert unabhaengig davon, ob
+-- dafuer je ein VSM gezeichnet wird — deshalb drei eigene Tabellen statt zwei
+-- Spalten auf `processes`:
 --
--- Wie schon bei piece_value/currency, has_heijunka etc.: ausschliesslich
--- additive, nullable Spalten. Bestehender Code, der sie nicht kennt, ist
--- unberuehrt — das gilt hier besonders, weil Test und Prod dasselbe
--- Supabase-Projekt teilen (supabase/README.md) und diese Migration in genau
--- der Datenbank landet, die auch Prod bedient.
+--   production_lines  — der reine Stammsatz (Modul 0), organisationsweit,
+--                        kennt weder VSM noch CAMA. Kuenftige Module
+--                        referenzieren nur line_id, fassen diese Tabelle sonst
+--                        nie an — dasselbe Prinzip wie vsm_billing_customers
+--                        neben organization_entitlements.
+--   line_capacity      — CAMA-Modul: Schichtmodell, Monatsnachfrage (Basis und
+--                        Stress/+X %), 1:1 an eine Linie gehaengt.
+--   processes.line_id  — VSM-Modul: optionale Verknuepfung einer Prozessbox auf
+--                        eine bestehende Linie. ON DELETE SET NULL: ein VSM
+--                        bleibt gueltig, auch wenn die verknuepfte Linie entfaellt.
 --
--- [Lean-Durchsicht 2026-09-14] Diese Datei war zu diesem Zeitpunkt noch
--- nirgends angewendet (siehe Plan, Abschnitt "Testsystem, nicht Prod") — die
--- Nachbesserung (capacity_actions.target_month) ist deshalb direkt hier
--- eingearbeitet statt als zweite Migration angehaengt.
+-- Eigentuemergrenze wie ueberall in diesem Schema: alle vier Objekte gehoeren
+-- Taktane (VSM Builder), nicht Prisma/LeanPulse.
 
 -- ═══════════════════════════════════════════
--- 1) processes — Schichtmodell und Monatsnachfrage je Linie/Szenario
+-- 1) production_lines — der Stammsatz
 -- ═══════════════════════════════════════════
--- Beide Spalten sind scenario-scoped, weil processes es schon ist: eine neue
--- Forecast-Revision (RF1/RF2/RF3) ist technisch ein Szenario mit eigener
--- Kopie dieser Zeile, siehe Plan Abschnitt "RF1/RF2/RF3-Forecastvergleich".
-ALTER TABLE public.processes
-  ADD COLUMN IF NOT EXISTS shift_model smallint,
-  ADD COLUMN IF NOT EXISTS monthly_demand jsonb;
+CREATE TABLE IF NOT EXISTS public.production_lines (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name            text NOT NULL,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
 
--- Geschlossene Liste wie inventory_buffers_kanban_type_check: 1/2/3-Schicht,
--- sonst nichts. IF NOT EXISTS gibt es fuer ADD CONSTRAINT nicht, deshalb der
--- DO-Block (gleiches Muster wie inventory_buffers_sizing_interval_basis_check
--- in 20260909111713_vsm_supermarket_sizing.sql).
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'processes_shift_model_check'
-  ) THEN
-    ALTER TABLE public.processes
-      ADD CONSTRAINT processes_shift_model_check
-        CHECK (shift_model IS NULL OR shift_model IN (1, 2, 3));
-  END IF;
-END $$;
+CREATE INDEX IF NOT EXISTS idx_production_lines_organization_id ON public.production_lines USING btree (organization_id);
 
--- monthly_demand bleibt bewusst ohne Form-Constraint (kein "Array mit genau
--- 12 Zahlen"-CHECK): Die bestehenden jsonb-Spalten dieses Schemas
--- (spaghetti_layouts.stations/paths, activity_logs.details, vsm_leads.payload)
--- sind durchgehend unbeschraenkt, die Form wird an der Oberflaeche/in
--- capacityAnalysis.ts geprueft. Eine eigene Ausnahme hier waere Inkonsequenz,
--- kein Zugewinn an Sicherheit.
-COMMENT ON COLUMN public.processes.shift_model IS
-  'CAMA: 1/2/3-Schicht dieser Linie. Bestimmt die Stunden/Tag (8.2/16.4/24, siehe capacityAnalysis.ts:shiftHoursPerDay). Null = noch nicht erfasst.';
+COMMENT ON TABLE public.production_lines IS
+  'Firmenweiter Stammsatz einer Linie/eines Arbeitsplatzes (z. B. "Drehen"), unabhaengig von jedem VSM-Projekt. Traegt selbst keine Fachdaten — die haelt je ein eigenes Modul (siehe line_capacity), damit ein kuenftiges drittes Modul diese Tabelle nie aendern muss.';
 
-COMMENT ON COLUMN public.processes.monthly_demand IS
-  'CAMA: monatliche Nachfrage dieser Linie als jsonb-Array [Jan..Dez], 12 Zahlen. Null = noch nicht erfasst. Scenario-scoped wie die Zeile selbst — eine Forecast-Revision (RF1/RF2/RF3) ist ein Szenario mit eigener Kopie, siehe docs/plan-cama-capacity-analysis.md.';
+DROP TRIGGER IF EXISTS set_production_lines_updated_at ON public.production_lines;
+CREATE TRIGGER set_production_lines_updated_at
+  BEFORE UPDATE ON public.production_lines
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.production_lines ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "members can view production lines" ON public.production_lines;
+CREATE POLICY "members can view production lines"
+  ON public.production_lines FOR SELECT
+  USING (has_org_role(organization_id, 'viewer'));
+
+DROP POLICY IF EXISTS "editors can write production lines" ON public.production_lines;
+CREATE POLICY "editors can write production lines"
+  ON public.production_lines FOR ALL
+  USING (has_org_role(organization_id, 'editor'))
+  WITH CHECK (has_org_role(organization_id, 'editor'));
+
+-- Hilfsfunktion fuer alle Kindtabellen von production_lines, exaktes Gegenstueck
+-- zu project_org_id() aus 20260830160000_vsm_authorization_layer.sql.
+CREATE OR REPLACE FUNCTION public.line_org_id(p_line_id uuid)
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  select organization_id from public.production_lines where id = p_line_id;
+$$;
 
 -- ═══════════════════════════════════════════
 -- 2) vsm_org_settings — firmenweiter Jahreskalender
 -- ═══════════════════════════════════════════
--- Nutzerentscheidung 2026-09-14: ein Kalender pro Firma, nicht pro Projekt.
--- Liegt deshalb auf vsm_org_settings (Taktane-eigene Org-Settings-Tabelle),
--- nicht auf projects und nicht auf organizations — letztere gehoert
--- Prisma/LeanPulse (supabase/README.md), genau wie default_currency und
--- default_available_minutes schon heute firmenweite Vorgaben hier tragen,
--- nicht auf projects.
+-- Unveraendert gegenueber der Vorfassung dieser Migration: ein Kalender pro
+-- Firma (Nutzerentscheidung 2026-09-14), nicht Teil der Linien-Umstellung vom
+-- 17.09. — liegt weiterhin auf vsm_org_settings, nicht auf production_lines,
+-- weil alle Linien einer Firma denselben Kalender teilen.
 ALTER TABLE public.vsm_org_settings
   ADD COLUMN IF NOT EXISTS capacity_workdays jsonb;
 
@@ -75,26 +88,81 @@ COMMENT ON COLUMN public.vsm_org_settings.capacity_workdays IS
   'CAMA: Arbeitstage/Monat als jsonb-Objekt {"1":21,...,"12":22}, ein Kalender fuer die ganze Firma. Fehlt ein Monat oder die ganze Spalte (Normalzustand jeder bestehenden Firma), greift ein Vorgabekalender im Code statt eines stillen 0. Keine eigene RLS-Policy noetig: erbt "owners can write org settings" / "members can view org settings" aus 20260905170000_vsm_org_branding_and_invite_settings.sql.';
 
 -- ═══════════════════════════════════════════
--- 3) capacity_actions — Massnahmen zu roten/orangen Linien
+-- 3) line_capacity — CAMA-Kapazitaetsdaten je Linie
 -- ═══════════════════════════════════════════
--- Owner/Termin je Linie, wie in der CAMA-Vorlage als "wertvoll" markiert.
--- Traegt project_id direkt (nicht nur process_id): dasselbe Muster wie jede
--- andere Kindtabelle in diesem Schema (processes, inventory_buffers, ...) —
--- project_org_id(project_id) wertet in einem Schritt aus, ohne durch
--- processes hindurchzumuessen (siehe project_org_id-Kommentar in
--- 20260830160000_vsm_authorization_layer.sql).
--- target_month ist die eine Nachbesserung aus der Lean-Durchsicht vom
--- 14.09.: eine Massnahme aus der Kapazitaetsplanung ist in der Praxis oft an
--- einen Zeitpunkt gebunden ("ab Monat 7 Zusatzschicht"), nicht nur an ein
--- Faelligkeitsdatum fuer ihre Umsetzung (due_date). Beides ist unabhaengig
--- voneinander sinnvoll: eine SMED-Werkstatt muss bis 15. Juni abgeschlossen
--- sein (due_date), damit sie im Juli (target_month) wirkt. Nullable, weil
--- nicht jede Massnahme monatsgebunden ist ("Rüstzeiten grundsaetzlich
--- senken" betrifft die ganze Linie, keinen Monat).
+CREATE TABLE IF NOT EXISTS public.line_capacity (
+  line_id                uuid PRIMARY KEY REFERENCES public.production_lines(id) ON DELETE CASCADE,
+  shift_model            smallint,
+  monthly_demand         jsonb,
+  monthly_demand_stretch jsonb,
+  updated_at             timestamptz NOT NULL DEFAULT now()
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'line_capacity_shift_model_check'
+  ) THEN
+    ALTER TABLE public.line_capacity
+      ADD CONSTRAINT line_capacity_shift_model_check
+        CHECK (shift_model IS NULL OR shift_model IN (1, 2, 3));
+  END IF;
+END $$;
+
+-- monthly_demand/monthly_demand_stretch bewusst ohne Form-Constraint, wie schon
+-- in der Vorfassung begruendet: die bestehenden jsonb-Spalten dieses Schemas
+-- sind durchgehend unbeschraenkt, Form wird an der Oberflaeche/in
+-- capacityAnalysis.ts geprueft.
+COMMENT ON COLUMN public.line_capacity.shift_model IS
+  'CAMA: 1/2/3-Schicht dieser Linie. Bestimmt die Stunden/Tag (8.2/16.4/24, siehe capacityAnalysis.ts:shiftHoursPerDay). Null = noch nicht erfasst.';
+
+COMMENT ON COLUMN public.line_capacity.monthly_demand IS
+  'CAMA: monatliche Basisnachfrage dieser Linie als jsonb-Array [Jan..Dez], 12 Zahlen. Null = noch nicht erfasst.';
+
+COMMENT ON COLUMN public.line_capacity.monthly_demand_stretch IS
+  'CAMA: monatliche Nachfrage im Stresstest (z. B. +20 %, aus dem Schneider-CAMA-Playbook uebernommenes Konzept "Load Ratio with Demands Forecast +20%") als jsonb-Array [Jan..Dez]. Null = kein Stresstest hinterlegt, kein fester Faktor zur Basisnachfrage — jede Firma waehlt ihren eigenen Aufschlag.';
+
+DROP TRIGGER IF EXISTS set_line_capacity_updated_at ON public.line_capacity;
+CREATE TRIGGER set_line_capacity_updated_at
+  BEFORE UPDATE ON public.line_capacity
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.line_capacity ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "members can view line capacity" ON public.line_capacity;
+CREATE POLICY "members can view line capacity"
+  ON public.line_capacity FOR SELECT
+  USING (has_org_role(line_org_id(line_id), 'viewer'));
+
+DROP POLICY IF EXISTS "editors can write line capacity" ON public.line_capacity;
+CREATE POLICY "editors can write line capacity"
+  ON public.line_capacity FOR ALL
+  USING (has_org_role(line_org_id(line_id), 'editor'))
+  WITH CHECK (has_org_role(line_org_id(line_id), 'editor'));
+
+-- ═══════════════════════════════════════════
+-- 4) processes.line_id — optionale VSM-Verknuepfung
+-- ═══════════════════════════════════════════
+ALTER TABLE public.processes
+  ADD COLUMN IF NOT EXISTS line_id uuid REFERENCES public.production_lines(id) ON DELETE SET NULL;
+
+COMMENT ON COLUMN public.processes.line_id IS
+  'Optionale Verknuepfung dieser Prozessbox auf eine firmenweite Linie (production_lines) — die Bruecke zum CAMA-Modul. Null = diese Prozessbox hat keine Kapazitaetsdaten (normal, kein Fehlzustand). ON DELETE SET NULL: das VSM bleibt gueltig, auch wenn die Linie geloescht wird.';
+
+CREATE INDEX IF NOT EXISTS idx_processes_line_id ON public.processes USING btree (line_id);
+
+-- ═══════════════════════════════════════════
+-- 5) capacity_actions — Massnahmen zu roten/orangen Linien
+-- ═══════════════════════════════════════════
+-- Jetzt linien- statt projektgebunden, wie line_capacity: eine Massnahme ("ab
+-- Monat 7 Zusatzschicht") betrifft die Linie, unabhaengig davon, ob/in welchem
+-- VSM-Projekt sie gerade auftaucht. process_id bleibt als optionaler, rein
+-- informativer Verweis bestehen (welche Prozessbox war der Anlass), traegt aber
+-- keine Berechtigung mehr — das entscheidet allein line_id.
 CREATE TABLE IF NOT EXISTS public.capacity_actions (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id   uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
-  process_id   uuid NOT NULL REFERENCES public.processes(id) ON DELETE CASCADE,
+  line_id      uuid NOT NULL REFERENCES public.production_lines(id) ON DELETE CASCADE,
+  process_id   uuid REFERENCES public.processes(id) ON DELETE SET NULL,
   description  text NOT NULL,
   owner        text,
   due_date     date,
@@ -107,11 +175,14 @@ CREATE TABLE IF NOT EXISTS public.capacity_actions (
     CHECK (target_month IS NULL OR target_month BETWEEN 1 AND 12)
 );
 
-CREATE INDEX IF NOT EXISTS idx_capacity_actions_project_id ON public.capacity_actions USING btree (project_id);
+CREATE INDEX IF NOT EXISTS idx_capacity_actions_line_id ON public.capacity_actions USING btree (line_id);
 CREATE INDEX IF NOT EXISTS idx_capacity_actions_process_id ON public.capacity_actions USING btree (process_id);
 
 COMMENT ON TABLE public.capacity_actions IS
-  'CAMA: Massnahmen mit Owner/Termin zu einer Linie (Prozess), typischerweise bei orange/roter Ampel angelegt.';
+  'CAMA: Massnahmen mit Owner/Termin zu einer Linie, typischerweise bei orange/roter Ampel angelegt. Linien-, nicht projektgebunden — eine Linie kann Massnahmen haben, ohne dass dafuer je ein VSM existiert.';
+
+COMMENT ON COLUMN public.capacity_actions.process_id IS
+  'Optionaler, rein informativer Verweis auf die VSM-Prozessbox, die Anlass fuer diese Massnahme war (falls es ueberhaupt eine gab). Traegt keine Berechtigung — die RLS dieser Tabelle haengt ausschliesslich an line_id.';
 
 COMMENT ON COLUMN public.capacity_actions.target_month IS
   'Welcher CAMA-Monat (1-12) diese Massnahme adressiert, z. B. der Peak-Monat, wegen dem sie angelegt wurde. Optional — nicht jede Massnahme ist monatsgebunden. Unabhaengig von due_date, dem Faelligkeitsdatum ihrer Umsetzung.';
@@ -121,10 +192,10 @@ ALTER TABLE public.capacity_actions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "members can view capacity actions" ON public.capacity_actions;
 CREATE POLICY "members can view capacity actions"
   ON public.capacity_actions FOR SELECT
-  USING (has_org_role(project_org_id(project_id), 'viewer'));
+  USING (has_org_role(line_org_id(line_id), 'viewer'));
 
 DROP POLICY IF EXISTS "editors can write capacity actions" ON public.capacity_actions;
 CREATE POLICY "editors can write capacity actions"
   ON public.capacity_actions FOR ALL
-  USING (has_org_role(project_org_id(project_id), 'editor'))
-  WITH CHECK (has_org_role(project_org_id(project_id), 'editor'));
+  USING (has_org_role(line_org_id(line_id), 'editor'))
+  WITH CHECK (has_org_role(line_org_id(line_id), 'editor'));

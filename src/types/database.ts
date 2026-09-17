@@ -304,9 +304,9 @@ export type Database = {
           description: string
           due_date: string | null
           id: string
+          line_id: string
           owner: string | null
-          process_id: string
-          project_id: string
+          process_id: string | null
           status: string
           target_month: number | null
         }
@@ -315,9 +315,9 @@ export type Database = {
           description: string
           due_date?: string | null
           id?: string
+          line_id: string
           owner?: string | null
-          process_id: string
-          project_id: string
+          process_id?: string | null
           status?: string
           target_month?: number | null
         }
@@ -326,25 +326,25 @@ export type Database = {
           description?: string
           due_date?: string | null
           id?: string
+          line_id?: string
           owner?: string | null
-          process_id?: string
-          project_id?: string
+          process_id?: string | null
           status?: string
           target_month?: number | null
         }
         Relationships: [
           {
+            foreignKeyName: "capacity_actions_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "production_lines"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "capacity_actions_process_id_fkey"
             columns: ["process_id"]
             isOneToOne: false
             referencedRelation: "processes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "capacity_actions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -636,6 +636,38 @@ export type Database = {
             columns: ["organizationId"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      line_capacity: {
+        Row: {
+          line_id: string
+          monthly_demand: Json | null
+          monthly_demand_stretch: Json | null
+          shift_model: number | null
+          updated_at: string
+        }
+        Insert: {
+          line_id: string
+          monthly_demand?: Json | null
+          monthly_demand_stretch?: Json | null
+          shift_model?: number | null
+          updated_at?: string
+        }
+        Update: {
+          line_id?: string
+          monthly_demand?: Json | null
+          monthly_demand_stretch?: Json | null
+          shift_model?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_capacity_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: true
+            referencedRelation: "production_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -1000,14 +1032,13 @@ export type Database = {
           is_pacemaker: boolean
           kaizen_note: string | null
           lane: number
-          monthly_demand: Json | null
+          line_id: string | null
           name: string
           oee: number
           operator_count: number
           origin_process_id: string | null
           project_id: string
           scenario_id: string | null
-          shift_model: number | null
           updated_at: string
           width: number
           wip: number
@@ -1026,14 +1057,13 @@ export type Database = {
           is_pacemaker?: boolean
           kaizen_note?: string | null
           lane?: number
-          monthly_demand?: Json | null
+          line_id?: string | null
           name: string
           oee?: number
           operator_count?: number
           origin_process_id?: string | null
           project_id: string
           scenario_id?: string | null
-          shift_model?: number | null
           updated_at?: string
           width?: number
           wip?: number
@@ -1052,14 +1082,13 @@ export type Database = {
           is_pacemaker?: boolean
           kaizen_note?: string | null
           lane?: number
-          monthly_demand?: Json | null
+          line_id?: string | null
           name?: string
           oee?: number
           operator_count?: number
           origin_process_id?: string | null
           project_id?: string
           scenario_id?: string | null
-          shift_model?: number | null
           updated_at?: string
           width?: number
           wip?: number
@@ -1067,6 +1096,13 @@ export type Database = {
           y?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "processes_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "production_lines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "processes_origin_process_id_fkey"
             columns: ["origin_process_id"]
@@ -1119,6 +1155,38 @@ export type Database = {
           {
             foreignKeyName: "Product_organizationId_fkey"
             columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_lines: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_lines_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
