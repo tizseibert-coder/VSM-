@@ -734,7 +734,9 @@
     "capacityTileEmpty": "No line set up yet.",
     "capacityTileOk": "{count} lines, all within range.",
     "capacityTileCritical": "{count} lines, {critical} of them critical.",
-    "capacityTileOpen": "Open capacity →"
+    "capacityTileOpen": "Open capacity →",
+    "vsmTileHint": "Value stream maps with lead time, takt time, and future-state scenarios.",
+    "capacityTileHint": "Shows whether your lines can meet demand — month by month."
   },
   "Team": {
     "title": "Team",

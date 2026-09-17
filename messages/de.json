@@ -734,7 +734,9 @@
     "capacityTileEmpty": "Noch keine Linie angelegt.",
     "capacityTileOk": "{count} Linien, alle im grünen Bereich.",
     "capacityTileCritical": "{count} Linien, {critical} davon kritisch.",
-    "capacityTileOpen": "Kapazität öffnen →"
+    "capacityTileOpen": "Kapazität öffnen →",
+    "vsmTileHint": "Wertstromdiagramme mit Durchlaufzeit, Taktzeit und Future-State-Szenarien.",
+    "capacityTileHint": "Zeigt, ob eure Linien die Nachfrage schaffen — Monat für Monat."
   },
   "Team": {
     "title": "Team",

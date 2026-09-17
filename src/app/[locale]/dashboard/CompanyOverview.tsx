@@ -76,6 +76,7 @@ export default async function CompanyOverview({
             className="rounded-surface border border-zinc-200 bg-white p-6 transition-colors hover:border-brand-300 hover:bg-brand-50/30"
           >
             <h2 className="text-base font-semibold text-zinc-950">{t('vsmTileTitle')}</h2>
+            <p className="mt-1 text-xs text-zinc-500">{t('vsmTileHint')}</p>
             <p className="mt-2 text-sm text-zinc-600">
               {plan && usage
                 ? usage.projects.limit === null
@@ -91,6 +92,7 @@ export default async function CompanyOverview({
             className="rounded-surface border border-zinc-200 bg-white p-6 transition-colors hover:border-brand-300 hover:bg-brand-50/30"
           >
             <h2 className="text-base font-semibold text-zinc-950">{t('capacityTileTitle')}</h2>
+            <p className="mt-1 text-xs text-zinc-500">{t('capacityTileHint')}</p>
             <p className="mt-2 text-sm text-zinc-600">
               {lineIds.length === 0
                 ? t('capacityTileEmpty')
