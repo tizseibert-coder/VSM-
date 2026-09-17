@@ -18,14 +18,6 @@ export const CAMA_EMOJI: Record<CamaColor, string> = {
   red: '🔴',
 }
 
-/** Kleiner Punkt/Balken, z. B. unter einem Eingabefeld. */
-export const CAMA_DOT_CLASS: Record<CamaColor, string> = {
-  blue: 'bg-sky-400',
-  green: 'bg-emerald-500',
-  orange: 'bg-amber-500',
-  red: 'bg-red-500',
-}
-
 /** Ausgefüllte Kachel mit Text drauf (Badge in einer Tabellenzeile). */
 export const CAMA_BADGE_CLASS: Record<CamaColor, string> = {
   blue: 'bg-sky-100 text-sky-800',
@@ -36,11 +28,17 @@ export const CAMA_BADGE_CLASS: Record<CamaColor, string> = {
 
 /** Dieselben vier Farben als Hex — für den Konva-Canvas, der keine
  *  Tailwind-Klassen versteht, sondern Farbwerte direkt braucht (`fill`).
- *  Dieselben Tailwind-Stufen wie CAMA_DOT_CLASS (sky-400/emerald-500/
- *  amber-500/red-500), nur als Literal statt als Klassenname. */
+ *
+ * [UX-Fund 2026-09-17] Ursprünglich sky-400/emerald-500/amber-500/red-500 —
+ * als voll deckende Kreisfläche auf einer sonst schwarzweißen Strichzeichnung
+ * wirkten diese Mitteltöne, allen voran das helle sky-400, zu grell/knallig.
+ * Eine Stufe dunkler (600er-Reihe): bleibt aus Raumdistanz im Workshop gut
+ * unterscheidbar, wirkt aber ruhiger statt neonfarben. Dieselbe Farbfamilie
+ * wie CAMA_BADGE_CLASS (nur dort auf hellem Grund, hier auf dunklem Strich),
+ * damit die Ampel nirgends widersprechen kann. */
 export const CAMA_HEX: Record<CamaColor, string> = {
-  blue: '#38bdf8',
-  green: '#10b981',
-  orange: '#f59e0b',
-  red: '#ef4444',
+  blue: '#0284c7',
+  green: '#059669',
+  orange: '#d97706',
+  red: '#dc2626',
 }
