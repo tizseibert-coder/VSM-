@@ -10,10 +10,9 @@ const PER_PAGE = 50
  * Die registrierten Nutzer.
  *
  * Die Liste kommt aus der Admin-API von Supabase, nicht aus einer Tabelle:
- * `auth.users` ist ueber PostgREST nicht lesbar. Deshalb steht hier auch keine
- * Verknuepfung mit der Organisation je Zeile — die haette eine Abfrage je
- * Nutzer gekostet. Wer wissen will, welches Haus dazugehoert, findet es unter
- * „Organisationen".
+ * `auth.users` ist ueber PostgREST nicht lesbar. Organisation und Tarif je
+ * Zeile kommen aus einer Sammelabfrage in `listUsers()`, nicht aus einer
+ * Abfrage je Nutzer — bei 50 Zeilen pro Seite waere Letzteres 50 Rundreisen.
  */
 export default async function AdminUsersPage({
   searchParams,
@@ -50,10 +49,11 @@ export default async function AdminUsersPage({
         </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-surface border border-zinc-200 bg-white">
-          <table className="w-full min-w-[44rem] border-collapse text-sm">
+          <table className="w-full min-w-[52rem] border-collapse text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-left">
                 <th className="px-5 py-3 font-medium text-zinc-600">{t('colEmail')}</th>
+                <th className="px-5 py-3 font-medium text-zinc-600">{t('colOrganization')}</th>
                 <th className="px-5 py-3 font-medium text-zinc-600">{t('colRegistered')}</th>
                 <th className="px-5 py-3 font-medium text-zinc-600">{t('colLastSignIn')}</th>
                 <th className="px-5 py-3 font-medium text-zinc-600">{t('colConfirmed')}</th>
@@ -64,6 +64,22 @@ export default async function AdminUsersPage({
                 <tr key={user.id} className="border-b border-zinc-100 last:border-0">
                   <td className="px-5 py-3 text-zinc-950">
                     {user.email ?? user.id.slice(0, 8)}
+                  </td>
+                  <td className="px-5 py-3">
+                    {user.organizations.length === 0 ? (
+                      <span className="text-zinc-400">—</span>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        {user.organizations.map((org, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-zinc-700">{org.name}</span>
+                            <span className="rounded-control bg-brand-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-700">
+                              {org.tier}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-3 tabular-nums text-zinc-700">
                     {dtf.format(new Date(user.createdAt))}

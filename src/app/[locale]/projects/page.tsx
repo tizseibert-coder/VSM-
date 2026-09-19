@@ -6,7 +6,6 @@ import { createProject, createExampleProject } from '../dashboard/actions'
 import { openBillingPortal } from '@/app/[locale]/pricing/actions'
 import { getActiveOrg } from '@/lib/org/activeOrg'
 import { loadPlan, loadPlanUsage } from '@/lib/billing/entitlement'
-import { isPurchasableTier } from '@/lib/billing/stripe'
 import { loadStaff } from '@/lib/crm/staff'
 import DeleteProjectButton from '@/components/dashboard/DeleteProjectButton'
 import DemoImportBanner from '@/components/dashboard/DemoImportBanner'
@@ -118,11 +117,13 @@ export default async function ProjectsPage({
               {/* [Marketing-Audit 2026-09-07, B5-Folgefund] Bis hierher gab
                   es keinen Weg, ein Abo selbst zu verwalten oder zu
                   kuendigen — nur fuer Inhaber sichtbar (dieselbe Grenze wie
-                  beim Abschluss) und nur bei einem Tarif, der ueberhaupt
-                  ueber Stripe laufen kann. Ein manuell vergebener Tarif ohne
-                  Stripe-Kunden faengt die Server Action selbst ab
-                  (portalNoCustomer). */}
-              {activeOrg?.role === 'owner' && isPurchasableTier(plan.tier) && (
+                  beim Abschluss). Bewusst *nicht* auf kaufbare Stufen
+                  beschraenkt: Der Knopf ist auch auf FREE der Weg zurueck
+                  ins Kundenportal, von wo aus sich (je nach dessen
+                  Konfiguration im Stripe-Dashboard) auch ein Tarif abschliessen
+                  laesst. Einen Stripe-Kunden ohne Kauf legt openBillingPortal()
+                  bei Bedarf selbst an, statt mit portalNoCustomer abzuweisen. */}
+              {activeOrg?.role === 'owner' && (
                 <form action={openBillingPortal}>
                   <SubmitButton className="text-sm font-medium text-brand-600 hover:underline">
                     {t('manageBilling')}

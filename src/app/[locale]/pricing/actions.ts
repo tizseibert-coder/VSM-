@@ -206,26 +206,35 @@ export async function openBillingPortal() {
   // (siehe die Migration) — Service-Role ist hier keine Abkuerzung, sondern
   // der einzige Weg, der ueberhaupt etwas liefert.
   const admin = createAdminClient()
-  const { data: customer } = await admin
+  const organizationId = orgResult.active.organizationId
+  const { data: existing } = await admin
     .from('vsm_billing_customers')
     .select('stripe_customer_id')
-    .eq('organization_id', orgResult.active.organizationId)
+    .eq('organization_id', organizationId)
     .maybeSingle()
-
-  if (!customer) {
-    // Der Tarif kann auch von Hand im Verwaltungsbereich vergeben worden
-    // sein (BETA, oder eine Ausnahme) — dann gibt es nie einen Stripe-Kunden,
-    // und das Portal haette nichts zu zeigen.
-    redirect('/dashboard?error=' + encodeURIComponent(await tErr('portalNoCustomer')))
-  }
 
   const locale = await getLocale()
 
   let portalUrl: string | null = null
   try {
     const stripe = stripeClient()
+    // "Abo verwalten" ist jetzt auch auf FREE sichtbar, nicht nur auf einer
+    // kaufbaren Stufe (siehe projects/page.tsx) — der Punkt ist ja gerade,
+    // von dort auch upgraden zu koennen. Eine Organisation, die noch nie
+    // gekauft hat (oder deren Tarif von Hand vergeben wurde, z. B. BETA),
+    // hat entsprechend noch keinen Stripe-Kunden; statt das mit
+    // `portalNoCustomer` abzuweisen, legen wir hier einen an. Ob das
+    // Portal darin tatsaechlich einen Tarif zum Abschluss anbietet, hängt
+    // von der Portal-Konfiguration im Stripe-Dashboard ab (Abschnitt
+    // "Produkte, die Kundinnen auswaehlen koennen").
+    let customerId = existing?.stripe_customer_id ?? null
+    if (!customerId) {
+      const email = claimsData.claims.email as string | undefined
+      customerId = await createStripeCustomer(stripe, admin, organizationId, email)
+    }
+
     const session = await stripe.billingPortal.sessions.create({
-      customer: customer.stripe_customer_id,
+      customer: customerId,
       return_url: localizedUrl(locale, '/dashboard'),
     })
     portalUrl = session.url

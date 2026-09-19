@@ -1043,7 +1043,6 @@
     "demoImportUnreadable": "Der Wertstrom aus der Demo ist nicht mehr lesbar oder zu alt. Bitte legen Sie ihn neu an.",
     "demoImportFailed": "Der Wertstrom aus der Demo konnte nicht übernommen werden.",
     "portalNotOwner": "Nur Inhaber können das Abo verwalten.",
-    "portalNoCustomer": "Zu dieser Organisation gibt es noch kein Abo bei Stripe.",
     "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.",
     "capacityEditorsOnly": "Nur Mitglieder mit Bearbeitungsrecht können das Kapazitätsmanagement ändern.",
     "capacityLineNameRequired": "Bitte einen Namen für die Linie eingeben."

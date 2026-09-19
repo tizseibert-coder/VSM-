@@ -1043,7 +1043,6 @@
     "demoImportUnreadable": "The value stream from the demo is no longer readable or too old. Please build it again.",
     "demoImportFailed": "The value stream from the demo could not be imported.",
     "portalNotOwner": "Only owners can manage the subscription.",
-    "portalNoCustomer": "This organisation has no Stripe subscription yet.",
     "portalFailed": "Account management could not be opened. Please try again.",
     "capacityEditorsOnly": "Only members with edit rights can change capacity management.",
     "capacityLineNameRequired": "Please enter a name for the line."
