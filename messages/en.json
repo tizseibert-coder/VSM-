@@ -1166,7 +1166,7 @@
     "providerTrade": "Trading as \"Taktane by Seibert\" (sole proprietorship, not registered in the Swiss commercial register)",
     "providerAddress": "Rastenhoschet 7, 8752 Näfels, Switzerland",
     "contactTitle": "Contact",
-    "contactEmail": "[Placeholder: e-mail address]",
+    "contactEmail": "hallo@taktane.com",
     "registerTitle": "Commercial register and UID",
     "registerBody": "Taktane currently operates as a sole proprietorship below the CHF 100,000 annual revenue threshold that triggers commercial-register and UID registration in Switzerland. A commercial-register number and UID will be added here once registration has taken place.",
     "liabilityTitle": "Liability for content",
@@ -1175,7 +1175,6 @@
     "linksBody": "This website may contain links to third-party websites. The operator has no influence over their content and accepts no responsibility for it. The respective provider of a linked page is always responsible for its content.",
     "copyrightTitle": "Copyright",
     "copyrightBody": "The content published on this website is subject to Swiss copyright law. Any use not expressly permitted requires the operator's prior written consent.",
-    "lastUpdated": "Last updated: {date}",
-    "placeholderNotice": "This page is a scaffold: the bracketed fields are placeholders and must be replaced with real details before this goes live."
+    "lastUpdated": "Last updated: {date}"
   }
 }

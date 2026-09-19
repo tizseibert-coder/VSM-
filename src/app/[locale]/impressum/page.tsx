@@ -17,11 +17,6 @@ export async function generateMetadata({
     title: t('metaTitle'),
     description: t('metaDescription'),
     ogLocale: tMeta('ogLocale'),
-    // Solange Anbietername und Adresse Platzhalter sind, darf die Seite nicht
-    // im Suchindex landen — siehe die Begruendung bei PUBLIC_PATHS in
-    // lib/seo/site.ts. Beides zusammen (noindex hier, kein Sitemap-Eintrag
-    // dort) entfernen, sobald die echten Angaben eingetragen sind.
-    noindex: true,
   })
 }
 
@@ -31,7 +26,7 @@ export async function generateMetadata({
  * automatisches "heute" waere hier falsch, weil es nichts ueber den Inhalt
  * aussagt, nur ueber den Seitenaufruf.
  */
-const LAST_UPDATED = new Date('2026-09-17')
+const LAST_UPDATED = new Date('2026-09-19')
 
 export default async function ImpressumPage({
   params,
@@ -46,13 +41,6 @@ export default async function ImpressumPage({
     <main className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">{t('title')}</h1>
       <p className="mt-2 text-sm text-zinc-600">{t('intro')}</p>
-
-      {/* Sichtbarer Hinweis fuer den Betreiber, nicht fuer Suchmaschinen
-          gedacht (die Seite ist noindex) — verschwindet, sobald die
-          Platzhalter unten durch echte Angaben ersetzt sind. */}
-      <p className="mt-6 rounded-surface border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        {t('placeholderNotice')}
-      </p>
 
       <div className="mt-10 space-y-8 text-sm leading-relaxed text-zinc-700">
         <section>

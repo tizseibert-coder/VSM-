@@ -119,7 +119,5 @@ export const PUBLIC_PATHS = [
   { path: '/data-sheet', priority: 0.5, changeFrequency: 'yearly' as const },
   { path: '/signup', priority: 0.4, changeFrequency: 'yearly' as const },
   { path: '/login', priority: 0.2, changeFrequency: 'yearly' as const },
-  // /impressum fehlt hier bewusst, solange sie Platzhalter statt echtem Namen
-  // und echter Adresse traegt (siehe impressum/page.tsx) — erst mit den
-  // echten Angaben eintragen, sonst landet ein Platzhaltername im Index.
+  { path: '/impressum', priority: 0.1, changeFrequency: 'yearly' as const },
 ] as const

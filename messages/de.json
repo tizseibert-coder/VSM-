@@ -1166,7 +1166,7 @@
     "providerTrade": "Tätig unter dem Namen „Taktane by Seibert“ (Einzelunternehmen, nicht im Handelsregister eingetragen)",
     "providerAddress": "Rastenhoschet 7, 8752 Näfels, Schweiz",
     "contactTitle": "Kontakt",
-    "contactEmail": "[Platzhalter: E-Mail-Adresse]",
+    "contactEmail": "hallo@taktane.com",
     "registerTitle": "Handelsregister und UID",
     "registerBody": "Taktane wird derzeit als Einzelunternehmen unterhalb der gesetzlichen Eintragungsgrenze von CHF 100'000 Jahresumsatz betrieben und ist deshalb weder im Handelsregister eingetragen noch UID-pflichtig. Handelsregisternummer und UID-Nummer werden hier ergänzt, sobald die Eintragung erfolgt ist.",
     "liabilityTitle": "Haftung für Inhalte",
@@ -1175,7 +1175,6 @@
     "linksBody": "Diese Website kann Verweise auf Websites Dritter enthalten. Auf deren Inhalte hat der Betreiber keinen Einfluss und übernimmt dafür keine Verantwortung. Für die Inhalte verlinkter Seiten ist stets deren jeweiliger Anbieter verantwortlich.",
     "copyrightTitle": "Urheberrecht",
     "copyrightBody": "Die auf dieser Website veröffentlichten Inhalte unterliegen dem Schweizer Urheberrecht. Jede Verwendung, die dieses nicht ausdrücklich erlaubt, bedarf der vorherigen schriftlichen Zustimmung des Betreibers.",
-    "lastUpdated": "Stand: {date}",
-    "placeholderNotice": "Diese Seite ist ein Gerüst: Die eckig geklammerten Angaben sind Platzhalter und müssen vor dem Livegang durch die echten Angaben ersetzt werden."
+    "lastUpdated": "Stand: {date}"
   }
 }
