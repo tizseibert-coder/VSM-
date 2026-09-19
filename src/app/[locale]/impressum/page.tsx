@@ -21,52 +21,64 @@ export async function generateMetadata({
 }
 
 /**
- * Das Gerüst für die Anbieterkennzeichnung nach § 5 DDG (vormals § 5 TMG)
- * und § 18 Abs. 2 MStV.
- *
- * Absichtlich mit Platzhaltern statt erfundenen Angaben: Firmenname,
- * Anschrift, Vertretungsberechtigte, Handelsregisternummer und USt-IdNr.
- * stehen hier nicht im Code, weil sie nirgends sonst im Repository geprüft
- * vorliegen (dieselbe Zurückhaltung wie schon auf der Startseite, siehe den
- * Kommentar dort zum Hosting-Standort) — falsche oder erfundene Angaben in
- * einem Impressum sind ein eigener Wettbewerbsverstoß, eine fehlende Seite
- * "nur" eine Lücke. Jeder Platzhalter ist als solcher in der Übersetzung
- * markiert (`[…]`) und muss vor Veröffentlichung durch geprüfte Angaben
- * ersetzt werden.
+ * Stand, ab dem der Inhalt gilt. Von Hand nachfuehren, wenn sich ein
+ * Abschnitt inhaltlich aendert (Handelsregister-Eintrag, neue Adresse) — ein
+ * automatisches "heute" waere hier falsch, weil es nichts ueber den Inhalt
+ * aussagt, nur ueber den Seitenaufruf.
  */
-export default async function ImpressumPage() {
-  const t = await getTranslations('Impressum')
+const LAST_UPDATED = new Date('2026-09-19')
 
-  const sections = [
-    { heading: t('providerHeading'), body: t('providerBody') },
-    { heading: t('representedByHeading'), body: t('representedByBody') },
-    { heading: t('contactHeading'), body: t('contactBody') },
-    { heading: t('registerHeading'), body: t('registerBody') },
-    { heading: t('vatHeading'), body: t('vatBody') },
-    { heading: t('responsibleHeading'), body: t('responsibleBody') },
-    { heading: t('disputeHeading'), body: t('disputeBody') },
-  ]
+export default async function ImpressumPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  const t = await getTranslations('Impressum')
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(LAST_UPDATED)
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-6 py-10">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">{t('title')}</h1>
+    <main className="mx-auto max-w-3xl px-6 py-16">
+      <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">{t('title')}</h1>
+      <p className="mt-2 text-sm text-zinc-600">{t('intro')}</p>
 
-        <p className="mt-4 rounded-control border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {t('placeholderNotice')}
-        </p>
+      <div className="mt-10 space-y-8 text-sm leading-relaxed text-zinc-700">
+        <section>
+          <h2 className="text-base font-semibold text-zinc-950">{t('providerTitle')}</h2>
+          <p className="mt-2">{t('providerName')}</p>
+          <p>{t('providerTrade')}</p>
+          <p>{t('providerAddress')}</p>
+        </section>
 
-        <div className="mt-8 space-y-6">
-          {sections.map((section) => (
-            <section key={section.heading}>
-              <h2 className="text-sm font-semibold text-zinc-950">{section.heading}</h2>
-              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-zinc-600">
-                {section.body}
-              </p>
-            </section>
-          ))}
-        </div>
+        <section>
+          <h2 className="text-base font-semibold text-zinc-950">{t('contactTitle')}</h2>
+          <p className="mt-2">{t('contactEmail')}</p>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-zinc-950">{t('registerTitle')}</h2>
+          <p className="mt-2">{t('registerBody')}</p>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-zinc-950">{t('liabilityTitle')}</h2>
+          <p className="mt-2">{t('liabilityBody')}</p>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-zinc-950">{t('linksTitle')}</h2>
+          <p className="mt-2">{t('linksBody')}</p>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-zinc-950">{t('copyrightTitle')}</h2>
+          <p className="mt-2">{t('copyrightBody')}</p>
+        </section>
       </div>
-    </div>
+
+      <p className="mt-10 border-t border-zinc-200 pt-4 text-xs text-zinc-500">
+        {t('lastUpdated', { date })}
+      </p>
+    </main>
   )
 }

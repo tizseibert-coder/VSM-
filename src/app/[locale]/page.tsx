@@ -583,10 +583,13 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
               {tNav('capacityGuide')}
             </Link>
             <Link href="/impressum" className="hover:text-brand-600 hover:underline">
-              {tNav('imprint')}
+              {tNav('impressum')}
+            </Link>
+            <Link href="/agb" className="hover:text-brand-600 hover:underline">
+              {tNav('agb')}
             </Link>
             <Link href="/datenschutz" className="hover:text-brand-600 hover:underline">
-              {tNav('privacy')}
+              {tNav('datenschutz')}
             </Link>
           </nav>
         </div>
