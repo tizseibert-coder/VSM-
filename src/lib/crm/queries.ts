@@ -190,15 +190,23 @@ export type AdminUser = {
   createdAt: string
   lastSignInAt: string | null
   confirmed: boolean
+  /** Die Haeuser, denen der Nutzer angehoert, mit ihrem jeweiligen Tarif —
+   *  meist eines, gelegentlich mehrere (mehrfache Mitgliedschaft). */
+  organizations: { name: string; tier: string }[]
 }
 
 /**
- * Die registrierten Nutzer.
+ * Die registrierten Nutzer, mit ihrer Organisation und deren Tarif.
  *
  * Ueber die Admin-API, nicht ueber PostgREST: `auth.users` ist dort nicht
  * lesbar, und ein Spiegel in `public` braeuchte einen zweiten Trigger auf
- * einer Tabelle, die Taktane nicht gehoert (siehe
- * supabase/README.md).
+ * einer Tabelle, die Taktane nicht gehoert (siehe supabase/README.md).
+ *
+ * Die Zuordnung zu Organisation und Tarif kam urspruenglich nicht mit —
+ * eine Abfrage je Nutzer waere bei 50 Zeilen pro Seite 50 Rundreisen
+ * gewesen. Stattdessen, wie in `listOrganizations`: eine Sammelabfrage der
+ * Mitgliedschaften ueber alle Nutzer dieser Seite, dann Organisationen und
+ * Tarife dazu, und alles im Speicher wieder zusammengefuehrt.
  */
 export async function listUsers(page = 1, perPage = 50): Promise<{
   users: AdminUser[]
@@ -214,6 +222,9 @@ export async function listUsers(page = 1, perPage = 50): Promise<{
     return { users: [], hasMore: false }
   }
 
+  const userIds = data.users.map((user) => user.id)
+  const orgsByUser = await loadOrganizationsByUser(supabase, userIds)
+
   return {
     users: data.users.map((user) => ({
       id: user.id,
@@ -221,9 +232,70 @@ export async function listUsers(page = 1, perPage = 50): Promise<{
       createdAt: user.created_at,
       lastSignInAt: user.last_sign_in_at ?? null,
       confirmed: Boolean(user.email_confirmed_at ?? user.confirmed_at),
+      organizations: orgsByUser.get(user.id) ?? [],
     })),
     hasMore: data.users.length === perPage,
   }
+}
+
+/** Sammelabfrage fuer `listUsers`: je Nutzer die Organisationen mit Tarif,
+ *  ohne eine Abfrage je Nutzer (siehe dortiger Kommentar). Client-Typ hier
+ *  bewusst nicht benannt — er kommt ausschliesslich aus `createAdminClient()`
+ *  in dieser Datei, ein eigener Typ waere eine zweite Quelle dafuer. */
+async function loadOrganizationsByUser(
+  supabase: ReturnType<typeof createAdminClient>,
+  userIds: string[]
+): Promise<Map<string, { name: string; tier: string }[]>> {
+  if (userIds.length === 0) return new Map()
+
+  const { data: memberships, error: membersError } = await supabase
+    .from('organization_members')
+    .select('user_id, organization_id')
+    .in('user_id', userIds)
+
+  if (membersError) {
+    console.error('loadOrganizationsByUser (members) failed:', membersError.message)
+    return new Map()
+  }
+  if (!memberships || memberships.length === 0) return new Map()
+
+  const orgIds = [...new Set(memberships.map((m) => m.organization_id))]
+
+  const [{ data: orgs, error: orgsError }, { data: entitlements, error: entitlementsError }] =
+    await Promise.all([
+      supabase.from('organizations').select('id, name').in('id', orgIds),
+      supabase
+        .from('organization_entitlements')
+        .select('organization_id, tier, status, granted_at')
+        .eq('product', 'VSM_BUILDER')
+        .eq('status', 'ACTIVE')
+        .in('organization_id', orgIds)
+        .order('granted_at', { ascending: false, nullsFirst: false }),
+    ])
+
+  if (orgsError) console.error('loadOrganizationsByUser (orgs) failed:', orgsError.message)
+  if (entitlementsError) {
+    console.error('loadOrganizationsByUser (entitlements) failed:', entitlementsError.message)
+  }
+
+  const orgNames = new Map((orgs ?? []).map((org) => [org.id, org.name]))
+  const tiers = new Map<string, string>()
+  for (const row of entitlements ?? []) {
+    // Mehrere aktive Zeilen sollte es nicht geben; wenn doch, gewinnt die
+    // zuletzt vergebene — dieselbe Regel wie in `listOrganizations`.
+    if (!tiers.has(row.organization_id)) tiers.set(row.organization_id, row.tier)
+  }
+
+  const result = new Map<string, { name: string; tier: string }[]>()
+  for (const membership of memberships) {
+    const list = result.get(membership.user_id) ?? []
+    list.push({
+      name: orgNames.get(membership.organization_id) ?? '—',
+      tier: tiers.get(membership.organization_id) ?? 'FREE',
+    })
+    result.set(membership.user_id, list)
+  }
+  return result
 }
 
 export type OrganizationRow = {
