@@ -135,7 +135,25 @@ export async function POST(request: Request) {
   return Response.json({ received: true })
 }
 
-/** Die Organisation hinter einer Stripe-Kunden-Id, oder null. */
+/**
+ * Die Organisation hinter einer Stripe-Kunden-Id, oder null.
+ *
+ * Erst in `vsm_billing_customers` nachgesehen, dann — falls dort noch nichts
+ * steht — in den Metadaten des Stripe-Kunden selbst (`organization_id`, siehe
+ * `createStripeCustomer` in pricing/actions.ts).
+ *
+ * Der zweite Weg ist kein Sonderfall, sondern die eigentliche Absicherung:
+ * Stripe garantiert fuer `checkout.session.completed` und
+ * `customer.subscription.created` *keine* Zustellreihenfolge. Kommt das
+ * Abo-Ereignis zuerst an, steht die Zeile aus `checkout.session.completed`
+ * noch nicht in `vsm_billing_customers` — ohne den Rueckgriff auf die
+ * Kunden-Metadaten bliebe eine zahlende Organisation auf FREE stehen, weil
+ * kein spaeteres Ereignis das je nachholt (derselbe Fehler wie schon einmal
+ * beim Kundenwechsel Test- auf Live-Modus: eine Annahme ueber Reihenfolge,
+ * die Stripe nicht zusagt). Der Fund in `vsm_billing_customers` wird gleich
+ * nachgetragen, damit kuenftige Ereignisse fuer denselben Kunden den
+ * schnelleren, garantiert richtigen Datenbankweg nehmen.
+ */
 async function organizationIdForCustomer(customer: string | Stripe.Customer | Stripe.DeletedCustomer | null): Promise<string | null> {
   const customerId = typeof customer === 'string' ? customer : customer?.id
   if (!customerId) return null
@@ -151,5 +169,33 @@ async function organizationIdForCustomer(customer: string | Stripe.Customer | St
     console.error('organizationIdForCustomer failed:', error.message)
     return null
   }
-  return data?.organization_id ?? null
+  if (data?.organization_id) return data.organization_id
+
+  const organizationId = await organizationIdFromCustomerMetadata(customerId)
+  if (!organizationId) return null
+
+  const { error: upsertError } = await admin
+    .from('vsm_billing_customers')
+    .upsert({ organization_id: organizationId, stripe_customer_id: customerId })
+  if (upsertError) {
+    console.error('organizationIdForCustomer (nachtragen) failed:', upsertError.message)
+  }
+
+  return organizationId
+}
+
+/** Der Rueckfall aus den Kunden-Metadaten bei Stripe selbst — siehe
+ *  `organizationIdForCustomer` fuer den Grund. */
+async function organizationIdFromCustomerMetadata(customerId: string): Promise<string | null> {
+  try {
+    const customer = await stripeClient().customers.retrieve(customerId)
+    if (customer.deleted) return null
+    return customer.metadata.organization_id ?? null
+  } catch (err) {
+    console.error(
+      'organizationIdFromCustomerMetadata failed:',
+      err instanceof Error ? err.message : err
+    )
+    return null
+  }
 }
