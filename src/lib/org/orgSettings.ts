@@ -42,6 +42,14 @@ export type OrgProfile = {
   defaultAvailableMinutes: number | null
   defaultLocale: string | null
   reportFooter: string | null
+  /**
+   * CAMA: Arbeitstage/Monat, ein Kalender fuer die ganze Firma (Index 0 =
+   * Januar). `null` an einer Stelle heisst "fuer diesen Monat nichts
+   * hinterlegt" — anders als resolveWorkdaysCalendar in capacityAnalysis.ts,
+   * das dort schon den Vorgabewert einsetzt: hier soll das Formular sehen,
+   * was wirklich gesetzt ist, und den Vorgabewert nur als Platzhalter zeigen.
+   */
+  capacityWorkdays: (number | null)[]
 }
 
 /** Das leere Profil — der Zustand ohne Zeile, und damit der Normalfall am Tag
@@ -63,7 +71,22 @@ export function emptyProfile(organizationId: string, organizationName: string): 
     defaultAvailableMinutes: null,
     defaultLocale: null,
     reportFooter: null,
+    capacityWorkdays: Array(12).fill(null),
   }
+}
+
+/**
+ * Liest vsm_org_settings.capacity_workdays (jsonb-Objekt {"1":21,...,"12":22},
+ * ungeprueft — siehe Migration) in ein 12er-Array. Ungueltige oder fehlende
+ * Monate werden zu `null`, nicht zu 0: 0 Arbeitstage waere eine Behauptung,
+ * die niemand gemacht hat.
+ */
+function parseCapacityWorkdays(raw: unknown): (number | null)[] {
+  const record = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  return Array.from({ length: 12 }, (_, index) => {
+    const value = record[String(index + 1)]
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+  })
 }
 
 /**
@@ -83,7 +106,7 @@ export async function loadOrgProfile(
   const { data, error } = await supabase
     .from('vsm_org_settings')
     .select(
-      'organization_id, display_name, legal_name, industry, website, contact_email, contact_phone, brand_color, logo_mime, logo_updated_at, default_currency, default_available_minutes, default_locale, report_footer'
+      'organization_id, display_name, legal_name, industry, website, contact_email, contact_phone, brand_color, logo_mime, logo_updated_at, default_currency, default_available_minutes, default_locale, report_footer, capacity_workdays'
     )
     .eq('organization_id', organizationId)
     .maybeSingle()
@@ -111,6 +134,7 @@ export async function loadOrgProfile(
       data.default_available_minutes === null ? null : Number(data.default_available_minutes),
     defaultLocale: data.default_locale,
     reportFooter: data.report_footer,
+    capacityWorkdays: parseCapacityWorkdays(data.capacity_workdays),
   }
 }
 

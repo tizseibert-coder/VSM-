@@ -11,6 +11,7 @@ import type { ComparisonState } from '@/lib/vsm/scenarioComparison'
 import { loadMemberships } from '@/lib/org/activeOrg'
 import { loadOrgProfile } from '@/lib/org/orgSettings'
 import { orgLogoUrl, type PdfBranding } from '@/lib/org/branding'
+import { DEFAULT_WORKDAYS_PER_MONTH } from '@/lib/vsm/capacityAnalysis'
 import ClearDemoTransfer from '@/components/dashboard/ClearDemoTransfer'
 
 export default async function EditorPage({
@@ -110,6 +111,25 @@ export default async function EditorPage({
     brandColor: profile.brandColor,
     reportFooter: profile.reportFooter,
   }
+  // CAMA: firmenweiter Kalender, aufgeloest auf 12 vollstaendige Werte — die
+  // Live-Vorschau im Kapazitaetsdaten-Panel soll genau das rechnen, was die
+  // spaetere Kapazitaetsseite auch rechnet, nicht "leer = 0 Arbeitstage".
+  const capacityWorkdays = profile.capacityWorkdays.map((value) => value ?? DEFAULT_WORKDAYS_PER_MONTH)
+
+  // CAMA: alle Linien der Organisation plus ihre Kapazitaetsdaten, fuer das
+  // Verknuepfungs-Dropdown im Bearbeitungspanel und die Ampel auf der
+  // Prozessbox (docs/plan-cama-line-module.md). Zwei Abfragen statt eines
+  // PostgREST-Embeds, wie loadMemberships() in activeOrg.ts es begruendet.
+  const { data: productionLines } = await supabase
+    .from('production_lines')
+    .select('*')
+    .eq('organization_id', project.organization_id)
+    .order('name', { ascending: true })
+  const lineIds = (productionLines ?? []).map((l) => l.id)
+  const { data: lineCapacities } =
+    lineIds.length > 0
+      ? await supabase.from('line_capacity').select('*').in('line_id', lineIds)
+      : { data: [] }
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -156,6 +176,16 @@ export default async function EditorPage({
           >
             {t('compareScenarios')}
           </Link>
+          <Link
+            href={
+              activeScenario
+                ? `/editor/${projectId}/capacity?scenario=${activeScenario.id}`
+                : `/editor/${projectId}/capacity`
+            }
+            className={buttonSecondary}
+          >
+            {t('capacityAnalysis')}
+          </Link>
         </div>
       </header>
 
@@ -184,6 +214,9 @@ export default async function EditorPage({
         initialBuffers={buffers}
         benchmarkReferences={benchmarkReferences ?? []}
         comparisonStates={comparisonStates}
+        capacityWorkdays={capacityWorkdays}
+        productionLines={productionLines ?? []}
+        lineCapacities={lineCapacities ?? []}
         branding={branding}
       />
     </div>

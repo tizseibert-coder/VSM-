@@ -27,6 +27,9 @@ import {
 import type Konva from 'konva'
 import type { Tables } from '@/types/database'
 import { calculateKpis, effectiveCycleTime, SHIFT_MINUTES } from '@/lib/vsm/calculations'
+import { resolveWorkdaysCalendar, type CamaLineResult } from '@/lib/vsm/capacityAnalysis'
+import { CAMA_BADGE_CLASS, CAMA_EMOJI, CAMA_HEX } from './camaColors'
+import { computeCamaLine } from './camaLine'
 import { BalanceChartPanel } from './BalanceChartPanel'
 import BenchmarkPanel from './BenchmarkPanel'
 import { MethodCheckPanel } from './MethodCheckPanel'
@@ -117,6 +120,8 @@ type Project = Tables<'projects'>
 type Process = Tables<'processes'>
 type BenchmarkReference = Tables<'benchmark_reference'>
 type Buffer = Tables<'inventory_buffers'>
+type ProductionLine = Tables<'production_lines'>
+type LineCapacity = Tables<'line_capacity'>
 
 const INK = '#18181b' // zinc-900 — used for all VSM line-art instead of pure black
 const ACCENT = '#17786c' // brand-500 — Auswahl, die einzige Schmuckfarbe auf dem Canvas
@@ -280,6 +285,25 @@ interface Props {
    */
   comparisonStates?: ComparisonState[]
   /**
+   * CAMA: Arbeitstage/Monat, firmenweiter Kalender (Index 0 = Januar). Nur
+   * fuer die Live-Vorschau im Kapazitaetsdaten-Panel eines Prozesses — nichts
+   * hier wird gespeichert. Fehlt der Wert (oeffentliche Demo, keine
+   * Organisation), greift derselbe Vorgabekalender wie ueberall in CAMA.
+   */
+  capacityWorkdays?: number[]
+  /**
+   * CAMA: alle Linien der Organisation, fuer das Verknuepfungs-Dropdown im
+   * Bearbeitungspanel einer Prozessbox — seit der Linien-Umstellung
+   * (docs/plan-cama-line-module.md) sind Kapazitaetsdaten nicht mehr
+   * Prozess-Eigenschaften, eine Prozessbox verknuepft sich stattdessen
+   * optional auf eine bestehende Linie. Leer in der oeffentlichen Demo (keine
+   * Organisation).
+   */
+  productionLines?: ProductionLine[]
+  /** CAMA: Kapazitaetsdaten aller Linien aus `productionLines`, fuer die
+   *  Ampel-Vorschau auf der Prozessbox und im Bearbeitungspanel. */
+  lineCapacities?: LineCapacity[]
+  /**
    * Firmenprofil fuers Blatt: Logo, Name, Akzentfarbe, Fusszeile.
    *
    * Nur der PDF-Export benutzt es — die Zeichenflaeche bleibt schwarzweiss.
@@ -338,9 +362,26 @@ export default function VSMCanvas({
   initialBuffers,
   benchmarkReferences = [],
   comparisonStates = [],
+  capacityWorkdays,
+  productionLines = [],
+  lineCapacities = [],
   branding = null,
 }: Props) {
   const locale = useLocale()
+  // `capacityWorkdays` kommt vom Aufrufer bereits als vollstaendig aufgeloestes
+  // 12er-Array (resolveWorkdaysCalendar lief serverseitig schon einmal ueber
+  // das rohe jsonb-Objekt aus vsm_org_settings — hier noch einmal darueber zu
+  // laufen wuerde ein Array faelschlich als "kein Kalender" behandeln, siehe
+  // resolveWorkdaysCalendar-Signatur). Fehlt die Prop ganz (oeffentliche Demo,
+  // keine Organisation), gilt derselbe Vorgabekalender wie ueberall in CAMA.
+  const workdaysByMonth = capacityWorkdays ?? resolveWorkdaysCalendar(null)
+  // CAMA: line_id -> Kapazitaetsdaten, fuer die Ampel auf der Prozessbox und im
+  // Bearbeitungspanel. useMemo, weil sie in Abhaengigkeitslisten weiter unten
+  // stehen (siehe workdaysByMonth-Kommentar oben zum selben Problem).
+  const lineCapacityByLineId = useMemo(
+    () => new Map(lineCapacities.map((c) => [c.line_id, c])),
+    [lineCapacities]
+  )
   // [Bedienbarkeitsprüfung 2026-09-03, B9] Kurz, weil sie oft vorkommen: Jede
   // Zahl, die hier angezeigt wird, geht durch eine der beiden — sonst steht
   // "84.5 Tage" in einer deutschen Oberflaeche, waehrend die Startseite
@@ -2282,6 +2323,17 @@ export default function VSMCanvas({
                   { cycleTime: process.cycle_time, oee: process.oee, operatorCount: process.operator_count },
                   kpis.taktTimeMinutes
                 )
+                // CAMA: eine andere Frage als isBottleneck (Ist-Zustand gegen
+                // die eine Kundentaktzeit) — hier die saisonale 12-Monats-Sicht,
+                // siehe camaLine.ts/capacityAnalysis.ts. Kapazitaetsdaten kommen
+                // seit der Linien-Umstellung von der verknuepften Linie, nicht
+                // mehr vom Prozess selbst; null ohne Verknuepfung oder solange
+                // die Linie kein Schichtmodell/keine Taktrate hat: keine Badge
+                // statt einer erfundenen.
+                const camaResult = computeCamaLine(
+                  process.line_id ? (lineCapacityByLineId.get(process.line_id) ?? null) : null,
+                  workdaysByMonth
+                )
                 return (
                   <ProcessBox
                     key={process.id}
@@ -2290,6 +2342,7 @@ export default function VSMCanvas({
                     y={pos.y}
                     isSelected={selection?.kind === 'process' && selection.id === process.id}
                     isBottleneck={isBottleneck}
+                    camaResult={camaResult}
                     counterScale={1 / stageScale}
                     onSelect={() => {
                       if (isAwaitingServerId(process.id)) return
@@ -2469,6 +2522,9 @@ export default function VSMCanvas({
           onChangeLane={(lane) => handleChangeLane(selectedProcess.id, lane)}
           onClose={() => setSelection(null)}
           onError={setError}
+          workdaysByMonth={workdaysByMonth}
+          productionLines={productionLines}
+          lineCapacityByLineId={lineCapacityByLineId}
         />
       )}
 
@@ -2671,6 +2727,7 @@ const inputClass = `w-full ${inputSm} focus:outline-none focus:ring-2 focus:ring
 const primaryButtonClass = buttonPrimaryLg
 const secondaryButtonClass = buttonSecondaryLg
 
+
 function Field({ label, htmlFor, children }: { label: ReactNode; htmlFor: string; children: ReactNode }) {
   return (
     <div>
@@ -2751,6 +2808,9 @@ function ProcessEditPanel({
   onChangeLane,
   onClose,
   onError,
+  workdaysByMonth,
+  productionLines,
+  lineCapacityByLineId,
 }: {
   projectId: string
   scenarioId: string | null
@@ -2772,6 +2832,12 @@ function ProcessEditPanel({
    * Weg bliebe der Fehler ungesehen.
    */
   onError: (message: string) => void
+  /** CAMA: firmenweiter Kalender, fuer die Ampel der verknuepften Linie. */
+  workdaysByMonth: number[]
+  /** CAMA: alle Linien der Organisation, fuer das Verknuepfungs-Dropdown. */
+  productionLines: ProductionLine[]
+  /** CAMA: line_id -> Kapazitaetsdaten, fuer die Ampel der ausgewaehlten Linie. */
+  lineCapacityByLineId: Map<string, LineCapacity>
 }) {
   const router = useRouter()
   const { mutate, isDemo } = useVsmMutationRequired()
@@ -2782,7 +2848,16 @@ function ProcessEditPanel({
   const [oee, setOee] = useState(String(process.oee))
   const [operatorCount, setOperatorCount] = useState(String(process.operator_count))
   const [changeoverTime, setChangeoverTime] = useState(String(process.changeover_time))
+  // CAMA: Verknuepfung auf eine firmenweite Linie statt eigener Kapazitaetsdaten
+  // — seit der Linien-Umstellung (docs/plan-cama-line-module.md) haelt diese
+  // Prozessbox keine Kapazitaetsdaten mehr selbst, nur noch den Verweis. Die
+  // Kapazitaetsdaten der ausgewaehlten Linie werden hier nur gelesen (fuer die
+  // Ampel-Vorschau), nicht bearbeitet — das passiert auf /capacity.
+  const [lineId, setLineId] = useState(process.line_id ?? '')
+  const selectedLineCapacity = lineId ? (lineCapacityByLineId.get(lineId) ?? null) : null
+  const selectedLineResult = computeCamaLine(selectedLineCapacity, workdaysByMonth)
   const t = useTranslations('Editor')
+  const tMonths = useTranslations('Settings')
   const tClass = useTranslations('Classification')
   const [isPacemaker, setIsPacemaker] = useState(process.is_pacemaker)
   const [classification, setClassification] = useState(process.classification ?? '')
@@ -2805,6 +2880,7 @@ function ProcessEditPanel({
     !Number.isNaN(liveCycleTimeNum) && !Number.isNaN(liveOperatorCountNum) && liveOperatorCountNum > 1
       ? effectiveCycleTime({ cycleTime: liveCycleTimeNum, operatorCount: liveOperatorCountNum })
       : null
+
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -2944,6 +3020,10 @@ function ProcessEditPanel({
     setError(null)
     setIsSaving(true)
 
+    // CAMA: leerer String heisst "keine Linie verknuepft" — dieselbe
+    // Konvention wie ein leeres Klassifizierungs-Feld zwei Zeilen weiter unten.
+    const lineIdToSave = lineId || null
+
     // Dieses Formular bearbeitet nur die beiden Bestandszahlen links und
     // rechts. setBufferWip schreibt aber immer die ganze Zeile und setzt
     // alles, was es nicht mitbekommt, auf den Ausgangswert zurueck — ein
@@ -2962,6 +3042,7 @@ function ProcessEditPanel({
         changeover_time: changeoverTimeNum,
         is_pacemaker: isPacemaker,
         classification: classification || null,
+        line_id: lineIdToSave,
       })
       const withBefore = vsmOperations.setBufferWip(withProcess, {
         ...beforeBuffer,
@@ -3006,6 +3087,7 @@ function ProcessEditPanel({
           changeoverTime: changeoverTimeNum,
           isPacemaker,
           classification: classification || null,
+          lineId: lineIdToSave,
         })
         if (!skipBefore) {
           await setBufferWip(projectId, scenarioId, { ...beforeBuffer, wipCount: beforeNum })
@@ -3163,6 +3245,14 @@ function ProcessEditPanel({
               })}
             </p>
           )}
+          {/* [Lean-Durchsicht 2026-09-14, CAMA-Plan] Bediener > 1 zaehlt in
+              Taktrate und Kapazitaets-Check nur dann korrekt, wenn es wirklich
+              identische, unabhaengig arbeitende Arbeitsplaetze sind (flexible
+              Linie/gleichartige Gruppen) — bisher stand hier nirgends, wann
+              das gilt. */}
+          {liveOperatorCountNum > 1 && (
+            <p className="mt-1 text-xs text-amber-700">{t('operatorCountIdentityHint')}</p>
+          )}
         </div>
         <div>
           <label htmlFor="ep-before" className="block text-xs font-medium text-zinc-600">
@@ -3186,6 +3276,70 @@ function ProcessEditPanel({
             className={`mt-1 ${inputClass}`}
           />
         </div>
+      </div>
+
+      {/* CAMA: seit der Linien-Umstellung nur noch eine Verknuepfung, keine
+          eigene Eingabe mehr — Kapazitaetsdaten gehoeren der Linie
+          (production_lines/line_capacity), nicht der Prozessbox, siehe
+          docs/plan-cama-line-module.md. Gelesen, nicht bearbeitet: Taktrate,
+          Schichtmodell und Monatsnachfrage pflegt man auf /capacity. */}
+      <div className="mt-3 rounded-control bg-zinc-50 px-3 py-2">
+        <label htmlFor="ep-line" className="block text-xs font-medium text-zinc-600">
+          {t('linkedLineLabel')}
+        </label>
+        <select
+          id="ep-line"
+          value={lineId}
+          onChange={(e) => setLineId(e.target.value)}
+          className={`mt-1 ${inputClass}`}
+        >
+          <option value="">{t('linkedLineNoneOption')}</option>
+          {productionLines.map((line) => (
+            <option key={line.id} value={line.id}>
+              {line.name}
+            </option>
+          ))}
+        </select>
+
+        {/* isDemo: die oeffentliche Demo hat keine Organisation, /capacity
+            wuerde dort nur "keine Organisation gefunden" zeigen — der
+            Kurzweg ist also nur ausserhalb der Demo ein echter Weg. */}
+        {productionLines.length === 0 && !isDemo && (
+          <p className="mt-2 text-xs text-zinc-500">
+            {t('linkedLineNoLines')}{' '}
+            <Link href="/capacity" target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">
+              {t('linkedLineCreateLink')}
+            </Link>
+          </p>
+        )}
+
+        {lineId && (
+          <div className="mt-2">
+            {selectedLineResult ? (
+              <p className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-control px-2 py-0.5 font-medium ${CAMA_BADGE_CLASS[selectedLineResult.color]}`}
+                >
+                  {CAMA_EMOJI[selectedLineResult.color]}
+                </span>
+                {t('capacityPeakHint', {
+                  month: tMonths(`month${selectedLineResult.peakMonth.month}`),
+                  loadRate: formatDecimal(selectedLineResult.peakMonth.loadRate, locale, 2),
+                })}
+              </p>
+            ) : (
+              <p className="text-xs text-zinc-500">{t('linkedLineNotConfigured')}</p>
+            )}
+            <Link
+              href={`/capacity?line=${lineId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-xs text-brand-600 hover:underline"
+            >
+              {t('linkedLineManage')}
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Mehrstrang (Phase 6): "WIP davor/danach" oben deckt nur die eine
@@ -3891,6 +4045,7 @@ function ProcessBox({
   y,
   isSelected,
   isBottleneck,
+  camaResult,
   counterScale,
   onSelect,
 }: {
@@ -3899,6 +4054,9 @@ function ProcessBox({
   y: number
   isSelected: boolean
   isBottleneck: boolean
+  /** CAMA-Ergebnis dieser Linie — null, solange kein Schichtmodell erfasst
+   *  ist. Die Badge unten erscheint nur bei orange/rot (siehe dort). */
+  camaResult: CamaLineResult | null
   /** 1 / stageScale — see the bottleneck badge below. */
   counterScale: number
   onSelect: () => void
@@ -4072,6 +4230,51 @@ function ProcessBox({
           stroke={INK}
           strokeWidth={1.2}
         />
+      )}
+      {camaResult && (camaResult.color === 'orange' || camaResult.color === 'red') && (
+        // CAMA-Ampel dieser Linie (schlechtester Monat, siehe camaLine.ts) —
+        // nur bei orange/rot, dieselbe "Stille heisst in Ordnung"-Konvention
+        // wie beim Engpass-Marker (isBottleneck erscheint auch nur, wenn er
+        // zutrifft). Blau/gruen bleiben auf dem Canvas unsichtbar; die volle
+        // Ampel inkl. dieser beiden Stufen steht im Kapazitaetsdaten-Panel
+        // und auf der Kapazitaetsseite.
+        //
+        // Bewusst UNTERHALB der Box statt in einer der vier Ecken: die sind
+        // alle schon belegt (Engpass oben links, Bedienerzahl oben rechts,
+        // Klassifizierung unten links, Kaizen-Blitz unten rechts,
+        // Schrittmacher-Pin oberhalb) — LANE_GAP (40 Einheiten, autoLayout.ts)
+        // laesst darunter genug Platz, ohne die naechste Spur zu beruehren.
+        // Eigenes Signal, bewusst getrennt vom roten Engpass-Rahmen (siehe
+        // capacityAnalysis.ts, Abgrenzung zu capacity.ts) — beide duerfen
+        // unterschiedliche Ampeln fuer dieselbe Station zeigen.
+        //
+        // [Lean-Durchsicht 2026-09-15] Erster Entwurf zeigte hier das Emoji
+        // aus camaColors.ts (wie im Panel/auf der Kapazitaetsseite) — mit
+        // einer eigens gebauten, Supabase-losen Konva-Seite lokal geprüft
+        // (node_modules/konva + Playwright, kein Netzwerk noetig) und dabei
+        // festgestellt: Farbige Emoji rendern auf einem `<canvas>` nicht
+        // zuverlaessig (fehlende Farb-Emoji-Schriftart je nach System) —
+        // anders als im DOM (Panel, Kapazitaetsseite), wo derselbe Emoji-Text
+        // ganz gewoehnlicher HTML-Text ist. Die Load-Rate-Zahl statt Emoji
+        // ist deshalb hier das "nie nur Farbe"-Signal: reiner Text, genau der
+        // Rendering-Pfad, den Zahlen auf diesem Canvas ohnehin schon nehmen.
+        <Group x={PROCESS_WIDTH / 2} y={PROCESS_HEIGHT + 14}>
+          <Circle radius={11} fill={CAMA_HEX[camaResult.color]} />
+          <Text
+            text={
+              Number.isFinite(camaResult.peakMonth.loadRate)
+                ? formatDecimal(camaResult.peakMonth.loadRate, locale, 1)
+                : '∞'
+            }
+            width={30}
+            offsetX={15}
+            offsetY={5}
+            align="center"
+            fontSize={CANVAS_TEXT.tag}
+            fontStyle="bold"
+            fill="#ffffff"
+          />
+        </Group>
       )}
     </Group>
   )

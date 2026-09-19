@@ -18,6 +18,7 @@
     "backToDashboard": "← Dashboard",
     "pricing": "Preise",
     "dataSheet": "Erhebungsbogen",
+    "capacityGuide": "Kapazitätsmanagement",
     "impressum": "Impressum",
     "agb": "AGB",
     "datenschutz": "Datenschutz"
@@ -33,6 +34,15 @@
     "proofKpis": "{count, plural, one {# Kennzahl} other {# Kennzahlen}} mit offenem Rechenweg",
     "proofGlossary": "{count, plural, one {# Fachbegriff} other {# Fachbegriffe}} erklärt",
     "proofHosting": "EU-Hosting",
+    "modulesEyebrow": "Firmenübersicht",
+    "modulesTitle": "Zwei Module unter einem Dach — und es werden mehr",
+    "modulesBody": "Ihre Linien tauchen an zwei Stellen auf: im Wertstrom als Prozessbox und in der Kapazitätsanalyse als eigenständige Planungseinheit. Beide Sichten laufen auf denselben Stammdaten und sind unabhängig voneinander nutzbar.",
+    "modulesVsmLabel": "Wertstromanalyse",
+    "modulesVsmBody": "Ist- und Future-State, Symbolik nach Rother & Shook, jede Kennzahl mit offenem Rechenweg.",
+    "modulesCapacityLabel": "Kapazitätsmanagement (CAMA)",
+    "modulesCapacityBody": "12-Monats-Ansicht je Linie, automatische Ampel aus der Load Rate, Handlungsempfehlung inklusive — vom Rüsten senken bis zur Fremdvergabe.",
+    "modulesTeaser": "Weitere Module für die Firmenübersicht sind in Arbeit.",
+    "modulesCta": "Beide Module kostenlos testen",
     "kpisTitle": "Jede Zahl zeigt ihren Rechenweg",
     "kpisBody": "Unter jeder Kennzahl steht die Formel mit den Werten, die tatsächlich eingesetzt wurden. Eine überraschende Zahl erklärt sich damit aus ihren eigenen Eingaben, statt wie ein Fehler auszusehen.",
     "kpis": [
@@ -385,6 +395,14 @@
     "plt": {
       "term": "PLT (Process Lead Time)",
       "definition": "Die Prozessdurchlaufzeit in Tagen, am Wertstrom gemessen. Für die Bemessung eines Supermarkts zählt der Vorlauf ohne den Beitrag, den dieser Puffer selbst zur Durchlaufzeit leistet — sonst rechnete man die eigene Größe in ihre eigene Voraussetzung hinein."
+    },
+    "cama": {
+      "term": "CAMA (Capacity Analysis)",
+      "definition": "Die Kapazitätsampel je Linie und Monat: reicht die verfügbare Kapazität für die Nachfrage? Rechnet mit denselben Größen wie oben im Prozess (Zykluszeit, NEE — dieselbe Zahl wie OEE), dazu Schichtmodell und Monatsnachfrage. Grün ist ok, Orange/Rot heisst Handlungsbedarf, Blau heisst unterausgelastet."
+    },
+    "loadRate": {
+      "term": "Load Rate",
+      "definition": "Nachfrage ÷ verfügbare Kapazität einer Linie in einem Monat. Unter 0,5 unterausgelastet, bis 1,0 ok, bis 1,2 Achtung, darüber überlastet — die Grundlage der CAMA-Ampel."
     }
   },
   "Editor": {
@@ -472,6 +490,8 @@
     "save": "Speichern",
     "close": "Schließen",
     "effectiveCycleTime": "eff. Zykluszeit: {value} min (fliesst in Bearbeitungszeit/Kapazitäts-Check ein — die Zykluszeit selbst bleibt unverändert)",
+    "operatorCountIdentityHint": "Zählt in der Kapazitätsanalyse (CAMA) nur dann voll, wenn es wirklich identische, unabhängig arbeitende Arbeitsplätze sind (flexible Linie/gleichartige Arbeitsplatzgruppen) — nicht, wenn hier nur unterschiedliche Tätigkeiten an derselben Station zusammengezählt sind.",
+    "capacityPeakHint": "Schlechtester Monat: {month}, Load Rate {loadRate}.",
     "pacemakerHint": " (bekommt den Auftrag direkt von der Produktionssteuerung)",
     "anchorErp": "ERP / Produktionssteuerung",
     "leadTimeFormula": "{wip} Stk WIP ÷ {rate} Stk/Tag Ausbringung",
@@ -492,6 +512,7 @@
     "kpiTiedUpCapital": "Gebundenes Kapital",
     "tiedUpCapitalFormula": "{wip} Stk × {value} je Stück",
     "compareScenarios": "Szenarien vergleichen",
+    "capacityAnalysis": "Kapazitätsanalyse (CAMA)",
     "editAnchor": "{title} bearbeiten",
     "anchorLabelField": "Bezeichnung",
     "laneNumber": "Spur {lane}",
@@ -531,7 +552,13 @@
     "sizingNeedsInput": "Sollgröße erst berechenbar, wenn ADU, Streuung, Intervall und PLT eingetragen sind.",
     "sizingTarget": "Sollgröße {target} Stk.",
     "sizingReplaces": "Aktuell stehen {current} Stk. als unbemessener Bestand darin.",
-    "sizingApply": "Sollgröße übernehmen"
+    "sizingApply": "Sollgröße übernehmen",
+    "linkedLineLabel": "Verknüpfte Linie",
+    "linkedLineNoneOption": "— keine —",
+    "linkedLineNoLines": "Noch keine Linien angelegt.",
+    "linkedLineManage": "→ Kapazitätsdaten bearbeiten",
+    "linkedLineNotConfigured": "Für diese Linie sind Taktrate oder Schichtmodell noch nicht vollständig erfasst.",
+    "linkedLineCreateLink": "Jetzt anlegen →"
   },
   "Canvas": {
     "bottleneck": "⚠ Engpass",
@@ -711,7 +738,18 @@
     "demoImportBody": "„{name}“ mit {count} Stationen. Er liegt bisher nur in diesem Browser. Übernehmen Sie ihn, dann gehört er Ihrem Konto — und der Zwischenstand wird gelöscht.",
     "demoImportAccept": "Übernehmen",
     "demoImportDiscard": "Verwerfen",
-    "manageBilling": "Abo verwalten"
+    "manageBilling": "Abo verwalten",
+    "capacity": "Kapazität",
+    "vsmTileTitle": "Wertstromanalyse (VSM)",
+    "vsmTileEmpty": "Noch kein Wertstrom angelegt.",
+    "vsmTileOpen": "Projekte öffnen →",
+    "capacityTileTitle": "Kapazitätsmanagement",
+    "capacityTileEmpty": "Noch keine Linie angelegt.",
+    "capacityTileOk": "{count} Linien, alle im grünen Bereich.",
+    "capacityTileCritical": "{count} Linien, {critical} davon kritisch.",
+    "capacityTileOpen": "Kapazität öffnen →",
+    "vsmTileHint": "Wertstromdiagramme mit Durchlaufzeit, Taktzeit und Future-State-Szenarien.",
+    "capacityTileHint": "Zeigt, ob eure Linien die Nachfrage schaffen — Monat für Monat."
   },
   "Team": {
     "title": "Team",
@@ -791,6 +829,133 @@
     "releasedCapital": "Davon freigesetzt",
     "capitalHint": "Tragen Sie im Editor einen Wert je Stück ein, dann steht hier, wie viel Geld im Bestand liegt."
   },
+  "Capacity": {
+    "backToEditor": "← Zurück zum Editor",
+    "title": "Kapazitätsanalyse (CAMA) — {project}",
+    "empty": "Noch keine Linien in diesem Zustand.",
+    "noneConfigured": "Für keine Linie sind bisher Schichtmodell und Monatsnachfrage erfasst. Öffnen Sie eine Linie im Editor und tragen Sie unter „Kapazitätsdaten (CAMA) …“ die Werte ein.",
+    "tableLine": "Linie",
+    "tablePeak": "Peak-Monat",
+    "tableLoadRate": "Load Rate",
+    "tableAmpel": "Ampel",
+    "tableRecommendation": "Handlungsempfehlung",
+    "unconfiguredSectionTitle": "Noch nicht erfasst",
+    "unconfiguredHint": "Schichtmodell fehlt — im Editor unter „Kapazitätsdaten (CAMA) …“ nachtragen.",
+    "legend": "🔵 Unterausgelastet (< 0,5) · 🟢 Ok (0,5–1,0) · 🟠 Achtung (> 1,0–1,2) · 🔴 Überlastet (> 1,2)",
+    "colorBlue": "Unterausgelastet",
+    "colorGreen": "Ok",
+    "colorOrange": "Achtung",
+    "colorRed": "Überlastet",
+    "recommendationBlue": "Unterausgelastet — vor einer Investition in weitere Kapazität prüfen, ob die freie Zeit dieser Linie anderswo genutzt werden kann.",
+    "recommendationGreen": "Im Zielkorridor — keine Massnahme nötig, Nachfrageentwicklung weiter beobachten.",
+    "recommendationOrange": "Kapazität eng — kurzfristig wirksame Hebel prüfen: Rüstzeiten senken (SMED), Zusatzschicht/Überstunden im Peak-Monat, Produktion in Monate mit freier Kapazität vorziehen.",
+    "recommendationRed": "Kapazitätsproblem, Massnahme Pflicht — dauerhafte Zusatzkapazität, Fremdvergabe oder Nachfrage/Produktmix verschieben, bevor die Liefertreue leidet.",
+    "detailTitle": "Kapazität — {name}",
+    "detailPeakHint": "Schlechtester Monat: {month}, Load Rate {loadRate}.",
+    "monthColumn": "Monat",
+    "demandColumn": "Nachfrage",
+    "capacityColumn": "Kapazität",
+    "loadRateColumn": "Load Rate",
+    "ampelColumn": "Ampel",
+    "actionPlanTitle": "Aktionsplan",
+    "noActions": "Noch keine Massnahmen für diese Linie.",
+    "addActionTitle": "Massnahme hinzufügen",
+    "descriptionLabel": "Beschreibung",
+    "ownerLabel": "Verantwortlich",
+    "dueDateLabel": "Termin",
+    "targetMonthLabel": "Für Monat",
+    "noTargetMonth": "Kein bestimmter Monat",
+    "addAction": "Hinzufügen",
+    "statusOpen": "Offen",
+    "statusDone": "Erledigt",
+    "markDone": "Erledigt",
+    "reopen": "Wieder öffnen",
+    "delete": "Löschen",
+    "linesTitle": "Kapazitätsmanagement",
+    "linesIntro": "Linien von {org} — unabhängig davon, ob dafür ein VSM existiert.",
+    "newLineNamePlaceholder": "Neue Linie, z. B. Drehen",
+    "newLineCreate": "Anlegen",
+    "linesEmpty": "Noch keine Linien angelegt.",
+    "lineNameLabel": "Name",
+    "cycleTimeLabel": "Taktrate (Min./Stück)",
+    "operatorCountLabel": "Bedienerzahl",
+    "oeeLabel": "NEE (%)",
+    "shiftModelLabel": "Schichtmodell",
+    "shift1Label": "1-Schicht",
+    "shift2Label": "2-Schicht",
+    "shift3Label": "3-Schicht (durchlaufend)",
+    "demandSectionTitle": "Monatliche Nachfrage (Basis)",
+    "stretchSectionTitle": "Stresstest (optional)",
+    "stretchHint": "Nachfrage in einem Upside-Szenario, z. B. +20 % — aus dem CAMA-Playbook übernommenes Konzept. Leer lassen, wenn kein Stresstest gewünscht ist.",
+    "stretchPrefillButton": "Speichern mit Stress = Basis × 1,2",
+    "stretchAmpelColumn": "Ampel (Stress)",
+    "save": "Speichern",
+    "saved": "Gespeichert.",
+    "backToLines": "← Zurück zur Übersicht",
+    "deleteLine": "Linie löschen",
+    "deleteLineConfirm": "{name} endgültig löschen?",
+    "deleteLineConfirmLinked": "{name} endgültig löschen? {count} VSM-Prozessbox(en) verlieren die Verknüpfung.",
+    "linkedProcessCount": "Verknüpft mit {count} VSM-Prozessbox(en).",
+    "notConfiguredDetailLines": "Taktrate oder Schichtmodell ist für diese Linie noch nicht vollständig erfasst — bitte oben ausfüllen, um die 12-Monats-Ansicht zu sehen.",
+    "notConfiguredDetail": "Taktrate oder Schichtmodell ist für diese Linie noch nicht vollständig erfasst — bitte oben ausfüllen, um die 12-Monats-Ansicht zu sehen.",
+    "projectViewIntro": "Nur eine Ansicht — Kapazitätsdaten pflegst du zentral unter",
+    "projectViewIntroLink": "Kapazitätsmanagement",
+    "unlinkedSectionTitle": "Ohne verknüpfte Linie",
+    "unlinkedHint": "Im Editor mit einer Linie verknüpfen",
+    "actualHoursSectionTitle": "Tatsächlich geleistete Stunden (Ist)",
+    "actualHoursHint": "In Stunden, nicht in Stück — diese Linie kann mehrere Produktvarianten mit unterschiedlicher Taktrate bedienen, Stunden sind die Größe, die über alle Varianten vergleichbar bleibt. Leer lassen, solange ein Monat noch nicht abgeschlossen ist.",
+    "hoursTrendTitle": "Forecast vs. Ist",
+    "hoursTrendHint": "Plan-Stunden aus der Nachfrage-Prognose, verfügbare Stunden laut Schichtmodell und tatsächlich geleistete Stunden — dieselbe Linie, drei Antworten auf die Frage \"reicht die Kapazität\".",
+    "hoursLegendAvailable": "Verfügbare Stunden",
+    "hoursLegendRequired": "Plan-Stunden (Forecast)",
+    "hoursLegendActual": "Ist-Stunden",
+    "hoursTrendAriaLabel": "Forecast- und Ist-Stunden über zwölf Monate für Linie {name}",
+    "guideInlineTitle": "Wie funktioniert das Kapazitätsmanagement?",
+    "guideInlineBody": "Linie anlegen, Taktrate/Bedienerzahl/NEE und Schichtmodell erfassen, dann die monatliche Nachfrage eintragen — die Ampel zeigt sofort, welche Monate eng werden. Ist-Stunden lassen sich laufend nachtragen und erscheinen neben dem Forecast im Diagramm der Linie.",
+    "guideInlineLink": "Ausführliche Anleitung öffnen"
+  },
+  "CapacityGuide": {
+    "metaTitle": "Anleitung: Kapazitätsmanagement (CAMA)",
+    "metaDescription": "Schritt für Schritt: Linien anlegen, Monatskapazität berechnen, die Ampel lesen und den Forecast mit tatsächlich geleisteten Stunden vergleichen.",
+    "eyebrow": "Anleitung",
+    "title": "Kapazitätsmanagement (CAMA) — Schritt für Schritt",
+    "intro": "Kapazitätsmanagement ist ein eigenständiges Modul: Eine Linie existiert unabhängig davon, ob dafür je ein Wertstrom gezeichnet wird. Diese Anleitung zeigt den vollständigen Weg von der ersten Linie bis zum Vergleich zwischen Forecast und tatsächlich geleisteter Arbeit.",
+    "stepsTitle": "So funktioniert es",
+    "steps": [
+      {
+        "title": "Linie anlegen",
+        "body": "Ein Arbeitsplatz oder eine Fertigungslinie, z. B. „Drehen” — organisationsweit, unter Kapazitätsmanagement, nicht in einem einzelnen Projekt."
+      },
+      {
+        "title": "Stammdaten erfassen",
+        "body": "Taktrate (Minuten je Stück), Bedienerzahl, NEE (%) und Schichtmodell (1/2/3-Schicht) — dieselben Größen wie bei einer VSM-Prozessbox, hier aber unabhängig von ihr gepflegt."
+      },
+      {
+        "title": "Monatliche Nachfrage eintragen",
+        "body": "Zwölf Werte, ein Feld je Monat. Optional dazu ein Stresstest (z. B. Nachfrage × 1,2) für ein Upside-Szenario."
+      },
+      {
+        "title": "Die Ampel lesen",
+        "body": "Load Rate = Nachfrage ÷ Kapazität, automatisch je Monat berechnet. Blau/Grün/Orange/Rot zeigen, wie eng die Linie steht — die Handlungsempfehlung passt automatisch zur Farbe."
+      },
+      {
+        "title": "Ist-Stunden nachtragen",
+        "body": "Sobald ein Monat abgeschlossen ist: wie viele Stunden wurde diese Linie tatsächlich bearbeitet — in Stunden, nicht in Stück, weil eine Linie mehrere Produktvarianten mit unterschiedlicher Taktrate bedienen kann."
+      },
+      {
+        "title": "Forecast vs. Ist vergleichen",
+        "body": "Das Diagramm der Linie zeigt Plan-Stunden aus der Nachfrage-Prognose, verfügbare Stunden laut Schichtmodell und die eingetragenen Ist-Stunden nebeneinander — so wird sichtbar, ob ein Jahr wie geplant läuft."
+      },
+      {
+        "title": "Maßnahmen festhalten",
+        "body": "Zu jeder Linie: Beschreibung, Verantwortlich, Termin und optional ein Zielmonat — typischerweise angelegt, sobald eine Ampel auf Orange oder Rot springt."
+      }
+    ],
+    "ampelTitle": "Die Ampel im Detail",
+    "ctaTitle": "Selbst ausprobieren",
+    "ctaBody": "Kapazitätsmanagement ist Teil jedes Taktane-Kontos, unabhängig davon, ob schon ein Wertstrom existiert.",
+    "ctaButton": "Kostenlos starten"
+  },
   "Wizard": {
     "backToEditor": "← Zurück zum Editor",
     "title": "Future-State-Wizard",
@@ -853,6 +1018,7 @@
     "exampleBuffers": "Beispiel-Puffer konnten nicht angelegt werden.",
     "processCreate": "Prozess konnte nicht angelegt werden.",
     "processNotFound": "Prozess nicht gefunden.",
+    "capacityActionDescriptionRequired": "Bitte eine Beschreibung für die Massnahme eingeben.",
     "csvEmpty": "Die CSV-Datei enthält keine Zeilen.",
     "scenarioTypeAndName": "Typ und Name sind erforderlich.",
     "scenarioCreate": "Szenario konnte nicht angelegt werden.",
@@ -878,7 +1044,9 @@
     "demoImportFailed": "Der Wertstrom aus der Demo konnte nicht übernommen werden.",
     "portalNotOwner": "Nur Inhaber können das Abo verwalten.",
     "portalNoCustomer": "Zu dieser Organisation gibt es noch kein Abo bei Stripe.",
-    "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut."
+    "portalFailed": "Die Kontoverwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.",
+    "capacityEditorsOnly": "Nur Mitglieder mit Bearbeitungsrecht können das Kapazitätsmanagement ändern.",
+    "capacityLineNameRequired": "Bitte einen Namen für die Linie eingeben."
   },
   "DataSheet": {
     "metaTitle": "Erhebungsbogen Wertstromanalyse",
@@ -1155,6 +1323,20 @@
     "reportFooter": "Zeile unter dem PDF",
     "reportFooterPlaceholder": "z. B. Vertraulich — nur zur internen Verwendung",
     "reportFooterHint": "Steht in der Fußzeile jedes exportierten Blatts, zwischen Datum und Projektname.",
+    "sectionCalendar": "Kapazitätskalender (CAMA)",
+    "sectionCalendarBody": "Arbeitstage je Monat für die Kapazitätsanalyse — ein Kalender für die ganze Firma, gilt für alle Linien in allen Projekten. Leer lassen, wenn der Vorgabewert ({default} Arbeitstage) für diesen Monat passt.",
+    "month1": "Januar",
+    "month2": "Februar",
+    "month3": "März",
+    "month4": "April",
+    "month5": "Mai",
+    "month6": "Juni",
+    "month7": "Juli",
+    "month8": "August",
+    "month9": "September",
+    "month10": "Oktober",
+    "month11": "November",
+    "month12": "Dezember",
     "save": "Speichern",
     "toTeam": "Zum Team"
   },
@@ -1228,9 +1410,9 @@
     "processorsTitle": "5. Empfänger und Auftragsverarbeiter",
     "processorsBody": "Taktane setzt folgende Dienstleister ein, die Daten im Auftrag verarbeiten: Supabase (Datenbank, Authentifizierung, Dateispeicher) — die Datenbank läuft in der EU, konkret in Frankfurt am Main, Deutschland (Region eu-central-1); Vercel Inc. (Hosting von Website und Anwendung) — die Anwendung läuft ebenfalls in Frankfurt am Main (Region fra1); Stripe (Zahlungsabwicklung und Rechnungsstellung für kostenpflichtige Tarife); sowie Google LLC (optionale Anmeldung über „Mit Google anmelden“). Stripe und Google können Daten auch ausserhalb der Schweiz und der EU verarbeiten, insbesondere in den USA, und sind vertraglich zu einem angemessenen Datenschutzniveau verpflichtet (Standardvertragsklauseln bzw. die jeweiligen Data-Processing-Agreements der Anbieter). Für die Wertstrom- und Prozessdaten, die eine Organisation selbst einträgt, handelt Taktane als deren Auftragsverarbeiterin, nicht als Verantwortliche — eine Vereinbarung zur Auftragsverarbeitung (AVV) stellen wir auf Anfrage bereit.",
     "cookiesTitle": "6. Cookies und ähnliche Technologien",
-    "cookiesBody": "Taktane setzt ausschliesslich funktionale Erstanbieter-Cookies ein, keine Cookies für Werbung oder Analyse Dritter: „vsm_attr“ hält fest, über welche Kampagne oder Suche ein Besuch zuerst kam (nur die Angaben aus der aufgerufenen Adresse, z. B. utm_source), ist nur serverseitig lesbar und läuft nach 30 Tagen ab; Supabase-Session-Cookies halten die Anmeldung aufrecht; „NEXT_LOCALE“ merkt sich die gewählte Sprache. Da keines dieser Cookies der Werbung oder der Analyse durch Dritte dient, ist kein Cookie-Banner mit Einwilligung erforderlich — sie sind für den Betrieb der Seite notwendig.",
+    "cookiesBody": "Taktane setzt keine Cookies für Werbung oder Analyse Dritter ein. Technisch notwendig und ohne Einwilligung gesetzt: Supabase-Session-Cookies (halten die Anmeldung aufrecht), „NEXT_LOCALE“ (merkt sich die gewählte Sprache) und „vsm_consent“ (speichert Ihre Entscheidung zu diesem Cookie-Banner, 180 Tage gültig). Das einzige nicht notwendige Cookie ist „vsm_attr“: Es hält fest, über welche Kampagne oder Suche ein Besuch zuerst kam (nur die Angaben aus der aufgerufenen Adresse, z. B. utm_source), ist nur serverseitig lesbar und läuft nach 30 Tagen ab. Dafür fragen wir vorab Ihre Einwilligung über den Banner am unteren Bildschirmrand ab; Sie können diese jederzeit ablehnen oder widerrufen, ohne dass sich am Funktionsumfang von Taktane etwas ändert.",
     "retentionTitle": "7. Aufbewahrungsdauer",
-    "retentionBody": "Kontodaten bleiben bestehen, bis das Konto gelöscht wird. Abrechnungsdaten bewahren wir entsprechend den handelsrechtlichen Aufbewahrungspflichten auf (in der Regel zehn Jahre). Interessentendaten bleiben bestehen, bis der Zweck entfällt oder eine Löschung verlangt wird. Das Herkunfts-Cookie läuft nach 30 Tagen automatisch ab.",
+    "retentionBody": "Kontodaten bleiben bestehen, bis das Konto gelöscht wird. Abrechnungsdaten bewahren wir entsprechend den handelsrechtlichen Aufbewahrungspflichten auf (in der Regel zehn Jahre). Interessentendaten bleiben bestehen, bis der Zweck entfällt oder eine Löschung verlangt wird. Das Herkunfts-Cookie läuft nach 30 Tagen automatisch ab, die Einwilligungsentscheidung nach 180 Tagen.",
     "rightsTitle": "8. Ihre Rechte",
     "rightsBody": "Sie haben das Recht auf Auskunft über die zu Ihrer Person verarbeiteten Daten, auf Berichtigung, Löschung und Einschränkung der Verarbeitung, auf Herausgabe Ihrer Daten in einem gängigen Format sowie das Recht, eine erteilte Einwilligung jederzeit zu widerrufen. Wenden Sie sich dazu an hallo@taktane.com. Sie können sich zudem an die zuständige Aufsichtsbehörde wenden — in der Schweiz an den Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB), innerhalb der EU an die für Ihren Wohnsitz zuständige Behörde.",
     "securityTitle": "9. Datensicherheit",
@@ -1240,5 +1422,12 @@
     "contactTitle": "11. Kontakt",
     "contactBody": "Für Fragen zum Datenschutz erreichen Sie uns unter hallo@taktane.com.",
     "lastUpdated": "Stand: {date}"
+  },
+  "CookieConsent": {
+    "title": "Cookie-Einstellungen",
+    "body": "Wir verwenden ein technisch notwendiges Cookie für die Anmeldung und die Sprachwahl sowie — nur mit Ihrer Zustimmung — ein Cookie zur Marketingzuordnung (welche Kampagne Sie zu uns geführt hat).",
+    "learnMore": "Mehr in der Datenschutzerklärung",
+    "accept": "Akzeptieren",
+    "reject": "Ablehnen"
   }
 }

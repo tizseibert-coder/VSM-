@@ -268,6 +268,13 @@ export interface UpdateProcessInput {
   isPacemaker: boolean
   /** 'va' | 'nva' | 'necessary_nva' | null — see lib/vsm/classification.ts for the allowed set. */
   classification?: string | null
+  /** CAMA: Verknüpfung auf eine production_lines-Zeile, oder null zum Trennen.
+   *  Undefined = nicht mitgeschickt, Spalte bleibt unberührt (wie classification)
+   *  — z. B. der Future-State-Wizard setzt nur den Schrittmacher und soll die
+   *  Linien-Verknüpfung dabei nicht anfassen. Die Kapazitätsdaten selbst
+   *  (Taktrate, Schichtmodell, Monatsnachfrage) liegen seit der Linien-Umstellung
+   *  auf line_capacity, nicht mehr hier — siehe docs/plan-cama-line-module.md. */
+  lineId?: string | null
 }
 
 // The pacemaker (Schrittmacher) is the one process scheduled directly by
@@ -308,6 +315,7 @@ export async function updateProcess(projectId: string, processId: string, input:
       changeover_time: input.changeoverTime,
       is_pacemaker: input.isPacemaker,
       ...(input.classification !== undefined ? { classification: input.classification } : {}),
+      ...(input.lineId !== undefined ? { line_id: input.lineId } : {}),
     })
     .eq('id', processId)
 

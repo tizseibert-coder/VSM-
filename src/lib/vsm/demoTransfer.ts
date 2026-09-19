@@ -37,8 +37,14 @@ import type { VsmState } from './vsmStore'
 
 export const DEMO_TRANSFER_KEY = 'vsm_demo_transfer'
 
-/** Aendert sich die Form, faellt Aelteres beim Zuruecklesen durch. */
-export const DEMO_TRANSFER_VERSION = 1
+/** Aendert sich die Form, faellt Aelteres beim Zuruecklesen durch.
+ *  2 (2026-09-15): shiftModel/monthlyDemand fuer CAMA ergaenzt.
+ *  3 (2026-09-17): shiftModel/monthlyDemand wieder entfernt — CAMA-Daten
+ *  haengen seit der Linien-Umstellung (docs/plan-cama-line-module.md) an
+ *  einer firmenweiten Linie, nicht mehr am Prozess. Eine anonyme Demo hat
+ *  keine Organisation und kann also nie eine Linie verknuepfen; es gibt
+ *  hier schlicht nichts mehr zu uebertragen. */
+export const DEMO_TRANSFER_VERSION = 3
 
 /** Sieben Tage. Lang genug fuer „ich schaue morgen im Buero nochmal drauf",
  *  kurz genug, dass niemand von einem halbjahresalten Entwurf ueberrascht
@@ -360,6 +366,10 @@ export function fromTransfer(transfer: DemoTransfer, template: VsmState): VsmSta
     classification: p.classification,
     x: p.x,
     y: p.y,
+    // CAMA (docs/plan-cama-line-module.md): eine uebertragene Demo-Prozessbox
+    // hat nie eine Linie verknuepft — die Demo lief ohne Organisation, konnte
+    // also nie eine production_lines-Zeile anlegen.
+    line_id: null,
     created_at: t0,
     updated_at: t0,
   }))

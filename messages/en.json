@@ -18,6 +18,7 @@
     "backToDashboard": "← Dashboard",
     "pricing": "Pricing",
     "dataSheet": "Data sheet",
+    "capacityGuide": "Capacity management",
     "impressum": "Legal notice",
     "agb": "Terms",
     "datenschutz": "Privacy"
@@ -33,6 +34,15 @@
     "proofKpis": "{count, plural, one {# metric} other {# metrics}} with an open calculation",
     "proofGlossary": "{count, plural, one {# term} other {# terms}} explained",
     "proofHosting": "EU hosting",
+    "modulesEyebrow": "Company overview",
+    "modulesTitle": "Two modules under one roof — and more are coming",
+    "modulesBody": "Your lines show up in two places: as a process box in the value stream, and as a standalone planning unit in the capacity analysis. Both views run on the same master data and work independently of each other.",
+    "modulesVsmLabel": "Value stream mapping",
+    "modulesVsmBody": "Current and future state, Rother & Shook symbology, every metric with its own visible arithmetic.",
+    "modulesCapacityLabel": "Capacity management (CAMA)",
+    "modulesCapacityBody": "A 12-month view per line, an automatic traffic light from the load rate, and a built-in recommendation — from cutting changeover times to outsourcing.",
+    "modulesTeaser": "More modules for the company overview are in the works.",
+    "modulesCta": "Try both modules free",
     "kpisTitle": "Every number shows its own arithmetic",
     "kpisBody": "Under each metric sits the formula with the values actually used. A surprising number therefore explains itself from its own inputs, instead of looking like a defect.",
     "kpis": [
@@ -385,6 +395,14 @@
     "plt": {
       "term": "PLT (process lead time)",
       "definition": "The process lead time in days, measured on the value stream. Sizing a supermarket counts the lead time without the share this buffer itself contributes — otherwise its own size would feed into its own precondition."
+    },
+    "cama": {
+      "term": "CAMA (Capacity Analysis)",
+      "definition": "The capacity traffic light for each line and month: does the available capacity cover demand? Uses the same figures as above on the process (cycle time, NEE — the same number as OEE), plus a shift model and monthly demand. Green is ok, orange/red means action needed, blue means underutilised."
+    },
+    "loadRate": {
+      "term": "Load rate",
+      "definition": "Demand ÷ available capacity of a line in one month. Below 0.5 underutilised, up to 1.0 ok, up to 1.2 watch, above that overloaded — the basis of the CAMA traffic light."
     }
   },
   "Editor": {
@@ -472,6 +490,8 @@
     "save": "Save",
     "close": "Close",
     "effectiveCycleTime": "eff. cycle time: {value} min (feeds into value-added time and the capacity check — the cycle time itself is unchanged)",
+    "operatorCountIdentityHint": "Only counts in full for the capacity analysis (CAMA) when these are truly identical, independently working stations (a flexible line/interchangeable workstation group) — not when this just adds up different jobs at the same station.",
+    "capacityPeakHint": "Worst month: {month}, load rate {loadRate}.",
     "pacemakerHint": " (receives the schedule directly from production control)",
     "anchorErp": "ERP / production control",
     "leadTimeFormula": "{wip} pcs WIP ÷ {rate} pcs/day output",
@@ -492,6 +512,7 @@
     "kpiTiedUpCapital": "Tied-up capital",
     "tiedUpCapitalFormula": "{wip} pcs × {value} each",
     "compareScenarios": "Compare scenarios",
+    "capacityAnalysis": "Capacity analysis (CAMA)",
     "editAnchor": "Edit {title}",
     "anchorLabelField": "Label",
     "laneNumber": "Lane {lane}",
@@ -531,7 +552,13 @@
     "sizingNeedsInput": "The target size needs ADU, variation, interval and PLT before it can be worked out.",
     "sizingTarget": "Target size {target} pcs.",
     "sizingReplaces": "{current} pcs are currently sitting there as unsized stock.",
-    "sizingApply": "Use the target size"
+    "sizingApply": "Use the target size",
+    "linkedLineLabel": "Linked line",
+    "linkedLineNoneOption": "— none —",
+    "linkedLineNoLines": "No lines set up yet.",
+    "linkedLineManage": "→ Edit capacity data",
+    "linkedLineNotConfigured": "Cycle time or shift model is not fully set up for this line yet.",
+    "linkedLineCreateLink": "Create one now →"
   },
   "Canvas": {
     "bottleneck": "⚠ Bottleneck",
@@ -711,7 +738,18 @@
     "demoImportBody": "“{name}” with {count} stations. So far it only lives in this browser. Take it over and it belongs to your account — the local copy is then cleared.",
     "demoImportAccept": "Take it over",
     "demoImportDiscard": "Discard",
-    "manageBilling": "Manage subscription"
+    "manageBilling": "Manage subscription",
+    "capacity": "Capacity",
+    "vsmTileTitle": "Value stream mapping (VSM)",
+    "vsmTileEmpty": "No value stream set up yet.",
+    "vsmTileOpen": "Open projects →",
+    "capacityTileTitle": "Capacity management",
+    "capacityTileEmpty": "No line set up yet.",
+    "capacityTileOk": "{count} lines, all within range.",
+    "capacityTileCritical": "{count} lines, {critical} of them critical.",
+    "capacityTileOpen": "Open capacity →",
+    "vsmTileHint": "Value stream maps with lead time, takt time, and future-state scenarios.",
+    "capacityTileHint": "Shows whether your lines can meet demand — month by month."
   },
   "Team": {
     "title": "Team",
@@ -791,6 +829,133 @@
     "releasedCapital": "Of which released",
     "capitalHint": "Enter a value per piece in the editor and this row shows how much money sits in inventory."
   },
+  "Capacity": {
+    "backToEditor": "← Back to editor",
+    "title": "Capacity analysis (CAMA) — {project}",
+    "empty": "No lines in this state yet.",
+    "noneConfigured": "No line has a shift model and monthly demand entered yet. Open a line in the editor and fill them in under “Capacity data (CAMA) …”.",
+    "tableLine": "Line",
+    "tablePeak": "Peak month",
+    "tableLoadRate": "Load rate",
+    "tableAmpel": "Traffic light",
+    "tableRecommendation": "Recommended action",
+    "unconfiguredSectionTitle": "Not entered yet",
+    "unconfiguredHint": "Shift model missing — add it in the editor under “Capacity data (CAMA) …”.",
+    "legend": "🔵 Underutilised (< 0.5) · 🟢 Ok (0.5–1.0) · 🟠 Watch (> 1.0–1.2) · 🔴 Overloaded (> 1.2)",
+    "colorBlue": "Underutilised",
+    "colorGreen": "Ok",
+    "colorOrange": "Watch",
+    "colorRed": "Overloaded",
+    "recommendationBlue": "Underutilised — before investing in more capacity, check whether this line's spare time can be used elsewhere.",
+    "recommendationGreen": "Within target range — no action needed, keep watching demand.",
+    "recommendationOrange": "Capacity is tight — check short-term levers: reduce changeover time (SMED), an extra shift/overtime in the peak month, or shift production into months with spare capacity.",
+    "recommendationRed": "Capacity problem, action required — permanent extra capacity, outsourcing, or shift demand/product mix before delivery reliability suffers.",
+    "detailTitle": "Capacity — {name}",
+    "detailPeakHint": "Worst month: {month}, load rate {loadRate}.",
+    "monthColumn": "Month",
+    "demandColumn": "Demand",
+    "capacityColumn": "Capacity",
+    "loadRateColumn": "Load rate",
+    "ampelColumn": "Traffic light",
+    "actionPlanTitle": "Action plan",
+    "noActions": "No actions for this line yet.",
+    "addActionTitle": "Add an action",
+    "descriptionLabel": "Description",
+    "ownerLabel": "Owner",
+    "dueDateLabel": "Due date",
+    "targetMonthLabel": "For month",
+    "noTargetMonth": "No specific month",
+    "addAction": "Add",
+    "statusOpen": "Open",
+    "statusDone": "Done",
+    "markDone": "Done",
+    "reopen": "Reopen",
+    "delete": "Delete",
+    "linesTitle": "Capacity management",
+    "linesIntro": "Lines of {org} — independent of whether a VSM exists for them.",
+    "newLineNamePlaceholder": "New line, e.g. Turning",
+    "newLineCreate": "Create",
+    "linesEmpty": "No lines set up yet.",
+    "lineNameLabel": "Name",
+    "cycleTimeLabel": "Cycle time (min/piece)",
+    "operatorCountLabel": "Operator count",
+    "oeeLabel": "OEE (%)",
+    "shiftModelLabel": "Shift model",
+    "shift1Label": "1 shift",
+    "shift2Label": "2 shifts",
+    "shift3Label": "3 shifts (continuous)",
+    "demandSectionTitle": "Monthly demand (base)",
+    "stretchSectionTitle": "Stress test (optional)",
+    "stretchHint": "Demand under an upside scenario, e.g. +20% — a concept taken from the CAMA playbook. Leave blank if no stress test is needed.",
+    "stretchPrefillButton": "Save with stress = base × 1.2",
+    "stretchAmpelColumn": "Signal (stress)",
+    "save": "Save",
+    "saved": "Saved.",
+    "backToLines": "← Back to overview",
+    "deleteLine": "Delete line",
+    "deleteLineConfirm": "Delete {name} permanently?",
+    "deleteLineConfirmLinked": "Delete {name} permanently? {count} VSM process box(es) will lose the link.",
+    "linkedProcessCount": "Linked to {count} VSM process box(es).",
+    "notConfiguredDetailLines": "Cycle time or shift model is not fully set up for this line yet — fill in the fields above to see the 12-month view.",
+    "notConfiguredDetail": "Cycle time or shift model is not fully set up for this line yet — fill in the fields above to see the 12-month view.",
+    "projectViewIntro": "View only — manage capacity data centrally under",
+    "projectViewIntroLink": "Capacity management",
+    "unlinkedSectionTitle": "Without a linked line",
+    "unlinkedHint": "Link a line in the editor",
+    "actualHoursSectionTitle": "Actual hours worked",
+    "actualHoursHint": "In hours, not pieces — this line can serve several product variants with different cycle times, and hours are the one figure that stays comparable across all of them. Leave a month blank while it isn't closed yet.",
+    "hoursTrendTitle": "Forecast vs. actual",
+    "hoursTrendHint": "Required hours from the demand forecast, available hours from the shift model, and actual hours worked — the same line, three answers to \"is there enough capacity\".",
+    "hoursLegendAvailable": "Available hours",
+    "hoursLegendRequired": "Required hours (forecast)",
+    "hoursLegendActual": "Actual hours",
+    "hoursTrendAriaLabel": "Forecast and actual hours over twelve months for line {name}",
+    "guideInlineTitle": "How does capacity management work?",
+    "guideInlineBody": "Create a line, enter cycle time/operator count/OEE and shift model, then the monthly demand — the traffic light immediately shows which months get tight. Actual hours can be added as each month closes and then show up next to the forecast in the line's chart.",
+    "guideInlineLink": "Open the full guide"
+  },
+  "CapacityGuide": {
+    "metaTitle": "Guide: capacity management (CAMA)",
+    "metaDescription": "Step by step: create lines, calculate monthly capacity, read the traffic light, and compare the forecast against actual hours worked.",
+    "eyebrow": "Guide",
+    "title": "Capacity management (CAMA) — step by step",
+    "intro": "Capacity management is a standalone module: a line exists independently of whether a value stream is ever drawn for it. This guide walks through the full path, from the first line to comparing forecast against actual work.",
+    "stepsTitle": "How it works",
+    "steps": [
+      {
+        "title": "Create a line",
+        "body": "A workstation or production line, e.g. \"Turning\" — organization-wide, under capacity management, not tied to a single project."
+      },
+      {
+        "title": "Enter master data",
+        "body": "Cycle time (minutes per piece), operator count, OEE (%), and shift model (1/2/3-shift) — the same figures as a VSM process box, but maintained independently of it here."
+      },
+      {
+        "title": "Enter monthly demand",
+        "body": "Twelve values, one field per month. Optionally add a stress test (e.g. demand × 1.2) for an upside scenario."
+      },
+      {
+        "title": "Read the traffic light",
+        "body": "Load rate = demand ÷ capacity, calculated automatically per month. Blue/green/orange/red show how tight the line is — the recommended action matches the color automatically."
+      },
+      {
+        "title": "Add actual hours",
+        "body": "Once a month is closed: how many hours this line actually worked — in hours, not pieces, because a line can serve several product variants with different cycle times."
+      },
+      {
+        "title": "Compare forecast vs. actual",
+        "body": "The line's chart shows required hours from the demand forecast, available hours from the shift model, and the actual hours entered, side by side — making it visible whether a year is tracking to plan."
+      },
+      {
+        "title": "Track actions",
+        "body": "For each line: description, owner, due date, and optionally a target month — typically created as soon as a traffic light turns orange or red."
+      }
+    ],
+    "ampelTitle": "The traffic light in detail",
+    "ctaTitle": "Try it yourself",
+    "ctaBody": "Capacity management is part of every Taktane account, whether or not a value stream exists yet.",
+    "ctaButton": "Get started free"
+  },
   "Wizard": {
     "backToEditor": "← Back to the editor",
     "title": "Future-state wizard",
@@ -853,6 +1018,7 @@
     "exampleBuffers": "The example inventory points could not be created.",
     "processCreate": "The process could not be created.",
     "processNotFound": "Process not found.",
+    "capacityActionDescriptionRequired": "Please enter a description for the action.",
     "csvEmpty": "The CSV file contains no rows.",
     "scenarioTypeAndName": "Type and name are required.",
     "scenarioCreate": "The scenario could not be created.",
@@ -878,7 +1044,9 @@
     "demoImportFailed": "The value stream from the demo could not be imported.",
     "portalNotOwner": "Only owners can manage the subscription.",
     "portalNoCustomer": "This organisation has no Stripe subscription yet.",
-    "portalFailed": "Account management could not be opened. Please try again."
+    "portalFailed": "Account management could not be opened. Please try again.",
+    "capacityEditorsOnly": "Only members with edit rights can change capacity management.",
+    "capacityLineNameRequired": "Please enter a name for the line."
   },
   "DataSheet": {
     "metaTitle": "Value stream data collection sheet",
@@ -1155,6 +1323,20 @@
     "reportFooter": "Line under the PDF",
     "reportFooterPlaceholder": "e.g. Confidential — internal use only",
     "reportFooterHint": "Appears in the footer of every exported sheet, between the date and the project name.",
+    "sectionCalendar": "Capacity calendar (CAMA)",
+    "sectionCalendarBody": "Working days per month for capacity analysis — one calendar for the whole company, shared by every line in every project. Leave a month empty if the default ({default} working days) applies.",
+    "month1": "January",
+    "month2": "February",
+    "month3": "March",
+    "month4": "April",
+    "month5": "May",
+    "month6": "June",
+    "month7": "July",
+    "month8": "August",
+    "month9": "September",
+    "month10": "October",
+    "month11": "November",
+    "month12": "December",
     "save": "Save",
     "toTeam": "To the team"
   },
@@ -1228,9 +1410,9 @@
     "processorsTitle": "5. Recipients and processors",
     "processorsBody": "Taktane uses the following service providers, which process data on our behalf: Supabase (database, authentication, file storage) — the database runs in the EU, specifically in Frankfurt am Main, Germany (region eu-central-1); Vercel Inc. (hosting the website and application) — the application also runs in Frankfurt am Main (region fra1); Stripe (payment processing and invoicing for paid plans); and Google LLC (optional sign-in via \"Sign in with Google\"). Stripe and Google may process data outside Switzerland and the EU, in particular in the USA, and are contractually bound to an adequate level of data protection (standard contractual clauses or the providers' own data processing agreements). For the value stream and process data an organisation enters itself, Taktane acts as that organisation's processor rather than as controller — we provide a data processing agreement (DPA) on request.",
     "cookiesTitle": "6. Cookies and similar technologies",
-    "cookiesBody": "Taktane uses only functional, first-party cookies — none for third-party advertising or analytics: \"vsm_attr\" records which campaign or search a visit first came from (only the details present in the requested address, e.g. utm_source), is readable server-side only, and expires after 30 days; Supabase session cookies keep you signed in; \"NEXT_LOCALE\" remembers your chosen language. Since none of these cookies serve third-party advertising or analytics, no cookie-consent banner is required — they are necessary for the site to operate.",
+    "cookiesBody": "Taktane uses no cookies for third-party advertising or analytics. Necessary and set without consent: Supabase session cookies (keep you signed in), \"NEXT_LOCALE\" (remembers your chosen language), and \"vsm_consent\" (stores your decision on this cookie banner, valid 180 days). The one cookie that is not necessary is \"vsm_attr\": it records which campaign or search a visit first came from (only the details present in the requested address, e.g. utm_source), is readable server-side only, and expires after 30 days. For that cookie we ask for your consent via the banner at the bottom of the screen beforehand; you can decline or withdraw it at any time without affecting Taktane's functionality.",
     "retentionTitle": "7. Retention period",
-    "retentionBody": "Account data is kept until the account is deleted. Billing data is retained in line with statutory bookkeeping retention duties (generally ten years). Lead data is kept until its purpose no longer applies or deletion is requested. The attribution cookie expires automatically after 30 days.",
+    "retentionBody": "Account data is kept until the account is deleted. Billing data is retained in line with statutory bookkeeping retention duties (generally ten years). Lead data is kept until its purpose no longer applies or deletion is requested. The attribution cookie expires automatically after 30 days, the consent decision after 180 days.",
     "rightsTitle": "8. Your rights",
     "rightsBody": "You have the right to access the data processed about you, to have it corrected, deleted or its processing restricted, to receive it in a common format, and to withdraw any consent given at any time. Contact hallo@taktane.com for any of these. You may also contact the competent supervisory authority — in Switzerland the Federal Data Protection and Information Commissioner (FDPIC), or within the EU the authority responsible for your place of residence.",
     "securityTitle": "9. Data security",
@@ -1240,5 +1422,12 @@
     "contactTitle": "11. Contact",
     "contactBody": "For privacy-related questions, reach us at hallo@taktane.com.",
     "lastUpdated": "Last updated: {date}"
+  },
+  "CookieConsent": {
+    "title": "Cookie settings",
+    "body": "We use one strictly necessary cookie for sign-in and language choice, plus — only with your consent — a cookie for marketing attribution (which campaign brought you to us).",
+    "learnMore": "More in our privacy policy",
+    "accept": "Accept",
+    "reject": "Reject"
   }
 }

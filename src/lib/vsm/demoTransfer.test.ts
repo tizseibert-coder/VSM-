@@ -263,4 +263,22 @@ describe('fromTransfer', () => {
     expect(wieder.processes[1].cycle_time).toBe(1.6)
     expect(original.processes[1].cycle_time).toBe(3.4)
   })
+
+  // [Schritt 7, 2026-09-17, docs/plan-cama-line-module.md] Seit der
+  // Linien-Umstellung traegt eine Prozessbox keine CAMA-Daten mehr selbst,
+  // nur noch eine optionale Verknuepfung (processes.line_id). Eine anonyme
+  // Demo hat keine Organisation, kann also nie eine Linie anlegen — eine
+  // uebertragene Demo-Prozessbox ist deshalb immer unverknuepft, auch wenn
+  // die Quelle (theoretisch, ueber die Datenbank) einen line_id haette.
+  it('kommt ohne Linien-Verknuepfung an, auch wenn die Quelle eine haette', () => {
+    const original = buildDemoState(DEMO_LABELS_DE)
+    const geaendert = {
+      ...original,
+      processes: original.processes.map((p, i) => (i === 2 ? { ...p, line_id: 'irrelevant' } : p)),
+    }
+
+    const wieder = fromTransfer(toTransfer(geaendert, NOW), original)
+
+    expect(wieder.processes[2].line_id).toBeNull()
+  })
 })

@@ -10,6 +10,8 @@ import { localizedUrl, pageMetadata, SITE_NAME } from '@/lib/seo/site'
 import { PUBLIC_TIERS } from '@/lib/billing/plans'
 import { GLOSSARY_KEYS } from '@/lib/vsm/glossary'
 import { tierPriceParams, visitorCurrency } from '@/lib/billing/currency'
+import { CAMA_BADGE_CLASS, CAMA_EMOJI } from '@/components/VSMEditor/camaColors'
+import type { CamaColor } from '@/lib/vsm/capacityAnalysis'
 import {
   buttonPrimary,
   buttonPrimaryLg,
@@ -71,12 +73,27 @@ type HostingItem = { role: string; provider: string; note: string }
 // eine Einladung, sie beim Uebersetzen versehentlich zu aendern.
 const CHECK_SEVERITIES = ['critical', 'warning', 'warning'] as const
 
+// Dieselbe Reihenfolge wie die Legende auf /capacity (lib/vsm/capacityAnalysis.ts,
+// CAMA_EMOJI) — die Ampel-Chips im Modul-Abschnitt unten zeigen exakt dieselben
+// vier Farben in derselben Reihenfolge wie im Produkt selbst.
+const CAMA_COLOR_ORDER: readonly CamaColor[] = ['blue', 'green', 'orange', 'red']
+
+// Die vier Ampel-Label leben schon im Capacity-Namensraum (colorBlue …) —
+// diese Zuordnung holt sie wieder, statt sie ein zweites Mal zu übersetzen.
+const CAMA_COLOR_LABEL_KEY: Record<CamaColor, 'colorBlue' | 'colorGreen' | 'colorOrange' | 'colorRed'> = {
+  blue: 'colorBlue',
+  green: 'colorGreen',
+  orange: 'colorOrange',
+  red: 'colorRed',
+}
+
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
   const t = await getTranslations('Home')
   const tNav = await getTranslations('Nav')
   const tPricing = await getTranslations('Pricing')
   const tSheet = await getTranslations('DataSheet')
+  const tCapacity = await getTranslations('Capacity')
   const currency = await visitorCurrency()
 
   const kpis = t.raw('kpis') as Kpi[]
@@ -115,7 +132,10 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           description: t('heroBody'),
           url: localizedUrl(locale, '/'),
           inLanguage: locale,
-          featureList: (t.raw('kpis') as Kpi[]).map((kpi) => kpi.name),
+          featureList: [
+            ...(t.raw('kpis') as Kpi[]).map((kpi) => kpi.name),
+            t('modulesCapacityLabel'),
+          ],
         }}
       />
 
@@ -219,6 +239,69 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             <span aria-hidden className="text-zinc-300">·</span>
             <span className="font-medium text-zinc-950">{t('proofHosting')}</span>
           </p>
+        </div>
+      </section>
+
+      {/* [Marketing-Strategie 2026-09-17] Seit CompanyOverview.tsx
+          (docs/plan-company-overview-modules.md) ist Kapazitätsmanagement
+          ein zweites, eigenständiges Modul — bisher kannte die Landingpage
+          nur VSM. H1 und die folgenden VSM-Tiefenabschnitte bleiben bewusst
+          unverändert: Der bestehende Rankinganker "Wertstromanalyse, die
+          rechnet" soll nicht verwässert werden, dieser Abschnitt ergänzt nur.
+          Eyebrow/Wortlaut ("Firmenübersicht", "Module") ist absichtlich schon
+          so gewählt, dass eine spätere vollständige Repositionierung zur
+          Plattform hier ansetzen kann, ohne diesen Abschnitt neu zu
+          schreiben — siehe Marketing-Gespräch 2026-09-17.
+          Die Ampel-Chips holen Farbe und Label direkt aus camaColors.ts bzw.
+          dem Capacity-Namensraum, keine zweite Definition. */}
+      <section className="border-t border-zinc-200">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
+            {t('modulesEyebrow')}
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+            {t('modulesTitle')}
+          </h2>
+          <p className="mt-3 max-w-2xl text-zinc-700">{t('modulesBody')}</p>
+
+          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+            <div className="rounded-surface border border-zinc-200 p-6">
+              <h3 className="font-medium text-zinc-950">{t('modulesVsmLabel')}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                {t('modulesVsmBody')}
+              </p>
+            </div>
+            <div className="rounded-surface border border-zinc-200 p-6">
+              <h3 className="font-medium text-zinc-950">{t('modulesCapacityLabel')}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                {t('modulesCapacityBody')}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {CAMA_COLOR_ORDER.map((color) => (
+                  <span
+                    key={color}
+                    className={`inline-flex items-center gap-1 rounded-control px-2.5 py-1 text-xs font-medium ${CAMA_BADGE_CLASS[color]}`}
+                  >
+                    <span aria-hidden>{CAMA_EMOJI[color]}</span>
+                    {tCapacity(CAMA_COLOR_LABEL_KEY[color])}
+                  </span>
+                ))}
+              </div>
+              <Link
+                href="/capacity-guide"
+                className="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline"
+              >
+                {tNav('capacityGuide')}
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-control border border-dashed border-zinc-300 px-5 py-4">
+            <p className="text-sm text-zinc-600">{t('modulesTeaser')}</p>
+            <Link href="/signup" className="text-sm font-medium text-brand-600 hover:underline">
+              {t('modulesCta')}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -495,6 +578,9 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </Link>
             <Link href="/data-sheet" className="hover:text-brand-600 hover:underline">
               {tNav('dataSheet')}
+            </Link>
+            <Link href="/capacity-guide" className="hover:text-brand-600 hover:underline">
+              {tNav('capacityGuide')}
             </Link>
             <Link href="/impressum" className="hover:text-brand-600 hover:underline">
               {tNav('impressum')}
