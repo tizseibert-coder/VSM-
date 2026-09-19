@@ -1,5 +1,6 @@
 'use server'
 
+import Stripe from 'stripe'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -13,6 +14,48 @@ import { visitorCurrency } from '@/lib/billing/currency'
 async function tErr(key: string): Promise<string> {
   const t = await getTranslations('Errors')
   return t(key)
+}
+
+/**
+ * Legt einen neuen Stripe-Kunden an und traegt ihn in `vsm_billing_customers`
+ * ein — ausgelagert, weil `startCheckout` das an zwei Stellen braucht: beim
+ * ersten Kauf einer Organisation, und als Reparatur, wenn die gespeicherte
+ * Kundennummer bei Stripe nicht mehr existiert (siehe `isMissingCustomerError`).
+ */
+async function createStripeCustomer(
+  stripe: Stripe,
+  admin: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+  email: string | undefined
+): Promise<string> {
+  const customer = await stripe.customers.create({
+    email,
+    metadata: { organization_id: organizationId },
+  })
+  const { error: upsertError } = await admin.from('vsm_billing_customers').upsert({
+    organization_id: organizationId,
+    stripe_customer_id: customer.id,
+  })
+  if (upsertError) throw new Error(upsertError.message)
+  return customer.id
+}
+
+/**
+ * Ob ein Stripe-Fehler bedeutet: "diese Kundennummer kennt Stripe nicht".
+ *
+ * Passiert vor allem beim Wechsel von Test- auf Live-Modus (oder umgekehrt):
+ * Test- und Live-Kunden leben in getrennten Stripe-Datenbanken, eine unter
+ * `vsm_billing_customers` gespeicherte Test-Kundennummer existiert im
+ * Live-Modus schlicht nicht. Ohne diese Pruefung wuerde jede Organisation,
+ * die vor dem Live-Umzug schon einmal den Checkout begonnen hatte, dauerhaft
+ * mit "No such customer" scheitern.
+ */
+function isMissingCustomerError(err: unknown): boolean {
+  return (
+    err instanceof Stripe.errors.StripeInvalidRequestError &&
+    err.code === 'resource_missing' &&
+    err.param === 'customer'
+  )
 }
 
 /**
@@ -86,21 +129,11 @@ export async function startCheckout(tier: string) {
 
     let customerId = existing?.stripe_customer_id ?? null
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email,
-        metadata: { organization_id: organizationId },
-      })
-      customerId = customer.id
-      const { error: upsertError } = await admin.from('vsm_billing_customers').upsert({
-        organization_id: organizationId,
-        stripe_customer_id: customerId,
-      })
-      if (upsertError) throw new Error(upsertError.message)
+      customerId = await createStripeCustomer(stripe, admin, organizationId, email)
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: customerId,
+    const checkoutParams = {
+      mode: 'subscription' as const,
       client_reference_id: organizationId,
       line_items: [{ price: priceId, quantity: 1 }],
       // Absolut, weil Stripe von seiner eigenen Domain aus zurueckschickt —
@@ -108,7 +141,19 @@ export async function startCheckout(tier: string) {
       // aufgeloest werden koennte.
       success_url: localizedUrl(locale, '/dashboard') + '?checkout=success',
       cancel_url: localizedUrl(locale, '/pricing') + '?checkout=cancelled',
-    })
+    }
+
+    let session: Stripe.Checkout.Session
+    try {
+      session = await stripe.checkout.sessions.create({ ...checkoutParams, customer: customerId })
+    } catch (err) {
+      // Die gespeicherte Kundennummer stammt aus einem anderen Stripe-Modus
+      // (typischerweise: Test-Kunde, jetzt Live-Betrieb) und existiert dort
+      // nicht mehr — einmal reparieren statt endgueltig zu scheitern.
+      if (!isMissingCustomerError(err)) throw err
+      customerId = await createStripeCustomer(stripe, admin, organizationId, email)
+      session = await stripe.checkout.sessions.create({ ...checkoutParams, customer: customerId })
+    }
     sessionUrl = session.url
   } catch (err) {
     console.error('startCheckout failed:', err instanceof Error ? err.message : err)
