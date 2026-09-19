@@ -18,7 +18,8 @@
     "backToDashboard": "← Dashboard",
     "pricing": "Preise",
     "dataSheet": "Erhebungsbogen",
-    "impressum": "Impressum"
+    "impressum": "Impressum",
+    "agb": "AGB"
   },
   "Home": {
     "heroTitle": "Wertstromanalyse, die rechnet.",
@@ -1175,6 +1176,37 @@
     "linksBody": "Diese Website kann Verweise auf Websites Dritter enthalten. Auf deren Inhalte hat der Betreiber keinen Einfluss und übernimmt dafür keine Verantwortung. Für die Inhalte verlinkter Seiten ist stets deren jeweiliger Anbieter verantwortlich.",
     "copyrightTitle": "Urheberrecht",
     "copyrightBody": "Die auf dieser Website veröffentlichten Inhalte unterliegen dem Schweizer Urheberrecht. Jede Verwendung, die dieses nicht ausdrücklich erlaubt, bedarf der vorherigen schriftlichen Zustimmung des Betreibers.",
+    "lastUpdated": "Stand: {date}"
+  },
+  "Agb": {
+    "metaTitle": "Allgemeine Geschäftsbedingungen",
+    "metaDescription": "AGB für die Nutzung von Taktane.",
+    "title": "Allgemeine Geschäftsbedingungen (AGB)",
+    "intro": "Diese AGB regeln die Nutzung von Taktane, einem webbasierten Werkzeug für Wertstromanalyse, angeboten von Tizian Seibert, handelnd unter dem Namen „Taktane by Seibert“ (Einzelunternehmen), Rastenhoschet 7, 8752 Näfels, Schweiz.",
+    "scopeTitle": "1. Geltungsbereich",
+    "scopeBody": "Diese AGB gelten für alle Verträge zwischen dem Anbieter und seinen Kundinnen und Kunden über die Nutzung von Taktane, unabhängig davon, ob ein kostenloser oder ein kostenpflichtiger Tarif genutzt wird. Abweichende Bedingungen der Kundschaft gelten nur, wenn der Anbieter ihnen ausdrücklich schriftlich zugestimmt hat.",
+    "conclusionTitle": "2. Vertragsschluss",
+    "conclusionBody": "Der Vertrag kommt durch die Registrierung eines Kontos und, bei kostenpflichtigen Tarifen, durch den Abschluss eines Abonnements über den Zahlungsdienstleister Stripe zustande. Mit Abschluss des Zahlungsvorgangs bestätigt die Kundschaft die Bestellung des gewählten Tarifs zu den auf der Preisseite (taktane.com/pricing) zu diesem Zeitpunkt ausgewiesenen Konditionen.",
+    "serviceTitle": "3. Leistungsbeschreibung",
+    "serviceBody": "Taktane stellt ein Werkzeug zur digitalen Erstellung, Berechnung und Auswertung von Wertstromanalysen bereit. Umfang und Grenzen einer Stufe (z. B. Anzahl Projekte, Szenarien, Teammitglieder) richten sich nach dem gebuchten Tarif und sind auf der Preisseite beschrieben; diese ist massgebend, nicht eine Kopie ihrer Werte in diesen AGB. Der Anbieter darf Taktane weiterentwickeln, solange der wesentliche Zweck der gebuchten Stufe erhalten bleibt.",
+    "priceTitle": "4. Preise und Zahlung",
+    "priceBody": "Die Preise ergeben sich aus der Preisseite zum Zeitpunkt des Vertragsschlusses und werden je nach Standort der Kundschaft in Schweizer Franken (Schweiz) oder Euro (übrige Länder) abgerechnet. Die Abrechnung erfolgt monatlich im Voraus über Stripe; es fällt keine Einrichtungsgebühr an. Preisänderungen für bestehende Abonnements werden mindestens 30 Tage im Voraus per E-Mail angekündigt.",
+    "termTitle": "5. Vertragsdauer und Kündigung",
+    "termBody": "Kostenpflichtige Abonnements laufen monatlich und ohne Mindestlaufzeit. Eine Kündigung ist jederzeit über das Stripe-Kundenportal (im Konto unter „Abo verwalten“) oder per E-Mail an hallo@taktane.com möglich und wird zum Ende der laufenden Abrechnungsperiode wirksam. Bereits bezahlte Beträge für die laufende Periode werden nicht anteilig zurückerstattet. Der Anbieter kann ein Konto bei erheblicher Vertragsverletzung, insbesondere ausbleibender Zahlung, mit angemessener Frist sperren oder kündigen.",
+    "rightsTitle": "6. Nutzungsrechte und Daten",
+    "rightsBody": "Der Anbieter räumt der Kundschaft für die Vertragsdauer ein einfaches, nicht übertragbares Recht ein, Taktane im Rahmen des gebuchten Tarifs zu nutzen. Die von der Kundschaft eingegebenen Daten (Wertströme, Kennzahlen) bleiben Eigentum der Kundschaft und können jederzeit als PDF exportiert werden.",
+    "availabilityTitle": "7. Verfügbarkeit",
+    "availabilityBody": "Der Anbieter bemüht sich um eine hohe Verfügbarkeit von Taktane, sichert jedoch keine bestimmte Verfügbarkeit (SLA) zu. Wartungsarbeiten werden, soweit möglich, ausserhalb üblicher Geschäftszeiten durchgeführt.",
+    "liabilityTitle": "8. Haftung",
+    "liabilityBody": "Der Anbieter haftet unbeschränkt für Vorsatz und grobe Fahrlässigkeit. Für leichte Fahrlässigkeit haftet er nur bei Verletzung wesentlicher Vertragspflichten und beschränkt auf den vorhersehbaren, vertragstypischen Schaden. Die Haftung für mittelbare Schäden, entgangenen Gewinn und Datenverlust ist ausgeschlossen, soweit gesetzlich zulässig. Für die Richtigkeit der von der Kundschaft eingegebenen Daten und der daraus abgeleiteten Berechnungen ist die Kundschaft selbst verantwortlich.",
+    "privacyTitle": "9. Datenschutz",
+    "privacyBody": "Die Verarbeitung personenbezogener Daten erfolgt im Rahmen der geltenden Datenschutzgesetzgebung, insbesondere des Schweizer Datenschutzgesetzes (DSG), und wird in einer gesonderten Datenschutzerklärung näher beschrieben.",
+    "changesTitle": "10. Änderung dieser AGB",
+    "changesBody": "Der Anbieter kann diese AGB mit Wirkung für die Zukunft ändern. Über wesentliche Änderungen wird die Kundschaft mindestens 30 Tage vor Inkrafttreten per E-Mail informiert. Widerspricht die Kundschaft nicht innerhalb dieser Frist, gelten die geänderten AGB als angenommen; im Fall eines Widerspruchs steht der Kundschaft ein Sonderkündigungsrecht zu.",
+    "lawTitle": "11. Anwendbares Recht und Gerichtsstand",
+    "lawBody": "Es gilt ausschliesslich schweizerisches Recht unter Ausschluss des UN-Kaufrechts. Für Geschäftskunden ist ausschliesslicher Gerichtsstand der Sitz des Anbieters (Näfels, Kanton Glarus); für Konsumentinnen und Konsumenten gelten die gesetzlichen, zwingenden Gerichtsstandsbestimmungen.",
+    "finalTitle": "12. Schlussbestimmungen",
+    "finalBody": "Sollte eine Bestimmung dieser AGB unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen davon unberührt.",
     "lastUpdated": "Stand: {date}"
   }
 }

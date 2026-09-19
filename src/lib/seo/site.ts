@@ -120,4 +120,5 @@ export const PUBLIC_PATHS = [
   { path: '/signup', priority: 0.4, changeFrequency: 'yearly' as const },
   { path: '/login', priority: 0.2, changeFrequency: 'yearly' as const },
   { path: '/impressum', priority: 0.1, changeFrequency: 'yearly' as const },
+  { path: '/agb', priority: 0.1, changeFrequency: 'yearly' as const },
 ] as const

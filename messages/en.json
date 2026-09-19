@@ -18,7 +18,8 @@
     "backToDashboard": "← Dashboard",
     "pricing": "Pricing",
     "dataSheet": "Data sheet",
-    "impressum": "Legal notice"
+    "impressum": "Legal notice",
+    "agb": "Terms"
   },
   "Home": {
     "heroTitle": "Value stream mapping that calculates.",
@@ -1175,6 +1176,37 @@
     "linksBody": "This website may contain links to third-party websites. The operator has no influence over their content and accepts no responsibility for it. The respective provider of a linked page is always responsible for its content.",
     "copyrightTitle": "Copyright",
     "copyrightBody": "The content published on this website is subject to Swiss copyright law. Any use not expressly permitted requires the operator's prior written consent.",
+    "lastUpdated": "Last updated: {date}"
+  },
+  "Agb": {
+    "metaTitle": "Terms of Service",
+    "metaDescription": "Terms of service for using Taktane.",
+    "title": "Terms of Service",
+    "intro": "These terms govern the use of Taktane, a web-based value stream mapping tool, offered by Tizian Seibert, trading as \"Taktane by Seibert\" (sole proprietorship), Rastenhoschet 7, 8752 Näfels, Switzerland.",
+    "scopeTitle": "1. Scope",
+    "scopeBody": "These terms apply to all contracts between the provider and its customers regarding the use of Taktane, whether on a free or a paid plan. Deviating terms proposed by a customer apply only if the provider has agreed to them expressly and in writing.",
+    "conclusionTitle": "2. Conclusion of contract",
+    "conclusionBody": "The contract is formed by registering an account and, for paid plans, by completing a subscription through the payment provider Stripe. By completing the payment, the customer confirms the order for the chosen plan on the terms shown on the pricing page (taktane.com/pricing) at that time.",
+    "serviceTitle": "3. Description of the service",
+    "serviceBody": "Taktane provides a tool for digitally creating, calculating and evaluating value stream maps. The scope and limits of a plan (e.g. number of projects, scenarios, team members) depend on the plan purchased and are described on the pricing page, which is authoritative rather than a copy of its figures in these terms. The provider may further develop Taktane as long as the essential purpose of the purchased plan is preserved.",
+    "priceTitle": "4. Prices and payment",
+    "priceBody": "Prices are those shown on the pricing page at the time the contract is concluded and are billed in Swiss francs (Switzerland) or euros (other countries) depending on the customer's location. Billing occurs monthly in advance via Stripe; no setup fee applies. Price changes for existing subscriptions are announced by e-mail at least 30 days in advance.",
+    "termTitle": "5. Term and termination",
+    "termBody": "Paid subscriptions run monthly with no minimum term. Termination is possible at any time via the Stripe customer portal (\"Manage subscription\" in the account) or by e-mail to hallo@taktane.com, and takes effect at the end of the current billing period. Amounts already paid for the current period are not refunded pro rata. The provider may suspend or terminate an account with reasonable notice in the event of a material breach of contract, in particular non-payment.",
+    "rightsTitle": "6. Usage rights and data",
+    "rightsBody": "For the term of the contract, the provider grants the customer a simple, non-transferable right to use Taktane within the scope of the purchased plan. Data entered by the customer (value streams, metrics) remains the customer's property and can be exported as a PDF at any time.",
+    "availabilityTitle": "7. Availability",
+    "availabilityBody": "The provider strives for high availability of Taktane but does not guarantee any specific availability (SLA). Maintenance is carried out outside normal business hours where possible.",
+    "liabilityTitle": "8. Liability",
+    "liabilityBody": "The provider is liable without limitation for intent and gross negligence. For slight negligence, the provider is liable only for breach of material contractual obligations and limited to the foreseeable, typical damage. Liability for indirect damages, lost profit and data loss is excluded to the extent permitted by law. The customer is responsible for the accuracy of the data it enters and of the calculations derived from it.",
+    "privacyTitle": "9. Data protection",
+    "privacyBody": "Personal data is processed under applicable data protection law, in particular the Swiss Federal Act on Data Protection (FADP), and is described in more detail in a separate privacy policy.",
+    "changesTitle": "10. Changes to these terms",
+    "changesBody": "The provider may change these terms with effect for the future. Customers are informed of material changes by e-mail at least 30 days before they take effect. If the customer does not object within that period, the amended terms are deemed accepted; in the event of an objection, the customer has a special right of termination.",
+    "lawTitle": "11. Governing law and jurisdiction",
+    "lawBody": "These terms are governed exclusively by Swiss law, excluding the UN Convention on the International Sale of Goods. For business customers, the exclusive place of jurisdiction is the provider's registered place of business (Näfels, canton of Glarus); for consumers, the mandatory statutory jurisdiction rules apply.",
+    "finalTitle": "12. Final provisions",
+    "finalBody": "Should any provision of these terms be invalid, the validity of the remaining provisions is not affected.",
     "lastUpdated": "Last updated: {date}"
   }
 }
