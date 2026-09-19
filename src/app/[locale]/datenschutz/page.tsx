@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
-import { Link } from '@/i18n/navigation'
 import { pageMetadata } from '@/lib/seo/site'
 
 export async function generateMetadata({
@@ -9,12 +8,12 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
-  const t = await getTranslations({ locale, namespace: 'Agb' })
+  const t = await getTranslations({ locale, namespace: 'Datenschutz' })
   const tMeta = await getTranslations({ locale, namespace: 'Metadata' })
 
   return pageMetadata({
     locale,
-    path: '/agb',
+    path: '/datenschutz',
     title: t('metaTitle'),
     description: t('metaDescription'),
     ogLocale: tMeta('ogLocale'),
@@ -23,33 +22,32 @@ export async function generateMetadata({
 
 /**
  * Stand, ab dem der Inhalt gilt. Von Hand nachfuehren, wenn sich ein
- * Abschnitt inhaltlich aendert (z. B. Preise, Kuendigungsweg) — siehe
- * dieselbe Begruendung in impressum/page.tsx.
+ * Abschnitt inhaltlich aendert (z. B. ein neuer Auftragsverarbeiter) — siehe
+ * dieselbe Begruendung in impressum/page.tsx und agb/page.tsx.
  */
 const LAST_UPDATED = new Date('2026-09-19')
 
 const SECTIONS = [
-  'scope',
-  'conclusion',
-  'service',
-  'price',
-  'term',
+  'controller',
+  'data',
+  'purpose',
+  'legalBasis',
+  'processors',
+  'cookies',
+  'retention',
   'rights',
-  'availability',
-  'liability',
-  'privacy',
+  'security',
   'changes',
-  'law',
-  'final',
+  'contact',
 ] as const
 
-export default async function AgbPage({
+export default async function DatenschutzPage({
   params,
 }: {
   params: Promise<{ locale: string }>
 }) {
   const { locale } = await params
-  const t = await getTranslations('Agb')
+  const t = await getTranslations('Datenschutz')
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(LAST_UPDATED)
 
   return (
@@ -61,20 +59,7 @@ export default async function AgbPage({
         {SECTIONS.map((section) => (
           <section key={section}>
             <h2 className="text-base font-semibold text-zinc-950">{t(`${section}Title`)}</h2>
-            {section === 'privacy' ? (
-              // Einziger Abschnitt mit einem internen Verweis (auf die
-              // Datenschutzerklaerung) statt reinem Fliesstext — deshalb aus
-              // drei Teilen zusammengesetzt statt aus einem Uebersetzungsschluessel.
-              <p className="mt-2">
-                {t('privacyBodyPrefix')}
-                <Link href="/datenschutz" className="font-medium text-brand-600 hover:underline">
-                  {t('privacyLinkText')}
-                </Link>
-                {t('privacyBodySuffix')}
-              </p>
-            ) : (
-              <p className="mt-2">{t(`${section}Body`)}</p>
-            )}
+            <p className="mt-2">{t(`${section}Body`)}</p>
           </section>
         ))}
       </div>
