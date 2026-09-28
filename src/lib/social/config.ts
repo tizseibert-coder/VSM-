@@ -35,6 +35,38 @@ export const TOPICS = [
 export type TopicId = (typeof TOPICS)[number]['id']
 
 /**
+ * Die Bildbeschreibung je Thema, fuer den Foto-Hintergrund der Kachel
+ * (lib/social/photo.ts). Bewusst getrennt von `TOPICS[].label`: Das Label
+ * richtet sich an Claude beim Schreiben, die Beschreibung hier an ein
+ * Bildmodell — und die beiden Zielgruppen brauchen unterschiedliche Woerter
+ * ("keine Texte, keine Gesichter im Vordergrund" waere im Redaktions-Prompt
+ * nur Rauschen).
+ *
+ * Absichtlich ohne Firmenlogos, Markennamen oder erkennbare Gesichter im
+ * Vordergrund — sowohl aus Bildrechtsgruenden als auch weil generierte
+ * Gesichter schnell unheimlich wirken. Menschen kommen nur von hinten oder
+ * unscharf vor.
+ */
+export const TOPIC_PHOTOS: Record<TopicId, string> = {
+  kpi_explained:
+    'Nahaufnahme einer Hand, die auf einem Taschenrechner tippt, daneben ein Klemmbrett mit handschriftlichen Zahlenreihen, Industriehalle im unscharfen Hintergrund, natuerliches Licht, dokumentarischer Stil',
+  lean_myth:
+    'Leere Werkbank in einer Fabrikhalle mit ordentlich aufgereihtem Werkzeug, weiches Seitenlicht durch ein Hallenfenster, ruhige Komposition, dokumentarischer Stil',
+  shopfloor_story:
+    'Person von hinten fotografiert, die vor einem Whiteboard mit einem einfachen Flussdiagramm steht, Industriehalle, natuerliches Licht, dokumentarischer Stil',
+  vsm_howto:
+    'Schreibtisch von oben fotografiert mit handgezeichnetem Flussdiagramm auf Papier, Bleistift und Kaffeetasse daneben, warmes natuerliches Licht',
+  capacity_planning:
+    'Reihe von Maschinen in einer Fertigungshalle, perspektivische Aufnahme, leichte Unschaerfe im Hintergrund, kuehles industrielles Licht',
+  quick_win:
+    'Nahaufnahme eines Klemmbretts mit Checkliste, Haken bereits bei den ersten Punkten gesetzt, Werkstattumgebung unscharf im Hintergrund',
+  industry_question:
+    'Leere Konferenzraum-Ecke mit Flipchart und ein paar Stuehlen, durch ein Fenster faellt Tageslicht, ruhige minimalistische Komposition',
+  product_insight:
+    'Bildschirm mit einem schlichten Liniendiagramm, im Vordergrund unscharf eine Kaffeetasse, Grossraumbuero, natuerliches Licht',
+} as const
+
+/**
  * Formate je Kanal. Instagram braucht immer ein Bild — dort ist die Kachel
  * Pflicht, das Format unterscheidet nur, was auf ihr steht. LinkedIn traegt
  * reine Textbeitraege gut und oft besser als Bildbeitraege; ob das fuer
