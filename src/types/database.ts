@@ -2197,6 +2197,155 @@ export type Database = {
           },
         ]
       }
+      vsm_social_metrics: {
+        Row: {
+          age_hours: number
+          captured_at: string
+          clicks: number | null
+          comments: number | null
+          id: string
+          impressions: number | null
+          post_id: string
+          raw: Json | null
+          reach: number | null
+          reactions: number | null
+          saves: number | null
+          shares: number | null
+          source: string
+        }
+        Insert: {
+          age_hours: number
+          captured_at?: string
+          clicks?: number | null
+          comments?: number | null
+          id?: string
+          impressions?: number | null
+          post_id: string
+          raw?: Json | null
+          reach?: number | null
+          reactions?: number | null
+          saves?: number | null
+          shares?: number | null
+          source?: string
+        }
+        Update: {
+          age_hours?: number
+          captured_at?: string
+          clicks?: number | null
+          comments?: number | null
+          id?: string
+          impressions?: number | null
+          post_id?: string
+          raw?: Json | null
+          reach?: number | null
+          reactions?: number | null
+          saves?: number | null
+          shares?: number | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vsm_social_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "vsm_social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vsm_social_playbooks: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          posts_analyzed: number
+          summary: Json | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          posts_analyzed?: number
+          summary?: Json | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          posts_analyzed?: number
+          summary?: Json | null
+        }
+        Relationships: []
+      }
+      vsm_social_posts: {
+        Row: {
+          approved_by: string | null
+          body: string
+          card_headline: string | null
+          card_subline: string | null
+          channel: string
+          created_at: string
+          explore: boolean
+          external_id: string | null
+          external_url: string | null
+          format: string
+          hook: string
+          id: string
+          last_error: string | null
+          published_at: string | null
+          rationale: string | null
+          scheduled_for: string
+          status: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          body: string
+          card_headline?: string | null
+          card_subline?: string | null
+          channel: string
+          created_at?: string
+          explore?: boolean
+          external_id?: string | null
+          external_url?: string | null
+          format: string
+          hook: string
+          id?: string
+          last_error?: string | null
+          published_at?: string | null
+          rationale?: string | null
+          scheduled_for: string
+          status?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          body?: string
+          card_headline?: string | null
+          card_subline?: string | null
+          channel?: string
+          created_at?: string
+          explore?: boolean
+          external_id?: string | null
+          external_url?: string | null
+          format?: string
+          hook?: string
+          id?: string
+          last_error?: string | null
+          published_at?: string | null
+          rationale?: string | null
+          scheduled_for?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vsm_staff: {
         Row: {
           created_at: string
