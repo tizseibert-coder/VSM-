@@ -18,6 +18,7 @@ und es ist bis zum 30.08. niemandem aufgefallen.
 | `handle_new_user()`, `has_org_role()` + deren Policies | Prisma | dito |
 | `projects`, `processes`, `inventory_buffers`, `scenarios`, `spaghetti_layouts`, `reports`, `historical_metrics`, `benchmark_data`, `benchmark_reference`, `activity_logs` | Taktane | `supabase/migrations/` (hier) |
 | `vsm_staff`, `vsm_leads`, `vsm_lead_events` | Taktane | dito |
+| `vsm_social_posts`, `vsm_social_metrics`, `vsm_social_playbooks` | Taktane | dito |
 | `vsm_org_settings`, `vsm_invite_settings` | Taktane | dito |
 | `project_org_id()`, `set_updated_at()`, `is_vsm_staff()`, `is_vsm_admin()` + die Policies auf obigen Tabellen | Taktane | dito |
 | `consulting_leads` | Landing-Page | `D:\LeanPulse Landing` |

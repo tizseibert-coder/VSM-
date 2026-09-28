@@ -50,6 +50,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/organizations" className="text-zinc-700 hover:text-brand-600">
                 {t('navOrganizations')}
               </Link>
+              <Link href="/admin/social" className="text-zinc-700 hover:text-brand-600">
+                {t('navSocial')}
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3 text-xs text-zinc-500">
