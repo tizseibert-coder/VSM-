@@ -15,6 +15,20 @@ export function hasImageCredentials(): boolean {
 }
 
 /**
+ * Der Stil-Zusatz, der jede Bildbeschreibung begleitet.
+ *
+ * Der entscheidende Satz ist der zweite: Ein Bildmodell greift ohne
+ * Gegensteuer zum glatten, symmetrischen "Werbefoto"-Look — genau das, was
+ * eine Fachzielgruppe als KI-Stockfoto erkennt und ueberscrollt. Die
+ * Anweisung, wie ein Wirtschaftsjournalist zu fotografieren (leichte
+ * Koernung, unperfektes Licht, echte Abnutzung), zielt auf das Gegenteil:
+ * ein Bild, das wie ein Ausschnitt aus einer echten Reportage wirkt und in
+ * dem sich ein Produktionsleiter seine eigene Halle wiedererkennt.
+ */
+const STYLE_SUFFIX =
+  'Fotorealistisch, wie von einem Fotojournalisten fuer eine Wirtschaftszeitung in einer echten Schweizer Fertigungshalle aufgenommen: leichte Koernung, unperfektes natuerliches Licht, glaubwuerdige Abnutzungsspuren an Material und Boden, kein gestellter Werbe-Look, kein glatter Hochglanz-Stockfoto-Stil. Keinerlei Text, keine Schrift, keine Logos, keine Markennamen, keine erkennbaren Gesichter im Vordergrund.'
+
+/**
  * Erzeugt ein Hochformat-Foto (1024×1536) zu einer Bildbeschreibung.
  * Wirft bei jedem Fehler — der Aufrufer faengt das ab und faellt auf die
  * einfarbige Kachel zurueck, statt den Beitrag unbebildert zu lassen.
@@ -23,7 +37,7 @@ export async function generatePhoto(prompt: string): Promise<Buffer> {
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new Error('OPENAI_API_KEY fehlt.')
 
-  const fullPrompt = `${prompt}. Fotorealistisch, redaktioneller Stil, ruhige Farben, keinerlei Text, keine Schrift, keine Logos, keine Markennamen, keine erkennbaren Gesichter im Vordergrund.`
+  const fullPrompt = `${prompt}. ${STYLE_SUFFIX}`
 
   const res = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -32,7 +46,11 @@ export async function generatePhoto(prompt: string): Promise<Buffer> {
       model: 'gpt-image-1',
       prompt: fullPrompt,
       size: '1024x1536',
-      quality: 'medium',
+      // 'high' statt 'medium': Bei einem Bild je Beitrag (nicht je Aufruf)
+      // ist der Preisunterschied gering, der Unterschied in Detailschaerfe
+      // — gerade bei den vielen kleinen Gegenstaenden in den Prompts
+      // (Kanban-Karte, Andon-Tafel, Stoppuhr) — aber deutlich sichtbar.
+      quality: 'high',
       // b64_json statt einer URL: OpenAIs Bild-URLs laufen nach kurzer Zeit
       // ab, das gespeicherte Ergebnis soll aber dauerhaft sein.
       output_format: 'jpeg',

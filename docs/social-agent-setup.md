@@ -149,13 +149,17 @@ Lokal (localhost) kann das Posten auf Instagram deshalb nicht funktionieren.
 
 Ohne weiteren Schlüssel bekommt jede Kachel eine einfarbige Fläche als
 Hintergrund. Mit einem OpenAI-Schlüssel wird daraus ein echtes,
-themenpassendes Foto (Fabrikhalle, Werkbank, Klemmbrett — je nach Thema,
-siehe `TOPIC_PHOTOS` in `src/lib/social/config.ts`).
+themenpassendes Foto (Andon-Tafel, Kanban-Karte, handgezeichnetes
+Wertstromdiagramm — je nach Thema, siehe `TOPIC_PHOTOS` in
+`src/lib/social/config.ts`), bewusst im Stil einer Wirtschaftsreportage
+(leichte Körnung, echtes Licht, keine Hochglanz-Werbeoptik) statt eines
+glatten Stockfotos — das ist es, woran sich ein Produktionsleiter eher
+wiedererkennt als an einer generischen Fabrikhalle.
 
 1. platform.openai.com → Konto anlegen, unter **Billing** ein kleines
-   Guthaben aufladen (5–10 $ reichen für Monate: ca. 4–8 Rappen je Bild,
-   und jedes Bild entsteht nur **einmal pro Beitrag**, nicht bei jedem
-   Abruf).
+   Guthaben aufladen (5–10 $ reichen für Monate: ca. 15–25 Rappen je Bild
+   in hoher Qualität, und jedes Bild entsteht nur **einmal pro Beitrag**,
+   nicht bei jedem Abruf).
 2. **API Keys → Create new secret key**, kopieren.
 3. In Vercel: `OPENAI_API_KEY` setzen.
 

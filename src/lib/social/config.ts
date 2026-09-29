@@ -42,28 +42,36 @@ export type TopicId = (typeof TOPICS)[number]['id']
  * ("keine Texte, keine Gesichter im Vordergrund" waere im Redaktions-Prompt
  * nur Rauschen).
  *
+ * Absichtlich konkrete, wiedererkennbare Gegenstaende aus einer echten
+ * Schweizer Fertigungshalle (Andon-Tafel, Kanban-Karte, Ruestkarte,
+ * Stoppuhr) statt allgemeiner Buero-/Werkstatt-Motive: Ein Produktionsleiter
+ * soll seine eigene Halle wiedererkennen, nicht "irgendeine Fabrik". Der
+ * Stil-Zusatz in photo.ts sorgt zusaetzlich dafuer, dass die Bilder wie eine
+ * Wirtschaftsreportage wirken statt wie ein Werbe-Stockfoto — genau das
+ * unterscheidet "abgeholt fuehlen" von "an mir vorbeigescrollt".
+ *
  * Absichtlich ohne Firmenlogos, Markennamen oder erkennbare Gesichter im
  * Vordergrund — sowohl aus Bildrechtsgruenden als auch weil generierte
- * Gesichter schnell unheimlich wirken. Menschen kommen nur von hinten oder
- * unscharf vor.
+ * Gesichter schnell unheimlich wirken. Menschen kommen nur von hinten,
+ * unscharf oder nur als Haende vor.
  */
 export const TOPIC_PHOTOS: Record<TopicId, string> = {
   kpi_explained:
-    'Nahaufnahme einer Hand, die auf einem Taschenrechner tippt, daneben ein Klemmbrett mit handschriftlichen Zahlenreihen, Industriehalle im unscharfen Hintergrund, natuerliches Licht, dokumentarischer Stil',
+    'Nahaufnahme: eine Hand haelt eine mechanische Stoppuhr ueber ein laufendes Foerderband mit Kartons, im unscharfen Hintergrund ein Blatt mit handschriftlichen Standardzeit-Notizen an einer Werkbank, Halogenlicht einer Fertigungshalle',
   lean_myth:
-    'Leere Werkbank in einer Fabrikhalle mit ordentlich aufgereihtem Werkzeug, weiches Seitenlicht durch ein Hallenfenster, ruhige Komposition, dokumentarischer Stil',
+    'Kontrastreiche Aufnahme eines Materialflusses in einer Fertigungshalle: auf der einen Seite hoch gestapelte Kartonkisten als Zwischenlager, auf der anderen Seite ein leeres, aufgeraeumtes Rollenfoerderband, natuerliches Hallenlicht von oben',
   shopfloor_story:
-    'Person von hinten fotografiert, die vor einem Whiteboard mit einem einfachen Flussdiagramm steht, Industriehalle, natuerliches Licht, dokumentarischer Stil',
+    'Person von hinten in Arbeitskleidung, steht vor einer Magnettafel mit handgezeichnetem Wertstromdiagramm aus Kaestchen, Pfeilen und bunten Kanban-Karten, Fertigungshalle im Hintergrund leicht unscharf, natuerliches Fensterlicht',
   vsm_howto:
-    'Schreibtisch von oben fotografiert mit handgezeichnetem Flussdiagramm auf Papier, Bleistift und Kaffeetasse daneben, warmes natuerliches Licht',
+    'Schreibtisch von oben fotografiert: handgezeichnetes Wertstromdiagramm auf kariertem Papier mit Prozesskaestchen, Bestandsdreiecken und einer Zeitleiter aus Warte- und Bearbeitungszeit, daneben ein Bleistift und eine halbvolle Kaffeetasse, warmes Fensterlicht',
   capacity_planning:
-    'Reihe von Maschinen in einer Fertigungshalle, perspektivische Aufnahme, leichte Unschaerfe im Hintergrund, kuehles industrielles Licht',
+    'Blick entlang einer Reihe von CNC-Maschinen in einer Fertigungshalle, an einer Maschine haengt eine gruen-rote Andon-Anzeigetafel, scharfe Tiefenschaerfe auf die vorderste Maschine, kuehles Neonlicht',
   quick_win:
-    'Nahaufnahme eines Klemmbretts mit Checkliste, Haken bereits bei den ersten Punkten gesetzt, Werkstattumgebung unscharf im Hintergrund',
+    'Nahaufnahme einer laminierten Checkliste an einer Werkbank, die ersten drei Punkte bereits mit gruenem Marker abgehakt, im unscharfen Hintergrund eine Werkzeug-Schattentafel, natuerliches Licht',
   industry_question:
-    'Leere Konferenzraum-Ecke mit Flipchart und ein paar Stuehlen, durch ein Fenster faellt Tageslicht, ruhige minimalistische Komposition',
+    'Eine Shopfloor-Tafel fuer die taegliche Kennzahlenrunde mit handgeschriebenen Zahlen, Magneten und einer roten Ampel-Markierung, davor ein leerer Stehtisch mit einem Marker, Fertigungshalle im Hintergrund',
   product_insight:
-    'Bildschirm mit einem schlichten Liniendiagramm, im Vordergrund unscharf eine Kaffeetasse, Grossraumbuero, natuerliches Licht',
+    'Grossbildschirm mit einem schlichten Liniendiagramm und Prozesskennzahlen, im unscharfen Vordergrund eine Kaffeetasse und eine Tastatur, Buero mit Blick durch eine Glasscheibe auf eine Fertigungshalle im Hintergrund',
 } as const
 
 /**
