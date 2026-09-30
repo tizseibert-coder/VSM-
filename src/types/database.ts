@@ -2285,6 +2285,7 @@ export type Database = {
           approved_by: string | null
           body: string
           card_headline: string | null
+          card_photo_base64: string | null
           card_subline: string | null
           channel: string
           created_at: string
@@ -2306,6 +2307,7 @@ export type Database = {
           approved_by?: string | null
           body: string
           card_headline?: string | null
+          card_photo_base64?: string | null
           card_subline?: string | null
           channel: string
           created_at?: string
@@ -2327,6 +2329,7 @@ export type Database = {
           approved_by?: string | null
           body?: string
           card_headline?: string | null
+          card_photo_base64?: string | null
           card_subline?: string | null
           channel?: string
           created_at?: string

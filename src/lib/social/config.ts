@@ -35,6 +35,46 @@ export const TOPICS = [
 export type TopicId = (typeof TOPICS)[number]['id']
 
 /**
+ * Die Bildbeschreibung je Thema, fuer den Foto-Hintergrund der Kachel
+ * (lib/social/photo.ts). Bewusst getrennt von `TOPICS[].label`: Das Label
+ * richtet sich an Claude beim Schreiben, die Beschreibung hier an ein
+ * Bildmodell — und die beiden Zielgruppen brauchen unterschiedliche Woerter
+ * ("keine Texte, keine Gesichter im Vordergrund" waere im Redaktions-Prompt
+ * nur Rauschen).
+ *
+ * Absichtlich konkrete, wiedererkennbare Gegenstaende aus einer echten
+ * Schweizer Fertigungshalle (Andon-Tafel, Kanban-Karte, Ruestkarte,
+ * Stoppuhr) statt allgemeiner Buero-/Werkstatt-Motive: Ein Produktionsleiter
+ * soll seine eigene Halle wiedererkennen, nicht "irgendeine Fabrik". Der
+ * Stil-Zusatz in photo.ts sorgt zusaetzlich dafuer, dass die Bilder wie eine
+ * Wirtschaftsreportage wirken statt wie ein Werbe-Stockfoto — genau das
+ * unterscheidet "abgeholt fuehlen" von "an mir vorbeigescrollt".
+ *
+ * Absichtlich ohne Firmenlogos, Markennamen oder erkennbare Gesichter im
+ * Vordergrund — sowohl aus Bildrechtsgruenden als auch weil generierte
+ * Gesichter schnell unheimlich wirken. Menschen kommen nur von hinten,
+ * unscharf oder nur als Haende vor.
+ */
+export const TOPIC_PHOTOS: Record<TopicId, string> = {
+  kpi_explained:
+    'Nahaufnahme: eine Hand haelt eine mechanische Stoppuhr ueber ein laufendes Foerderband mit Kartons, im unscharfen Hintergrund ein Blatt mit handschriftlichen Standardzeit-Notizen an einer Werkbank, Halogenlicht einer Fertigungshalle',
+  lean_myth:
+    'Kontrastreiche Aufnahme eines Materialflusses in einer Fertigungshalle: auf der einen Seite hoch gestapelte Kartonkisten als Zwischenlager, auf der anderen Seite ein leeres, aufgeraeumtes Rollenfoerderband, natuerliches Hallenlicht von oben',
+  shopfloor_story:
+    'Person von hinten in Arbeitskleidung, steht vor einer Magnettafel mit handgezeichnetem Wertstromdiagramm aus Kaestchen, Pfeilen und bunten Kanban-Karten, Fertigungshalle im Hintergrund leicht unscharf, natuerliches Fensterlicht',
+  vsm_howto:
+    'Schreibtisch von oben fotografiert: handgezeichnetes Wertstromdiagramm auf kariertem Papier mit Prozesskaestchen, Bestandsdreiecken und einer Zeitleiter aus Warte- und Bearbeitungszeit, daneben ein Bleistift und eine halbvolle Kaffeetasse, warmes Fensterlicht',
+  capacity_planning:
+    'Blick entlang einer Reihe von CNC-Maschinen in einer Fertigungshalle, an einer Maschine haengt eine gruen-rote Andon-Anzeigetafel, scharfe Tiefenschaerfe auf die vorderste Maschine, kuehles Neonlicht',
+  quick_win:
+    'Nahaufnahme einer laminierten Checkliste an einer Werkbank, die ersten drei Punkte bereits mit gruenem Marker abgehakt, im unscharfen Hintergrund eine Werkzeug-Schattentafel, natuerliches Licht',
+  industry_question:
+    'Eine Shopfloor-Tafel fuer die taegliche Kennzahlenrunde mit handgeschriebenen Zahlen, Magneten und einer roten Ampel-Markierung, davor ein leerer Stehtisch mit einem Marker, Fertigungshalle im Hintergrund',
+  product_insight:
+    'Grossbildschirm mit einem schlichten Liniendiagramm und Prozesskennzahlen, im unscharfen Vordergrund eine Kaffeetasse und eine Tastatur, Buero mit Blick durch eine Glasscheibe auf eine Fertigungshalle im Hintergrund',
+} as const
+
+/**
  * Formate je Kanal. Instagram braucht immer ein Bild — dort ist die Kachel
  * Pflicht, das Format unterscheidet nur, was auf ihr steht. LinkedIn traegt
  * reine Textbeitraege gut und oft besser als Bildbeitraege; ob das fuer
