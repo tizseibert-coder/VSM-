@@ -30,6 +30,14 @@ import { generatePhoto, hasImageCredentials } from '@/lib/social/photo'
  * `card_photo_base64` und wird von dort bedient. Ohne Schluessel oder wenn
  * die Erzeugung scheitert, bleibt es bei der einfarbigen Kachel.
  */
+
+// Die Bilderzeugung bei hoher Qualitaet braucht oft 20-40 Sekunden — ohne
+// dieses Zeitlimit bricht Vercel die Anfrage nach den vorgegebenen 10
+// Sekunden ab, und die Seite bleibt leer. Nur der *erste* Aufruf je Beitrag
+// braucht so lange; danach liegt das Foto im Zwischenspeicher und die
+// Antwort kommt in Millisekunden.
+export const maxDuration = 120
+
 const WIDTH = 1080
 const HEIGHT = 1350
 
