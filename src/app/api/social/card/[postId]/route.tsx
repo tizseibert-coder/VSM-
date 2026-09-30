@@ -162,6 +162,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pos
  * keins. Ein Fehlschlag bei der Erzeugung (Dienst nicht erreichbar, kein
  * Guthaben) faellt still auf die einfarbige Kachel zurueck — ein Beitrag
  * darf daran nicht scheitern.
+ *
+ * Die Fehlermeldung landet zusaetzlich in `card_photo_error` — das ist die
+ * einzige Stelle, an der sie nach aussen sichtbar wird. Ein Server-Log
+ * allein waere fuer die Fehlersuche von ausserhalb Vercels nicht lesbar.
  */
 async function resolvePhoto(
   db: ReturnType<typeof createAdminClient>,
@@ -170,7 +174,10 @@ async function resolvePhoto(
   cached: string | null
 ): Promise<Buffer | null> {
   if (cached) return Buffer.from(cached, 'base64')
-  if (!hasImageCredentials()) return null
+  if (!hasImageCredentials()) {
+    await db.from('vsm_social_posts').update({ card_photo_error: 'OPENAI_API_KEY fehlt.' }).eq('id', postId)
+    return null
+  }
 
   const prompt = TOPIC_PHOTOS[topic as keyof typeof TOPIC_PHOTOS]
   if (!prompt) return null
@@ -179,10 +186,15 @@ async function resolvePhoto(
     const photo = await generatePhoto(prompt)
     // Best-effort: Schlaegt das Speichern fehl, wird das Foto beim naechsten
     // Aufruf einfach erneut erzeugt — teurer, aber nicht falsch.
-    await db.from('vsm_social_posts').update({ card_photo_base64: photo.toString('base64') }).eq('id', postId)
+    await db
+      .from('vsm_social_posts')
+      .update({ card_photo_base64: photo.toString('base64'), card_photo_error: null })
+      .eq('id', postId)
     return photo
   } catch (err) {
-    console.error('social card photo generation failed:', err instanceof Error ? err.message : err)
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('social card photo generation failed:', message)
+    await db.from('vsm_social_posts').update({ card_photo_error: message.slice(0, 2000) }).eq('id', postId)
     return null
   }
 }
