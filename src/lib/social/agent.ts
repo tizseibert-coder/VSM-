@@ -152,13 +152,26 @@ Achte darauf, dass die Beiträge einer Woche sich nicht gegenseitig wiederholen.
       {
         slot,
         hook: d.hook,
-        body: d.body.trim(),
-        card_headline: needsCard ? (d.card_headline?.trim() || null) : null,
-        card_subline: needsCard ? (d.card_subline?.trim() || null) : null,
+        body: dedash(d.body.trim()),
+        card_headline: needsCard ? dedash(d.card_headline?.trim() || null) : null,
+        card_subline: needsCard ? dedash(d.card_subline?.trim() || null) : null,
         rationale: d.rationale.trim(),
       },
     ]
   })
+}
+
+/**
+ * Entfernt Gedankenstriche aus einem fertigen Text — die Anweisung im
+ * Markenbrief ist die erste Verteidigungslinie, das hier die zweite: Ein
+ * Modell haelt sich nicht jedes Mal an jede Regel, und der Gedankenstrich
+ * ist das staerkste einzelne Erkennungsmerkmal fuer KI-Text. Ersetzt wird
+ * nur die eingeschobene Form (" — " als Satzzeichen), nicht ein Zahlenbereich
+ * wie "3–6" ohne Leerzeichen — der ist normale deutsche Typografie.
+ */
+export function dedash<T extends string | null>(text: T): T {
+  if (text === null) return text
+  return text.replace(/\s+[—–]\s+/g, ', ') as T
 }
 
 // ─────────────────────────────────────────────

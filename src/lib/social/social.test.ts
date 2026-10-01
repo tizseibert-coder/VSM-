@@ -3,6 +3,7 @@ import { median, scorePosts, type MetricSnapshot, type PostForScoring } from './
 import { armKey, chooseArm, collectArmStats, sampleBeta, seededRng } from './bandit'
 import { nextMonday, planWeek, weekSlots } from './plan'
 import { WEEKLY_SCHEDULE } from './config'
+import { dedash } from './agent'
 
 function snapshot(age_hours: number, impressions: number | null, extra: Partial<MetricSnapshot> = {}): MetricSnapshot {
   return {
@@ -154,5 +155,24 @@ describe('escapeLinkedInText', () => {
     expect(escapeLinkedInText('Taktzeit (Beispiel) *wichtig* #Lean #Wertstrom_Analyse'))
       .toBe('Taktzeit \\(Beispiel\\) \\*wichtig\\* {hashtag|\\#|Lean} {hashtag|\\#|Wertstrom_Analyse}')
     expect(escapeLinkedInText('Platz # 1')).toBe('Platz \\# 1')
+  })
+})
+
+describe('dedash', () => {
+  it('replaces an em dash or en dash used as a sentence break', () => {
+    expect(dedash('Die Linie steht still — niemand hat es gemerkt.')).toBe(
+      'Die Linie steht still, niemand hat es gemerkt.'
+    )
+    expect(dedash('Die Linie steht still – niemand hat es gemerkt.')).toBe(
+      'Die Linie steht still, niemand hat es gemerkt.'
+    )
+  })
+
+  it('leaves a numeric range (no surrounding spaces) untouched', () => {
+    expect(dedash('Instagram: 3–6 Hashtags am Ende.')).toBe('Instagram: 3–6 Hashtags am Ende.')
+  })
+
+  it('passes null through unchanged', () => {
+    expect(dedash(null)).toBeNull()
   })
 })
