@@ -238,6 +238,14 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </span>
             <span aria-hidden className="text-zinc-300">·</span>
             <span className="font-medium text-zinc-950">{t('proofHosting')}</span>
+            {/* [Marketing-Klarheits-Audit 2026-10-02, D1] Der Hero spricht nur
+                von Wertstromanalyse; das zweite Modul (Kapazitätsmanagement)
+                tauchte bisher unangekündigt erst zwei Abschnitte weiter auf.
+                Ein fünfter, faktischer Chip hier setzt den Umfang schon vor
+                dem ersten Scrollen, ohne den bestehenden Rankinganker in H1
+                und heroBody zu verändern. */}
+            <span aria-hidden className="text-zinc-300">·</span>
+            <span className="font-medium text-zinc-950">{t('proofModules')}</span>
           </p>
         </div>
       </section>
@@ -296,8 +304,17 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             </div>
           </div>
 
+          {/* [Marketing-Klarheits-Audit 2026-10-02, D3/D6] Stand hier zuvor
+              "Weitere Module sind in Arbeit" — ein Versprechen ohne Beleg,
+              das der sonst auf der Seite durchgehaltenen Haltung
+              widerspricht, nichts Unbelegtes zu behaupten (siehe A4/A8 im
+              Audit vom 7.9.). Ersetzt durch eine Abgrenzung, die tatsaechlich
+              zutrifft: Taktane moderiert nicht, und es gibt noch keine
+              ERP-Anbindung, nur Eingabe/CSV. Dieselbe Stelle, derselbe
+              CTA-Knopf daneben, nur eine wahre Aussage statt einer
+              Ankuendigung. */}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-control border border-dashed border-zinc-300 px-5 py-4">
-            <p className="text-sm text-zinc-600">{t('modulesTeaser')}</p>
+            <p className="text-sm text-zinc-600">{t('modulesScope')}</p>
             <Link href="/signup" className="text-sm font-medium text-brand-600 hover:underline">
               {t('modulesCta')}
             </Link>
