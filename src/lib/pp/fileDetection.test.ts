@@ -8,14 +8,25 @@ describe('detectFileKind', () => {
     expect(detectFileKind({ sheetNames: ['Legende', 'Schichtplan'], firstRows: [['05.10.26']] })).toBe('shiftPlan')
   })
 
-  it('recognises a setup plan by a date at the start of the first data row', () => {
-    const rows = [['Datum', 'Maschine', 'Artikel'], [], ['05.10.26 06:00', 'T030-A01', '900037']]
+  it('recognises a setup plan by a date at the start of the first non-empty row', () => {
+    const rows = [[], ['05.10.26 06:00', 'T030-A01', '900037']]
     expect(detectFileKind({ sheetNames: ['Sheet1'], firstRows: rows })).toBe('setupPlan')
   })
 
-  it('recognises a production plan by T035-A02-style cells', () => {
-    const rows = [['Linie', 'Platz'], ['Spritzguss', 'T035-A02']]
+  it('does not take a header row for a setup plan, like the previous tool', () => {
+    const rows = [['Datum', 'Maschine'], ['05.10.26', 'T030-A01']]
+    expect(detectFileKind({ sheetNames: ['Sheet1'], firstRows: rows })).toBe('unknown')
+  })
+
+  it('needs the exact sheet name of the template', () => {
+    expect(detectFileKind({ sheetNames: ['schichtplan'], firstRows: [] })).toBe('unknown')
+  })
+
+  it('recognises a production plan by a T035-A02-style first column in the first three rows', () => {
+    const rows = [['Platz', 'Auftrag'], ['T035-A02', '4711']]
     expect(detectFileKind({ sheetNames: ['Sheet1'], firstRows: rows })).toBe('productionPlan')
+    const later = [['a'], ['b'], ['c'], ['T035-A02']]
+    expect(detectFileKind({ sheetNames: ['Sheet1'], firstRows: later })).toBe('unknown')
   })
 
   it('prefers the setup plan when the first data row starts with a date', () => {

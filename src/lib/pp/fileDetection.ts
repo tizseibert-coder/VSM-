@@ -4,9 +4,12 @@
 // sein. Erkannt wird in dieser Reihenfolge, die erste passende Regel gewinnt:
 //
 //   1. ein Sheet heisst „Schichtplan"                       → Schichtplan
-//   2. die erste Datenzeile beginnt mit dd.mm.yy            → Rüstplan
-//   3. Zellen im Muster T035-A02 in den ersten Zeilen       → Produktionsplan
+//   2. die erste nicht leere Zeile beginnt mit dd.mm.yy     → Rüstplan
+//   3. erste Spalte im Muster T035-A02 in den ersten 3 Zeilen → Produktionsplan
 //   4. sonst                                                → unbekannt
+//
+// Die Regeln sind die von detectXlsxKind im Vorgaengertool, Zeichen fuer
+// Zeichen; nur ein Datum wie 31.02.26 gilt hier nicht mehr als Datum.
 //
 // Diese Datei kennt keine xlsx-Bibliothek: Sie bekommt Sheet-Namen und die
 // ersten Zeilen als Werte. Das Lesen der Datei (SheetJS) ist ein Schritt
@@ -23,20 +26,19 @@ export interface WorkbookPreview {
 }
 
 export const SHIFT_PLAN_SHEET = 'Schichtplan'
-const SCAN_ROWS = 10
+const PRODUCTION_ROWS = 3
+const SETUP_DATE = /^\d{2}\.\d{2}\.\d{2}/
 const PRODUCTION_CELL = /^T\d{3}-[A-Z]\d{2}$/
 
 export function detectFileKind(preview: WorkbookPreview): FileKind {
-  if (preview.sheetNames.some((n) => n.trim().toLowerCase() === SHIFT_PLAN_SHEET.toLowerCase())) return 'shiftPlan'
+  // Exakt der Sheet-Name der Firmenvorlage, wie im Vorgaengertool.
+  if (preview.sheetNames.includes(SHIFT_PLAN_SHEET)) return 'shiftPlan'
 
-  const rows = preview.firstRows.filter((row) => row.some((c) => cellText(c) !== '')).slice(0, SCAN_ROWS)
-  // „Erste Datenzeile": SAP-Exporte haben teils eine Kopfzeile mit
-  // Spaltennamen davor. Deshalb die erste Zeile, deren erste Zelle nicht leer
-  // ist und die keine reine Textzeile ohne Ziffern ist.
-  const firstData = rows.find((row) => /\d/.test(row.map(cellText).join('')))
-  if (firstData && parseSwissDate(cellText(firstData[0])) !== null) return 'setupPlan'
+  const firstData = preview.firstRows.find((row) => row.some((c) => cellText(c) !== ''))
+  const first = firstData ? cellText(firstData[0]) : ''
+  if (SETUP_DATE.test(first) && parseSwissDate(first) !== null) return 'setupPlan'
 
-  if (rows.some((row) => row.some((c) => PRODUCTION_CELL.test(cellText(c))))) return 'productionPlan'
+  if (preview.firstRows.slice(0, PRODUCTION_ROWS).some((row) => PRODUCTION_CELL.test(cellText(row[0])))) return 'productionPlan'
   return 'unknown'
 }
 

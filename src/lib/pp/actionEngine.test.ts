@@ -10,73 +10,85 @@ const TODAY = '2026-10-16'
 function days(values: Partial<DayMetrics>[]): DayMetrics[] {
   return values.map((v, i) => ({
     day: addDays(TODAY, i - values.length + 1),
-    otPlan: null,
-    otActual: null,
+    pvPlan: null,
+    pvActual: null,
+    dlp: null,
+    kmix: null,
     executionRatePct: null,
     wrongShift: null,
+    avgStartOffsetMin: null,
+    unplanned: null,
     ...v,
   }))
 }
+const ids = (r: ReturnType<typeof runActionEngine>) => r.suggestions.map((s) => s.ruleId)
 
 describe('runActionEngine', () => {
-  it('waits while a rule has fewer days than it needs', () => {
-    const r = runActionEngine(days([{ otPlan: 100, otActual: 110 }, { otPlan: 100, otActual: 110 }]), TODAY, CFG)
+  it('waits while a rule has fewer days than it needs, instead of staying silent', () => {
+    const r = runActionEngine(days([{ pvPlan: 100, pvActual: 110 }, { pvPlan: 100, pvActual: 110 }]), CFG, 2)
     expect(r.suggestions).toEqual([])
-    expect(r.pending).toContainEqual({ ruleId: 'otDeviation', daysWithData: 2, daysMissing: 1 })
-    expect(r.pending.map((p) => p.ruleId)).toEqual(['otDeviation', 'executionRate', 'wrongShift'])
+    expect(r.pending).toContainEqual({ ruleId: 'otOver', daysWithData: 2, daysMissing: 1 })
+    expect(r.pending.find((p) => p.ruleId === 'negativeDlp')).toEqual({ ruleId: 'negativeDlp', daysWithData: 0, daysMissing: 2 })
   })
 
-  it('flags OT over plan on three data days in a row (D1)', () => {
-    const r = runActionEngine(
-      days([
-        { otPlan: 100, otActual: 101 },
-        { otPlan: 100, otActual: 104 },
-        { otPlan: 100, otActual: 105 },
-        { otPlan: 100, otActual: 103 },
-      ]),
-      TODAY,
+  it('D1: more PV used than planned on 3 days is high, less than planned is medium', () => {
+    const over = runActionEngine(
+      days([{ pvPlan: 100, pvActual: 104 }, { pvPlan: 100, pvActual: 100 }, { pvPlan: 100, pvActual: 105 }, { pvPlan: 100, pvActual: 103.5 }]),
       CFG,
+      2,
     )
-    expect(r.suggestions).toHaveLength(1)
-    expect(r.suggestions[0]).toMatchObject({ ruleId: 'otDeviation', dimension: 'd1', direction: 'over', severity: 'medium' })
-    expect(r.suggestions[0].days).toHaveLength(3)
-    expect(r.suggestions[0].value).toBeCloseTo(4)
+    expect(over.suggestions).toEqual([expect.objectContaining({ ruleId: 'otOver', dimension: 'd1', severity: 'high', ofDays: 4 })])
+    expect(over.suggestions[0].days).toHaveLength(3)
+
+    const under = runActionEngine(days(Array(3).fill({ pvPlan: 100, pvActual: 90 })), CFG, 2)
+    expect(under.suggestions).toEqual([expect.objectContaining({ ruleId: 'otUnder', severity: 'medium' })])
   })
 
-  it('does not treat scattered deviations as a run', () => {
-    const r = runActionEngine(
-      days([
-        { otPlan: 100, otActual: 105 },
-        { otPlan: 100, otActual: 100 },
-        { otPlan: 100, otActual: 105 },
-        { otPlan: 100, otActual: 100 },
-        { otPlan: 100, otActual: 105 },
-      ]),
-      TODAY,
-      CFG,
-    )
-    expect(r.suggestions.filter((s) => s.ruleId === 'otDeviation')).toEqual([])
+  it('D1: exactly 3 h deviation is not yet conspicuous', () => {
+    expect(ids(runActionEngine(days(Array(3).fill({ pvPlan: 100, pvActual: 103 })), CFG, 2))).toEqual([])
   })
 
-  it('flags a low execution rate on several days in the window (D2)', () => {
-    const r = runActionEngine(
-      days([{ executionRatePct: 50 }, { executionRatePct: 95 }, { executionRatePct: 60 }, { executionRatePct: 65 }]),
-      TODAY,
-      CFG,
-    )
-    expect(r.suggestions[0]).toMatchObject({ ruleId: 'executionRate', dimension: 'd2', severity: 'high' })
-    expect(r.suggestions[0].days).toHaveLength(3)
+  it('D2: execution rate below 70 % on 2 days', () => {
+    const r = runActionEngine(days([{ executionRatePct: 50 }, { executionRatePct: 95 }, { executionRatePct: 69 }]), CFG, 2)
+    expect(r.suggestions).toEqual([expect.objectContaining({ ruleId: 'executionRate', dimension: 'd2', severity: 'high' })])
   })
 
-  it('ignores days outside the window', () => {
-    const old = days(Array(20).fill({ executionRatePct: 10 })).slice(0, 6)
-    const r = runActionEngine(old, TODAY, CFG)
-    expect(r.suggestions).toEqual([])
+  it('D4: wrong shift fires on a total of 3 even within one day, or on 3 affected days', () => {
+    expect(ids(runActionEngine(days([{ wrongShift: 3 }]), CFG, 2))).toEqual(['wrongShift'])
+    expect(ids(runActionEngine(days([{ wrongShift: 1 }, { wrongShift: 1 }]), CFG, 2))).toEqual([])
+    const threeDays = runActionEngine(days([{ wrongShift: 1 }, { wrongShift: 1 }, { wrongShift: 1 }]), CFG, 2)
+    expect(threeDays.suggestions[0]).toMatchObject({ ruleId: 'wrongShift', total: 3 })
   })
 
-  it('gives an info hint when wrong shifts are just under the threshold (D4)', () => {
-    const r = runActionEngine(days([{ wrongShift: 3 }, { wrongShift: 0 }, { wrongShift: 2 }]), TODAY, CFG)
-    expect(r.suggestions).toEqual([expect.objectContaining({ ruleId: 'wrongShift', severity: 'info', value: 5 })])
+  it('D4: average start more than 30 min late on 3 days', () => {
+    const r = runActionEngine(days([{ avgStartOffsetMin: 31 }, { avgStartOffsetMin: 45 }, { avgStartOffsetMin: -40 }, { avgStartOffsetMin: 60 }]), CFG, 2)
+    expect(r.suggestions).toEqual([expect.objectContaining({ ruleId: 'lateStart', severity: 'medium' })])
+  })
+
+  it('D2: 3 unplanned changeovers in the window', () => {
+    const r = runActionEngine(days([{ unplanned: 1 }, { unplanned: 0 }, { unplanned: 2 }]), CFG, 2)
+    expect(r.suggestions).toEqual([expect.objectContaining({ ruleId: 'unplanned', total: 3 })])
+  })
+
+  it('D3: negative DLP on 2 days and Kmix under target on 3 days', () => {
+    const r = runActionEngine(days([{ dlp: -1, kmix: 1.5 }, { dlp: 2, kmix: 1.9 }, { dlp: -0.5, kmix: 1.8 }]), CFG, 2)
+    expect(ids(r)).toEqual(['negativeDlp', 'lowKmix'])
+  })
+
+  it('D3: the Kmix rule waits while there is no target', () => {
+    const r = runActionEngine(days(Array(5).fill({ kmix: 0.5 })), CFG, null)
+    expect(ids(r)).not.toContain('lowKmix')
+    expect(r.pending.map((p) => p.ruleId)).toContain('lowKmix')
+  })
+
+  it('looks only at the most recent 7 days with data', () => {
+    const old = days([...Array(3).fill({ executionRatePct: 10 }), ...Array(7).fill({ executionRatePct: 95 })])
+    expect(ids(runActionEngine(old, CFG, 2))).toEqual([])
+  })
+
+  it('sorts high before medium', () => {
+    const r = runActionEngine(days([{ unplanned: 3, dlp: -1 }, { dlp: -1 }]), CFG, 2)
+    expect(r.suggestions.map((s) => s.severity)).toEqual(['high', 'medium'])
   })
 })
 
@@ -97,7 +109,7 @@ describe('assessMaturity', () => {
       presenceDays: 2,
       productivityDays: 2,
       pendingRules: [
-        { ruleId: 'otDeviation', daysWithData: 2, daysMissing: 1 },
+        { ruleId: 'otOver', daysWithData: 2, daysMissing: 1 },
         { ruleId: 'executionRate', daysWithData: 2, daysMissing: 1 },
         { ruleId: 'wrongShift', daysWithData: 2, daysMissing: 1 },
       ],

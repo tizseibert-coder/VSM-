@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calcConfidence, confidenceLevel, dataAmountScore, dispersionScore, forecastUt } from './forecast'
+import { calcConfidence, confidenceLevel, dataAmountScore, dispersionScore, forecastDlp, forecastUt } from './forecast'
 
 describe('confidence', () => {
   it('grows with the square root of the data amount and caps at 30 days', () => {
@@ -9,10 +9,13 @@ describe('confidence', () => {
     expect(dataAmountScore(7.5)).toBeCloseTo(0.5)
   })
 
-  it('rewards low dispersion', () => {
+  it('scores dispersion as 1 − 2 × CV with the population standard deviation', () => {
     expect(dispersionScore([1, 1, 1])).toBe(1)
     expect(dispersionScore([1])).toBe(0)
-    expect(dispersionScore([0.5, 1.5])).toBeLessThan(dispersionScore([0.95, 1.05]))
+    // Mittel 1, σ (÷ n) = 0.1 → CV 0.1 → 1 − 0.2
+    expect(dispersionScore([0.9, 1.1])).toBeCloseTo(0.8)
+    // CV ab 0.5 gibt keinen Streuungsanteil mehr
+    expect(dispersionScore([0.5, 1.5])).toBe(0)
   })
 
   it('weights data amount 60 % and dispersion 40 %', () => {
@@ -61,5 +64,21 @@ describe('forecastUt', () => {
 
   it('gives no number rather than an invented one', () => {
     expect(forecastUt(null, []).value).toBeNull()
+  })
+})
+
+describe('forecastDlp', () => {
+  it('computes UT × f − planned OT with a ±σ band', () => {
+    const history = Array.from({ length: 30 }, (_, i) => ({ utActual: i % 2 === 0 ? 90 : 110, utPlanned: 100 }))
+    const ut = forecastUt(100, history)
+    const dlp = forecastDlp(ut, 100, history, 30, 0.5)
+    expect(ut.value).toBeCloseTo(100)
+    expect(dlp?.value).toBeCloseTo(20)
+    expect(dlp?.low).toBeCloseTo(15)
+    expect(dlp?.high).toBeCloseTo(25)
+  })
+
+  it('has no DLP forecast without a UT forecast', () => {
+    expect(forecastDlp(forecastUt(null, []), null, [], 30, 0.5)).toBeNull()
   })
 })

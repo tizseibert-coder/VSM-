@@ -246,6 +246,7 @@ CREATE TABLE IF NOT EXISTS public.pp_shift_roster (
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   kuerzel         text NOT NULL,
   team            text,
+  role            text,
   week_sunday     date NOT NULL,
   codes           text[] NOT NULL,
   updated_at      timestamptz NOT NULL DEFAULT now(),
@@ -253,6 +254,9 @@ CREATE TABLE IF NOT EXISTS public.pp_shift_roster (
   CONSTRAINT pp_shift_roster_seven_days CHECK (cardinality(codes) = 7),
   CONSTRAINT pp_shift_roster_sunday CHECK (extract(isodow FROM week_sunday) = 7)
 );
+
+COMMENT ON COLUMN public.pp_shift_roster.role IS
+  'Rollen-Code aus pp_settings (z. B. Einrichter); bestimmt, mit welchem Gewicht die Stunden in die geplante OT eingehen (plannedOtHoursForDay). NULL = erste Rolle der Einstellungen.';
 
 COMMENT ON COLUMN public.pp_shift_roster.codes IS
   'Sieben Schichtcodes, Sonntag zuerst wie die Schichtplan-Vorlage; NULL-Element = kein Eintrag. Bedeutung der Codes in pp_settings.';

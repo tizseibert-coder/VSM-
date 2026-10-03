@@ -3,18 +3,19 @@
 // Konfidenz (aus dem Konzept): 60 % Datenmenge, 40 % Streuung.
 //   Datenmenge: Wurzelkurve, volle Wirkung ab FULL_EFFECT_DAYS Tagen, genutzt
 //               werden hoechstens die letzten MAX_DAYS Tage.
-//   Streuung:   1 − Variationskoeffizient der genutzten Werte, auf 0..1
-//               begrenzt. [Annahme — das Konzept nennt die Gewichtung, nicht
-//               die Abbildung der Streuung auf 0..1. Gegen das HTML-Tool
-//               pruefen.]
+//   Streuung:   max(0, 1 − 2 × Variationskoeffizient), Standardabweichung
+//               ueber alle Werte (/n) — beides wie computeForecast im
+//               Vorgaengertool.
 //
-// Prognose ohne Kaltstart: Gerechnet wird mit dem Realisierungsgrad
-// Ist-UT ÷ Vorgabe-UT der vergangenen Tage, nicht mit der UT selbst — die
-// haengt davon ab, wie viele Maschinen an einem Tag laufen, der
-// Realisierungsgrad nicht. Ohne Historie ist er 1 (die Vorgabe gilt), mit
-// jedem Tag gewinnt die eigene Historie an Gewicht, und zwar mit demselben
-// Datenmengen-Anteil wie oben: eine Kurve, nicht zwei.
-// [Annahme — gegen das HTML-Tool pruefen.]
+// Prognose ohne Kaltstart: Das Vorgaengertool nimmt die Plan-UT unveraendert
+// als Prognose und vermerkt im Code, dass der bessere Weg der
+// Realisierungsgrad Ist-UT ÷ Plan-UT waere, sobald die Plan-UT mitgespeichert
+// wird. Das tut diese Fassung: Ohne Historie ist der Realisierungsgrad 1 (die
+// Prognose ist die Plan-UT, wie bisher), mit jedem Tag gewinnt die eigene
+// Historie an Gewicht, und zwar mit demselben Datenmengen-Anteil wie oben —
+// eine Kurve, nicht zwei. Die Streuung misst dann den Realisierungsgrad statt
+// der rohen Tages-UT, die schon deshalb schwankt, weil unterschiedlich viele
+// Maschinen laufen.
 
 export const FULL_EFFECT_DAYS = 30
 export const MAX_DAYS = 60
@@ -32,9 +33,15 @@ export function dispersionScore(values: readonly number[]): number {
   if (values.length < 2) return 0
   const mean = values.reduce((s, v) => s + v, 0) / values.length
   if (mean <= 0) return 0
-  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / (values.length - 1)
-  const cv = Math.sqrt(variance) / mean
-  return Math.min(1, Math.max(0, 1 - cv))
+  const cv = standardDeviation(values) / mean
+  return Math.min(1, Math.max(0, 1 - 2 * cv))
+}
+
+/** Standardabweichung ueber alle Werte (geteilt durch n, nicht n − 1), wie im Vorgaengertool. */
+export function standardDeviation(values: readonly number[]): number {
+  if (values.length === 0) return 0
+  const mean = values.reduce((s, v) => s + v, 0) / values.length
+  return Math.sqrt(values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length)
 }
 
 export function confidenceLevel(percent: number): ConfidenceLevel {
@@ -92,4 +99,34 @@ export function forecastUt(utPlanned: number | null, history: readonly UtHistory
   const confidence = calcConfidence(actuals)
   if (actuals.length === 0) return { value: null, basis: 'none', confidence }
   return { value: actuals.reduce((s, v) => s + v, 0) / actuals.length, basis: 'history-only', confidence }
+}
+
+export interface DlpForecast {
+  value: number
+  /** DLP bei einer Standardabweichung weniger bzw. mehr UT — die Bandbreite der Prognosekarte. */
+  low: number
+  high: number
+}
+
+/**
+ * DLP-Prognose: Prognose-UT × f − geplante OT, mit Bandbreite ±σ der UT.
+ * σ ist die Streuung des Realisierungsgrads, umgerechnet auf die Plan-UT
+ * dieses Tages; ohne Plan-UT die Streuung der Ist-UT selbst.
+ */
+export function forecastDlp(
+  ut: UtForecast,
+  utPlanned: number | null,
+  history: readonly UtHistoryDay[],
+  plannedOt: number,
+  factor: number,
+): DlpForecast | null {
+  if (ut.value === null) return null
+  const used = history.slice(-MAX_DAYS)
+  const sigma =
+    ut.basis === 'blended'
+      ? standardDeviation(used.filter((d) => d.utPlanned !== null && d.utPlanned > 0).map((d) => d.utActual / (d.utPlanned as number))) *
+        (utPlanned ?? 0)
+      : standardDeviation(used.map((d) => d.utActual))
+  const at = (u: number) => u * factor - plannedOt
+  return { value: at(ut.value), low: at(ut.value - sigma), high: at(ut.value + sigma) }
 }

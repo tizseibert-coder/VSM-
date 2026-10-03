@@ -26,6 +26,19 @@ export interface ShiftDefinition {
   startMinutes?: number
 }
 
+/**
+ * Eine Rolle im Schichtplan und wie stark ihre Stunden in die geplante OT
+ * eingehen. Im Vorgaengertool: Einrichter voll, Lernende und Unterstuetzer
+ * anteilig, alle anderen gar nicht — wer nicht ruesten oder bedienen kann,
+ * erzeugt keine Auftragszeit. Die Gewichte sind Werkswerte und stehen in den
+ * Einstellungen der Organisation; die Vorgabe kennt nur eine Rolle mit 1.
+ */
+export interface RoleDefinition {
+  code: string
+  label: string
+  weight: number
+}
+
 /** Zwei Stufen, damit eine Ampel nicht an einer einzigen Zahl haengt. */
 export interface Band {
   green: number
@@ -40,6 +53,7 @@ export interface PpSettings {
    */
   dlpFactor: number | null
   shifts: ShiftDefinition[]
+  roles: RoleDefinition[]
   /**
    * Codes, die beim Import auf einen anderen Code abgebildet werden, bevor
    * sie gespeichert werden. Vorgabe: krank und Ferien werden „abwesend" —
@@ -61,17 +75,28 @@ export interface PpSettings {
     /** Ungeplante Umruestungen je Woche. Kleiner ist besser. */
     unplannedPerWeek: Band
   }
+  /** Die Regeln aus computeActionSuggestions des Vorgaengertools, als Zahlen. */
   actionEngine: {
-    /** Ab wie vielen Stunden OT-Abweichung vom Plan ein Tag auffaellig ist. */
+    /** Wie viele der juengsten Tage mit Daten die Regeln anschauen. */
+    windowDataDays: number
+    /** Ab so vielen Stunden PV-Ist ueber/unter PV-Plan ist ein Tag auffaellig (D1). */
     otDeviationHours: number
-    /** Ausfuehrungsrate in Prozent, unter der ein Tag auffaellig ist. */
+    otDeviationDays: number
+    /** Ausfuehrungsrate in Prozent, unter der ein Tag auffaellig ist (D2). */
     executionRateBelowPct: number
-    /** Falsche Schichtzuordnungen je Tag, ab denen ein Tag auffaellig ist. */
-    wrongShiftPerDay: number
-    /** Auffaellige Tage (in Folge bzw. im Fenster), ab denen eine Regel anschlaegt. */
-    minDays: number
-    /** Fenster in Kalendertagen, ueber das die Regeln schauen. */
-    windowDays: number
+    executionRateDays: number
+    /** Falsche Schicht: Summe in der Woche *oder* Zahl betroffener Tage (D4). */
+    wrongShiftTotal: number
+    wrongShiftDays: number
+    /** Ø Rueststart spaeter als so viele Minuten (D4). */
+    lateStartMin: number
+    lateStartDays: number
+    /** Ungeplante Umruestungen, Summe ueber das Fenster (D2). */
+    unplannedTotal: number
+    /** Tage mit negativem DLP (D3). */
+    negativeDlpDays: number
+    /** Tage mit Kmix unter Ziel (D3). */
+    lowKmixDays: number
   }
 }
 
@@ -81,13 +106,14 @@ export const DEFAULT_SHIFTS: ShiftDefinition[] = [
   { code: 'n', label: 'Nacht', kind: 'work', hours: 8, startMinutes: 22 * 60 },
   { code: 't', label: 'Teilzeit', kind: 'work', hours: 4 },
   { code: 'a', label: 'Abwesend', kind: 'absent', hours: 0 },
-  { code: 'l', label: 'Schule', kind: 'absent', hours: 0 },
-  { code: 'p', label: 'Kompensation', kind: 'absent', hours: 0 },
 ]
+
+export const DEFAULT_ROLES: RoleDefinition[] = [{ code: 'default', label: 'Mitarbeitende', weight: 1 }]
 
 export const DEFAULT_SETTINGS: PpSettings = {
   dlpFactor: null,
   shifts: DEFAULT_SHIFTS,
+  roles: DEFAULT_ROLES,
   importCodeMap: { k: 'a', h: 'a' },
   thresholds: {
     deviationPct: { green: 3, yellow: 8 },
@@ -98,11 +124,18 @@ export const DEFAULT_SETTINGS: PpSettings = {
     unplannedPerWeek: { green: 1, yellow: 3 },
   },
   actionEngine: {
+    windowDataDays: 7,
     otDeviationHours: 3,
+    otDeviationDays: 3,
     executionRateBelowPct: 70,
-    wrongShiftPerDay: 2,
-    minDays: 3,
-    windowDays: 14,
+    executionRateDays: 2,
+    wrongShiftTotal: 3,
+    wrongShiftDays: 3,
+    lateStartMin: 30,
+    lateStartDays: 3,
+    unplannedTotal: 3,
+    negativeDlpDays: 2,
+    lowKmixDays: 3,
   },
 }
 
@@ -116,6 +149,7 @@ export function resolveSettings(stored: Partial<PpSettings> | null | undefined):
   return {
     dlpFactor: validFactor(stored.dlpFactor) ? stored.dlpFactor : null,
     shifts: stored.shifts && stored.shifts.length > 0 ? stored.shifts : DEFAULT_SETTINGS.shifts,
+    roles: stored.roles && stored.roles.length > 0 ? stored.roles : DEFAULT_SETTINGS.roles,
     importCodeMap: stored.importCodeMap ?? DEFAULT_SETTINGS.importCodeMap,
     thresholds: { ...DEFAULT_SETTINGS.thresholds, ...stored.thresholds },
     actionEngine: { ...DEFAULT_SETTINGS.actionEngine, ...stored.actionEngine },

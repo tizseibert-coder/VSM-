@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, isoWeek, parseSwissDate, productionDayForPlanDate } from './dates'
-import { countUnknownCodes, normalizeRosterCode, pvHoursForDay, splitShiftHours } from './shifts'
+import { countUnknownCodes, normalizeRosterCode, plannedOtHoursForDay, pvHoursForDay, splitShiftHours } from './shifts'
 import { DEFAULT_SETTINGS, resolveSettings, type ShiftDefinition } from './settings'
 
 // Ein Werk mit 8.5-h-Tagschichten und einer Nacht 22:00–05:00 — das Muster
@@ -49,6 +49,32 @@ describe('pvHoursForDay', () => {
 
   it('counts unknown codes as zero instead of guessing', () => {
     expect(pvHoursForDay([{ day: '2026-10-05', code: 'x' }], '2026-10-05', PLANT)).toBe(0)
+  })
+})
+
+describe('plannedOtHoursForDay', () => {
+  const roles = [
+    { code: 'setter', label: 'Einrichter', weight: 1 },
+    { code: 'trainee', label: 'Lernende', weight: 0.5 },
+    { code: 'other', label: 'Übrige', weight: 0 },
+  ]
+
+  it('weights each hour by the role, with the same night split as PV', () => {
+    const entries = [
+      { day: '2026-10-05', code: 'f', role: 'setter' },
+      { day: '2026-10-05', code: 'f', role: 'trainee' },
+      { day: '2026-10-05', code: 'f', role: 'other' },
+      { day: '2026-10-04', code: 'n', role: 'setter' },
+    ]
+    expect(plannedOtHoursForDay(entries, '2026-10-05', PLANT, roles)).toBe(8.5 + 4.25 + 0 + 5)
+  })
+
+  it('counts an unknown role as zero and a missing role with the first role', () => {
+    const entries = [
+      { day: '2026-10-05', code: 'f', role: 'ghost' },
+      { day: '2026-10-05', code: 'f' },
+    ]
+    expect(plannedOtHoursForDay(entries, '2026-10-05', PLANT, roles)).toBe(8.5)
   })
 })
 

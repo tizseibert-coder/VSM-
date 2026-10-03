@@ -4,11 +4,21 @@
 // Zeitzone — dieselbe Ueberlegung wie in dates.ts: Gerechnet wird mit dem,
 // was auf dem Rüstplan und in der Zeiterfassung steht, nicht mit Zeitpunkten.
 //
-// Zuordnung: eine Ist-Umruestung gehoert zur geplanten mit gleicher Maschine
-// und gleichem Artikel; gibt es mehrere, zur zeitlich naechsten. Plangemaess
-// heisst: zugeordnet *und* in der geplanten Schicht begonnen. Wer in der
-// richtigen Schicht 40 Minuten spaet ruestet, ist plangemaess, aber im
-// Startversatz sichtbar — die beiden Kennzahlen messen Verschiedenes.
+// Definitionen wie im Vorgaengertool (getBetaWeekSummary):
+// - Zuordnung ueber Maschine + Artikel. Gibt es mehrere Ist-Eintraege, nimmt
+//   diese Fassung den zeitlich naechsten statt den ersten der Liste.
+// - Ausfuehrungsrate = zugeordnete ÷ geplante Umruestungen. Ob in der
+//   richtigen Schicht, zaehlt dort nicht, sondern separat als „falsche Schicht".
+// - Massgeblich fuer Schicht und Versatz ist das *Ende* der Ist-Ruestung,
+//   wenn es erfasst ist, sonst ihr Beginn — die IST-Rüstdatei meldet die
+//   Fertigmeldung, nicht immer den Start.
+// - Startversatz = Mittel von (Ist − Plan) mit Vorzeichen: Wer mal frueher,
+//   mal spaeter ruestet, mittelt sich heraus; die Ampel bewertet die
+//   durchschnittliche Verspaetung.
+// - Ungeplant = Ist-Eintraege, zu deren Maschine + Artikel gar nichts geplant war.
+//
+// Positionen ohne Umruestung (Ruesttyp „N") gehoeren nicht in `planned` —
+// das filtert der Aufrufer, diese Datei kennt keine Ruesttypen.
 
 import type { ShiftDefinition } from './settings'
 
@@ -23,6 +33,8 @@ export interface ActualChangeover {
   machine: string
   article: string
   actualStart: string
+  /** Fertigmeldung der Ruestung, wenn erfasst. */
+  actualEnd?: string
 }
 
 const WALL_CLOCK = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
@@ -58,21 +70,25 @@ export function shiftAt(text: string, shifts: readonly ShiftDefinition[]): { cod
 export interface ExecutionStats {
   planned: number
   matched: number
-  onPlan: number
   wrongShift: number
   notExecuted: number
   unplanned: number
-  /** onPlan / planned in Prozent; null ohne geplante Umruestung. */
+  /** matched / planned in Prozent; null ohne geplante Umruestung. */
   executionRatePct: number | null
-  /** Mittlerer Betrag des Startversatzes in Minuten ueber alle zugeordneten. */
+  /** Mittel von (Ist − Plan) in Minuten, mit Vorzeichen, ueber alle zugeordneten. */
   avgStartOffsetMin: number | null
   /** Zuordnung je geplanter Umruestung, fuer die Anzeige in der Tageserfassung. */
   items: {
     id: string
-    actualStart: string | null
+    actualAt: string | null
     offsetMin: number | null
-    status: 'onPlan' | 'wrongShift' | 'notExecuted'
+    status: 'executed' | 'wrongShift' | 'notExecuted'
   }[]
+}
+
+/** Der Zeitpunkt, an dem eine Ist-Ruestung gemessen wird: Ende, sonst Beginn. */
+function measuredAt(a: ActualChangeover): string {
+  return a.actualEnd ?? a.actualStart
 }
 
 export function executionStats(
@@ -80,7 +96,6 @@ export function executionStats(
   actual: readonly ActualChangeover[],
   shifts: readonly ShiftDefinition[],
 ): ExecutionStats {
-  const remaining = actual.map((a, index) => ({ ...a, index, minutes: wallClockMinutes(a.actualStart) }))
   const used = new Set<number>()
 
   // Zuerst die zeitlich engsten Paare: sonst nimmt eine frueh geplante Ruestung
@@ -88,11 +103,11 @@ export function executionStats(
   const candidates: { p: number; a: number; distance: number }[] = []
   planned.forEach((p, pi) => {
     const pm = wallClockMinutes(p.plannedStart)
-    for (const a of remaining) {
+    actual.forEach((a, ai) => {
       if (a.machine === p.machine && a.article === p.article) {
-        candidates.push({ p: pi, a: a.index, distance: Math.abs(a.minutes - pm) })
+        candidates.push({ p: pi, a: ai, distance: Math.abs(wallClockMinutes(measuredAt(a)) - pm) })
       }
-    }
+    })
   })
   candidates.sort((x, y) => x.distance - y.distance)
   const matchOf = new Map<number, number>()
@@ -102,36 +117,39 @@ export function executionStats(
     used.add(c.a)
   }
 
-  let onPlan = 0
   let wrongShift = 0
   let offsetSum = 0
   const items: ExecutionStats['items'] = planned.map((p, pi) => {
     const ai = matchOf.get(pi)
-    if (ai === undefined) return { id: p.id, actualStart: null, offsetMin: null, status: 'notExecuted' as const }
-    const a = actual[ai]
-    const offsetMin = wallClockMinutes(a.actualStart) - wallClockMinutes(p.plannedStart)
-    offsetSum += Math.abs(offsetMin)
+    if (ai === undefined) return { id: p.id, actualAt: null, offsetMin: null, status: 'notExecuted' as const }
+    const at = measuredAt(actual[ai])
+    const offsetMin = wallClockMinutes(at) - wallClockMinutes(p.plannedStart)
+    offsetSum += offsetMin
     const plannedShift = shiftAt(p.plannedStart, shifts)
-    const actualShift = shiftAt(a.actualStart, shifts)
+    const actualShift = shiftAt(at, shifts)
     const sameShift =
       plannedShift !== null &&
       actualShift !== null &&
       plannedShift.code === actualShift.code &&
       plannedShift.startDay === actualShift.startDay
-    if (sameShift) onPlan++
-    else wrongShift++
-    return { id: p.id, actualStart: a.actualStart, offsetMin, status: sameShift ? ('onPlan' as const) : ('wrongShift' as const) }
+    if (!sameShift) wrongShift++
+    return { id: p.id, actualAt: at, offsetMin, status: sameShift ? ('executed' as const) : ('wrongShift' as const) }
   })
+
+  // Ungeplant heisst: fuer diese Maschine + Artikel war nichts geplant. Ein
+  // zweiter Ist-Eintrag zu einer geplanten Ruestung ist eine Wiederholung,
+  // keine ungeplante Ruestung.
+  const plannedKeys = new Set(planned.map((p) => `${p.machine}|${p.article}`))
+  const unplanned = actual.filter((a) => !plannedKeys.has(`${a.machine}|${a.article}`)).length
 
   const matched = matchOf.size
   return {
     planned: planned.length,
     matched,
-    onPlan,
     wrongShift,
     notExecuted: planned.length - matched,
-    unplanned: actual.length - used.size,
-    executionRatePct: planned.length > 0 ? (onPlan / planned.length) * 100 : null,
+    unplanned,
+    executionRatePct: planned.length > 0 ? (matched / planned.length) * 100 : null,
     avgStartOffsetMin: matched > 0 ? offsetSum / matched : null,
     items,
   }

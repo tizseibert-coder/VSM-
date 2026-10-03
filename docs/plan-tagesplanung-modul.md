@@ -201,18 +201,50 @@ Umgesetzt auf `claude/plan-tagesplanung-modul`:
   `src/types/database.ts` wird nachgezogen, sobald der erste Code die Tabellen liest (Phase 2).
 - Die ZIP-Reparatur ist zusätzlich mit Pythons `zipfile` und `unzip -t` gegengeprüft.
 
-**Annahmen, die gegen das bestehende HTML-Tool zu prüfen sind** (es lag in dieser Sitzung nicht vor):
+### Abgleich mit dem Vorgängertool (prodplan v11, 03.10.2026)
 
-1. Streuungsanteil der Konfidenz: `1 − Variationskoeffizient`, auf 0..1 begrenzt.
-2. Prognose über den Realisierungsgrad Ist-UT ÷ Vorgabe-UT, Gewicht der Historie = Datenmengen-Anteil.
-3. „Plangemäss" = zugeordnet und in der geplanten Schicht begonnen; Zuordnung über Maschine + Artikel,
-   bei mehreren die zeitlich nächste.
-4. Regel D1 vergleicht OT-Ist mit dem PV-Plan des Tages (das Konzept nennt „OT über Plan", führt OT
-   aber ohne eigenes Soll).
-5. Regel D4 schlägt ab 2 falschen Schichtzuordnungen je Tag an 3 Tagen im Fenster an; Schwellen sind
-   Einstellungen.
-6. Erste Datenzeile des Rüstplans = erste Zeile mit Ziffern (überspringt eine Kopfzeile).
-7. Kmix-Ausgangswert ohne Faktor: Median der ersten 10 Tage.
+Die Rechenregeln sind gegen das HTML-Tool geprüft und angeglichen. Übernommen wie dort:
+
+- **Konfidenz:** `0.6 × min(1, √(n/30)) + 0.4 × max(0, 1 − 2 × CV)`, Standardabweichung über alle Werte (÷ n), letzte 60 Tage.
+- **DLP-Prognose** mit Bandbreite ±σ.
+- **Ausführungsrate** = zugeordnete ÷ geplante Umrüstungen (ohne Rüsttyp „N"); die falsche Schicht zählt
+  nicht dagegen, sondern separat.
+- **Schicht und Versatz** werden am Ende der Ist-Rüstung gemessen, wenn es erfasst ist. Der Startversatz
+  ist ein Mittel mit Vorzeichen.
+- **Aktions-Engine:** acht Regeln mit den Schwellen des Tools (D1 OT über/unter Plan ±3 h an 3 Tagen ·
+  D2 Ausführungsrate < 70 % an 2 Tagen · D4 falsche Schicht ≥ 3 gesamt oder an 3 Tagen · D4 Ø Start
+  > 30 min an 3 Tagen · D2 ≥ 3 ungeplante · D3 DLP < 0 an 2 Tagen · D3 Kmix < Ziel an 3 Tagen), über die
+  letzten 7 Tage mit Daten.
+- **Formaterkennung** Zeichen für Zeichen wie `detectXlsxKind`.
+- **Rollengewichte für die geplante OT** (Einrichter, Unterstützung, Lernende, Übrige). Die Gewichte sind
+  Werkswerte und stehen in `pp_settings.roles`, nicht im Code. Neu ist dafür `pp_shift_roster.role`.
+
+Bewusst anders als im Tool:
+
+1. **D1-Vorzeichen.** Im Tool ist `pv_delta = Ist − Plan`, die Regel liest `pv_delta < −3` aber als „mehr
+   OT verbraucht als geplant". Das ist umgekehrt: Dort wird *weniger* OT verbraucht. Hier heisst
+   „mehr verbraucht" auch wirklich Ist > Plan. Dasselbe gilt für die Hinweise im Tagesabschluss.
+   **Im laufenden Tool sind die beiden D1-Meldungen damit vertauscht.**
+2. **Prognose:** Das Tool nimmt die Plan-UT unverändert und vermerkt, dass der Realisierungsgrad Ist ÷ Plan
+   besser wäre, sobald die Plan-UT mitgespeichert wird. Das tut diese Fassung. Ohne Historie bleibt die
+   Prognose die Plan-UT.
+3. **Geplante OT:** Die Nachtschicht wird wie bei den PV-Stunden 2 h / 5 h auf die Kalendertage verteilt.
+   Im Tool zählt sie hier mit allen 7 h auf den Starttag.
+4. **Falsche Schicht** vergleicht Schicht *und* Starttag. Im Tool genügt der Schichtcode, sodass Montag
+   früh gegen Dienstag früh als „richtige Schicht" zählt.
+5. **Mehrere Ist-Einträge** für Maschine + Artikel: Die zeitlich nächste wird zugeordnet, nicht die erste
+   der Liste. Ein zweiter Eintrag zu einem geplanten Schlüssel ist nicht „ungeplant".
+6. **Vortag der Nachtschicht** über den echten Kalender. Im Tool ist der Vortag von Sonntag der Samstag
+   derselben Wochenzeile.
+7. **ZIP-Reparatur** schreibt nur Felder, die 0 sind, und lässt Bit 3 stehen. Das Tool überschreibt immer
+   und löscht Bit 3.
+8. **Schichtcode `l`:** Im Konzept „Schule", im Tool „Lernende" mit 8.5 h. Die Vorgabe kennt `l` deshalb
+   gar nicht. Jedes Werk legt die Bedeutung in seinen Einstellungen fest, und bis dahin wird ein `l`
+   beim Import als unbekannter Code gemeldet.
+
+**Datenschutz:** Das HTML-Tool enthält eingebettete Echtdaten: Vornamen von Mitarbeitenden mit Rollen,
+Maschinen, Artikel, Werkzeuge, Material und Tageswerte von UT/OT. Nichts davon ist in dieses Repository
+übernommen. Die Datei gehört nicht ins Repository und nicht in Testdaten.
 
 ## Umsetzungsreihenfolge (bei Freigabe, Schritt für Schritt)
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { runActionEngine, type DayMetrics } from '../actionEngine'
+import { RULE_COUNT, runActionEngine, type DayMetrics } from '../actionEngine'
 import { executionStats } from '../execution'
 import { forecastUt } from '../forecast'
-import { calcKmix, resolveKmixTarget } from '../kpi'
+import { calcDlp, calcKmix, resolveKmixTarget } from '../kpi'
 import { assessMaturity } from '../maturity'
 import { countUnknownCodes, normalizeRosterCode } from '../shifts'
 import { generateFactory, type FixtureFactory } from './generator'
@@ -23,6 +23,12 @@ describe('generateFactory', () => {
     expect(countUnknownCodes(normalized).length).toBeGreaterThan(0)
   })
 
+  it('plans OT with role weights below the unweighted PV hours', () => {
+    const day = generateFactory({ days: 3 }).days.find((d) => d.pvPlan > 0)
+    expect(day && day.otPlan).toBeGreaterThan(0)
+    expect(day && day.otPlan).toBeLessThan(day?.pvPlan ?? 0)
+  })
+
   it('uses only invented numbers in the shape of real exports', () => {
     const f = generateFactory({ days: 3 })
     for (const m of f.machines) expect(m.id).toMatch(/^T\d{3}-A\d{2}$/)
@@ -36,12 +42,24 @@ describe('maturity over time', () => {
   function assess(f: FixtureFactory) {
     const production = f.days.filter((d) => d.planned.length > 0)
     const productive = f.days.filter((d) => d.utActual !== null && d.otActual !== null)
+    const kmix = productive.map((d) => calcKmix(d.utActual as number, d.otActual as number))
+    const target = resolveKmixTarget(f.settings, kmix)
     const metrics: DayMetrics[] = production.map((d) => {
       const stats = executionStats(d.planned, d.actual, f.settings.shifts)
-      return { day: d.day, otPlan: d.pvPlan, otActual: d.otActual, executionRatePct: stats.executionRatePct, wrongShift: stats.wrongShift }
+      const hasUtOt = d.utActual !== null && d.otActual !== null
+      return {
+        day: d.day,
+        pvPlan: d.pvPlan,
+        pvActual: d.otActual,
+        dlp: hasUtOt ? calcDlp(d.utActual as number, d.otActual as number, 0.5) : null,
+        kmix: hasUtOt ? calcKmix(d.utActual as number, d.otActual as number) : null,
+        executionRatePct: stats.executionRatePct,
+        wrongShift: stats.wrongShift,
+        avgStartOffsetMin: stats.avgStartOffsetMin,
+        unplanned: stats.unplanned,
+      }
     })
-    const today = f.days.at(-1)?.day ?? '2026-01-05'
-    const engine = runActionEngine(metrics, today, f.settings.actionEngine)
+    const engine = runActionEngine(metrics, f.settings.actionEngine, target.target)
     const maturity = assessMaturity({
       hasPlan: production.length > 0,
       executionDays: production.length,
@@ -49,11 +67,10 @@ describe('maturity over time', () => {
       productivityDays: productive.length,
       hasDlpFactor: f.settings.dlpFactor !== null,
       pendingRules: engine.pending,
-      totalRules: 3,
+      totalRules: RULE_COUNT,
     })
-    const kmix = productive.map((d) => calcKmix(d.utActual as number, d.otActual as number))
     const history = productive.map((d) => ({ utActual: d.utActual as number, utPlanned: d.utPlanned }))
-    return { maturity, engine, target: resolveKmixTarget(f.settings, kmix), forecast: forecastUt(100, history) }
+    return { maturity, engine, target, forecast: forecastUt(100, history) }
   }
   const state = (r: ReturnType<typeof assess>, key: string) => r.maturity.stages.find((s) => s.key === key)?.state
 

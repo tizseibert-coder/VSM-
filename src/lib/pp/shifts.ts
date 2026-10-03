@@ -8,11 +8,13 @@
 // nicht aus festen Zahlen — ein Werk mit Nacht 22:00–06:00 bekommt 2 h und 6 h.
 
 import { addDays } from './dates'
-import type { ShiftDefinition } from './settings'
+import type { RoleDefinition, ShiftDefinition } from './settings'
 
 export interface RosterEntry {
   day: string
   code: string
+  /** Rolle der Person (RoleDefinition.code); fehlt sie, zaehlt die erste Rolle der Einstellungen. */
+  role?: string
 }
 
 const MINUTES_PER_DAY = 24 * 60
@@ -33,6 +35,36 @@ export function splitShiftHours(shift: ShiftDefinition): { startDay: number; nex
  * gemeldet (normalizeRosterCode), nicht hier still geraten.
  */
 export function pvHoursForDay(entries: readonly RosterEntry[], day: string, shifts: readonly ShiftDefinition[]): number {
+  return weightedHoursForDay(entries, day, shifts, () => 1)
+}
+
+/**
+ * Geplante OT eines Kalendertags: wie pvHoursForDay, aber jede Stunde mit dem
+ * Gewicht der Rolle (Einrichter voll, Lernende anteilig, …). Das ist die
+ * Zahl, gegen die die DLP-Prognose rechnet: UT × f − geplante OT.
+ *
+ * Abweichung vom Vorgaengertool (computeOtForDate): Dort zaehlt die
+ * Nachtschicht mit allen 7 h auf ihren Starttag. Hier wird sie wie die
+ * PV-Stunden aufgeteilt, damit Prognose und kalendertaegliche Ist-OT ueber
+ * denselben Zeitraum reden.
+ */
+export function plannedOtHoursForDay(
+  entries: readonly RosterEntry[],
+  day: string,
+  shifts: readonly ShiftDefinition[],
+  roles: readonly RoleDefinition[],
+): number {
+  const weights = new Map(roles.map((r) => [r.code, r.weight]))
+  const fallback = roles[0]?.weight ?? 1
+  return weightedHoursForDay(entries, day, shifts, (e) => (e.role === undefined ? fallback : (weights.get(e.role) ?? 0)))
+}
+
+function weightedHoursForDay(
+  entries: readonly RosterEntry[],
+  day: string,
+  shifts: readonly ShiftDefinition[],
+  weight: (entry: RosterEntry) => number,
+): number {
   const byCode = new Map(shifts.map((s) => [s.code, s]))
   const previous = addDays(day, -1)
   let hours = 0
@@ -40,8 +72,8 @@ export function pvHoursForDay(entries: readonly RosterEntry[], day: string, shif
     const shift = byCode.get(entry.code)
     if (!shift) continue
     const split = splitShiftHours(shift)
-    if (entry.day === day) hours += split.startDay
-    else if (entry.day === previous) hours += split.nextDay
+    if (entry.day === day) hours += split.startDay * weight(entry)
+    else if (entry.day === previous) hours += split.nextDay * weight(entry)
   }
   return hours
 }

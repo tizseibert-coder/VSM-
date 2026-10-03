@@ -32,7 +32,7 @@ export interface MaturityInput {
   hasDlpFactor: boolean
   /** Aus runActionEngine — die Regeln, die noch auf Tage warten. */
   pendingRules: readonly PendingRule[]
-  /** Anzahl Regeln insgesamt. */
+  /** Anzahl Regeln insgesamt (RULE_COUNT). */
   totalRules: number
 }
 

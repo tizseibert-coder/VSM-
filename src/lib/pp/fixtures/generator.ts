@@ -13,7 +13,7 @@
 import { addDays, formatIsoDay, parseIsoDay, weekdaySundayFirst } from '../dates'
 import type { ActualChangeover, PlannedChangeover } from '../execution'
 import { estimateUtHours } from '../kpi'
-import { normalizeRosterCode, pvHoursForDay, type RosterEntry } from '../shifts'
+import { normalizeRosterCode, plannedOtHoursForDay, pvHoursForDay, type RosterEntry } from '../shifts'
 import { DEFAULT_SETTINGS, type PpSettings } from '../settings'
 import { createRandom, type Random } from './random'
 
@@ -33,12 +33,16 @@ export interface FixtureArticle {
 export interface FixturePerson {
   kuerzel: string
   team: string
+  /** Rollen-Code; die Testfirma bringt eigene Rollen mit (FIXTURE_ROLES). */
+  role: string
   /** Woche fuer Woche, Sonntag zuerst — wie die Schichtplan-Vorlage. */
   weeks: { sunday: string; codes: (string | null)[] }[]
 }
 
 export interface FixtureDay {
   day: string
+  /** Rollengewichtete OT-Planung des Tages. */
+  otPlan: number
   /** Vorgabe-UT aus Plan (Zykluszeit × Menge); null an Tagen ohne Zykluszeiten. */
   utPlanned: number | null
   /** null = an diesem Tag nicht erfasst (Luecke). */
@@ -70,11 +74,22 @@ export interface FactoryOptions {
 }
 
 const TEAMS = ['A', 'B', 'C']
+
+/**
+ * Erfundene Rollen der Testfirma — bewusst andere Gewichte als in jedem echten
+ * Werk, damit kein Test still auf Werkswerten aufbaut.
+ */
+export const FIXTURE_ROLES = [
+  { code: 'setter', label: 'Einrichter', weight: 1 },
+  { code: 'helper', label: 'Unterstützung', weight: 0.5 },
+  { code: 'trainee', label: 'Lernende', weight: 0.5 },
+  { code: 'other', label: 'Übrige', weight: 0 },
+]
 const DESCRIPTIONS = ['Gehäuse oben', 'Gehäuse unten', 'Deckel', 'Rahmen', 'Abdeckung', 'Clip', 'Träger', 'Blende']
 
 export function generateFactory(options: FactoryOptions = {}): FixtureFactory {
   const rnd = createRandom(options.seed ?? 4711)
-  const settings = options.settings ?? DEFAULT_SETTINGS
+  const settings = options.settings ?? { ...DEFAULT_SETTINGS, roles: FIXTURE_ROLES }
   const startDay = options.startDay ?? '2026-01-05'
   const machineCount = options.machines ?? 8
 
@@ -111,7 +126,8 @@ function generateRoster(rnd: Random, startDay: string, weeks: number): FixturePe
     used.add(kuerzel)
     const team = TEAMS[p % TEAMS.length]
     const partTime = p === 17
-    const person: FixturePerson = { kuerzel, team, weeks: [] }
+    const role = p % 6 < 3 ? 'setter' : p % 6 === 3 ? 'helper' : p % 6 === 4 ? 'trainee' : 'other'
+    const person: FixturePerson = { kuerzel, team, role, weeks: [] }
     for (let w = 0; w < weeks; w++) {
       const sunday = addDays(firstSunday, w * 7)
       const shift = rotation[(TEAMS.indexOf(team) + w) % rotation.length]
@@ -140,7 +156,7 @@ function rosterEntries(people: readonly FixturePerson[], settings: PpSettings): 
     for (const week of person.weeks) {
       week.codes.forEach((raw, d) => {
         const code = normalizeRosterCode(raw, settings.shifts, settings.importCodeMap)
-        if (code?.known) entries.push({ day: addDays(week.sunday, d), code: code.code })
+        if (code?.known) entries.push({ day: addDays(week.sunday, d), code: code.code, role: person.role })
       })
     }
   }
@@ -156,9 +172,10 @@ function generateDay(
   settings: PpSettings,
 ): FixtureDay {
   const pvPlan = pvHoursForDay(roster, day, settings.shifts)
+  const otPlan = plannedOtHoursForDay(roster, day, settings.shifts, settings.roles)
   const weekday = weekdaySundayFirst(day)
   if (weekday === 0 || weekday === 6) {
-    return { day, utPlanned: null, utActual: null, pvPlan, otActual: null, planned: [], actual: [] }
+    return { day, otPlan, utPlanned: null, utActual: null, pvPlan, otActual: null, planned: [], actual: [] }
   }
 
   const workShifts = settings.shifts.filter((s) => s.kind === 'work' && s.startMinutes !== undefined)
@@ -201,6 +218,7 @@ function generateDay(
   const realization = outlier ? rnd.between(0.4, 0.6) : rnd.normal(0.88, 0.05)
   return {
     day,
+    otPlan,
     utPlanned: rnd.chance(0.1) ? null : utPlanned,
     utActual: gap ? null : Math.max(0, utPlanned * realization),
     pvPlan,

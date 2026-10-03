@@ -1,39 +1,60 @@
 // Tagesplanung — Aktions-Engine: Muster ueber mehrere Tage erkennen und
 // Massnahmen vorschlagen.
 //
+// Die sieben Regeln und ihre Schwellen sind die aus computeActionSuggestions
+// des Vorgaengertools (v11); die Zahlen stehen in den Einstellungen
+// (PpSettings.actionEngine). Geschaut wird auf die juengsten Tage *mit Daten*
+// (Vorgabe 7), nicht auf Kalendertage: Ein Wochenende ohne Produktion
+// verkuerzt das Fenster nicht.
+//
 // Gibt Schluessel und Zahlen zurueck, keinen Text — die Saetze stehen in
 // messages/*.json, damit sie in beiden Sprachen gleich lauten.
 //
-// Eine Regel schlaegt nur an, wenn ihr Fenster genug Tage mit den Daten hat,
-// die sie braucht. Fehlen sie, meldet sie sich als „wartet" mit der Zahl der
-// fehlenden Tage — das ist die Anzeige „Datenreife", Stufe 5. Ein Vorschlag
-// aus zwei Datentagen waere ein Zufallsbefund mit dem Gewicht einer Regel.
+// Neu gegenueber dem Vorgaengertool: Jede Regel meldet, ob sie ueberhaupt
+// genug Tage mit ihren Daten hat. Fehlen sie, steht sie als „wartet" mit der
+// Zahl der fehlenden Tage in `pending` — das ist die Anzeige „Datenreife",
+// Stufe 5. Vorher hiess „kein Vorschlag" zweierlei: alles gut, oder noch zu
+// wenig Daten.
 
-import { addDays } from './dates'
 import type { PpSettings } from './settings'
 
 export interface DayMetrics {
   day: string
-  /** Geplante Personalstunden des Tages (PV-Plan). */
-  otPlan: number | null
-  otActual: number | null
+  pvPlan: number | null
+  /** PV-Ist aus der Zeiterfassung; fehlt er, die Ist-OT (wie im Vorgaengertool). */
+  pvActual: number | null
+  dlp: number | null
+  kmix: number | null
   executionRatePct: number | null
   wrongShift: number | null
+  avgStartOffsetMin: number | null
+  unplanned: number | null
 }
 
 export type Severity = 'high' | 'medium' | 'info'
-export type RuleId = 'otDeviation' | 'executionRate' | 'wrongShift'
+export type RuleId = 'otOver' | 'otUnder' | 'executionRate' | 'wrongShift' | 'lateStart' | 'unplanned' | 'negativeDlp' | 'lowKmix'
+
+export const RULE_DIMENSION: Record<RuleId, 'd1' | 'd2' | 'd3' | 'd4'> = {
+  otOver: 'd1',
+  otUnder: 'd1',
+  executionRate: 'd2',
+  unplanned: 'd2',
+  negativeDlp: 'd3',
+  lowKmix: 'd3',
+  wrongShift: 'd4',
+  lateStart: 'd4',
+}
 
 export interface Suggestion {
   ruleId: RuleId
-  dimension: 'd1' | 'd2' | 'd4'
+  dimension: 'd1' | 'd2' | 'd3' | 'd4'
   severity: Severity
   /** Die auffaelligen Tage, auf die sich der Vorschlag stuetzt. */
   days: string[]
-  /** Nur bei otDeviation: ob mehr oder weniger OT als geplant anfiel. */
-  direction?: 'over' | 'under'
-  /** Kennzahl fuer den Text, z. B. mittlere Abweichung in Stunden. */
-  value: number
+  /** Tage im Fenster mit den Daten dieser Regel — fuer „3 von 5 Tagen". */
+  ofDays: number
+  /** Summe, wo die Regel auf eine Summe schaut (falsche Schicht, ungeplant). */
+  total?: number
 }
 
 export interface PendingRule {
@@ -47,101 +68,97 @@ export interface EngineResult {
   pending: PendingRule[]
 }
 
+export const RULE_COUNT = 8
+
 export function runActionEngine(
   metrics: readonly DayMetrics[],
-  today: string,
   config: PpSettings['actionEngine'],
+  kmixTarget: number | null,
 ): EngineResult {
-  const from = addDays(today, -(config.windowDays - 1))
-  const window = [...metrics].filter((m) => m.day >= from && m.day <= today).sort((a, b) => a.day.localeCompare(b.day))
+  const window = [...metrics].sort((a, b) => a.day.localeCompare(b.day)).slice(-config.windowDataDays)
   const suggestions: Suggestion[] = []
   const pending: PendingRule[] = []
 
-  const ready = (ruleId: RuleId, days: number) => {
-    if (days >= config.minDays) return true
-    pending.push({ ruleId, daysWithData: days, daysMissing: config.minDays - days })
-    return false
-  }
-
-  // D1 — OT mehrfach deutlich ueber oder unter Plan, an Datentagen in Folge.
-  // „In Folge" zaehlt Tage mit Daten, nicht Kalendertage: Ein Wochenende ohne
-  // Produktion unterbricht kein Muster.
-  const ot = window.filter((m) => m.otPlan !== null && m.otActual !== null)
-  if (ready('otDeviation', ot.length)) {
-    for (const direction of ['over', 'under'] as const) {
-      const run = longestRun(ot, (m) => {
-        const d = (m.otActual as number) - (m.otPlan as number)
-        return direction === 'over' ? d >= config.otDeviationHours : d <= -config.otDeviationHours
-      })
-      if (run.length >= config.minDays) {
-        const mean = run.reduce((s, m) => s + Math.abs((m.otActual as number) - (m.otPlan as number)), 0) / run.length
-        suggestions.push({
-          ruleId: 'otDeviation',
-          dimension: 'd1',
-          severity: run.length >= config.minDays + 2 ? 'high' : 'medium',
-          direction,
-          days: run.map((m) => m.day),
-          value: mean,
-        })
-      }
+  const rule = (
+    ruleId: RuleId,
+    severity: Severity,
+    has: (m: DayMetrics) => boolean,
+    hit: (m: DayMetrics) => boolean,
+    minDays: number,
+    total?: { of: (m: DayMetrics) => number; min: number },
+  ) => {
+    const withData = window.filter(has)
+    // Eine Regel, die (auch) auf eine Summe schaut, kann schon an einem Tag
+    // anschlagen; eine, die nur auf Tage schaut, braucht so viele Datentage,
+    // wie sie auffaellige Tage verlangt.
+    const needed = total ? 1 : minDays
+    if (withData.length < needed) {
+      pending.push({ ruleId, daysWithData: withData.length, daysMissing: needed - withData.length })
+      return
+    }
+    const hits = withData.filter(hit)
+    const sum = total ? withData.reduce((s, m) => s + total.of(m), 0) : undefined
+    const byDays = minDays > 0 && hits.length >= minDays
+    const bySum = total !== undefined && (sum as number) >= total.min
+    if (byDays || bySum) {
+      suggestions.push({ ruleId, dimension: RULE_DIMENSION[ruleId], severity, days: hits.map((m) => m.day), ofDays: withData.length, total: sum })
     }
   }
 
-  // D2 — Ausfuehrungsrate an mehreren Tagen im Fenster unter der Schwelle.
-  const exec = window.filter((m) => m.executionRatePct !== null)
-  if (ready('executionRate', exec.length)) {
-    const low = exec.filter((m) => (m.executionRatePct as number) < config.executionRateBelowPct)
-    if (low.length >= config.minDays) {
-      suggestions.push({
-        ruleId: 'executionRate',
-        dimension: 'd2',
-        severity: low.length >= exec.length / 2 ? 'high' : 'medium',
-        days: low.map((m) => m.day),
-        value: low.reduce((s, m) => s + (m.executionRatePct as number), 0) / low.length,
-      })
-    }
-  }
+  const pvDelta = (m: DayMetrics) => (m.pvActual as number) - (m.pvPlan as number)
+  const hasPv = (m: DayMetrics) => m.pvPlan !== null && m.pvPlan > 0 && m.pvActual !== null
 
-  // D4 — gehaeufte falsche Schichtzuordnung: Hinweis auf die Schichtuebergabe.
-  const shift = window.filter((m) => m.wrongShift !== null)
-  if (ready('wrongShift', shift.length)) {
-    const bad = shift.filter((m) => (m.wrongShift as number) >= config.wrongShiftPerDay)
-    if (bad.length >= config.minDays) {
-      suggestions.push({
-        ruleId: 'wrongShift',
-        dimension: 'd4',
-        severity: 'medium',
-        days: bad.map((m) => m.day),
-        value: bad.reduce((s, m) => s + (m.wrongShift as number), 0),
-      })
-    } else if (bad.length > 0 && bad.length === config.minDays - 1) {
-      // Knapp unter der Schwelle: kein Vorschlag mit Gewicht, aber ein Hinweis.
-      suggestions.push({
-        ruleId: 'wrongShift',
-        dimension: 'd4',
-        severity: 'info',
-        days: bad.map((m) => m.day),
-        value: bad.reduce((s, m) => s + (m.wrongShift as number), 0),
-      })
-    }
+  // D1 — mehr OT verbraucht als geplant: Personalplanung zu knapp.
+  rule('otOver', 'high', hasPv, (m) => pvDelta(m) > config.otDeviationHours, config.otDeviationDays)
+  // D1 — weniger OT als geplant: Ueberplanung.
+  rule('otUnder', 'medium', hasPv, (m) => pvDelta(m) < -config.otDeviationHours, config.otDeviationDays)
+
+  // D2 — geplante Umruestungen nicht umgesetzt.
+  rule(
+    'executionRate',
+    'high',
+    (m) => m.executionRatePct !== null,
+    (m) => (m.executionRatePct as number) < config.executionRateBelowPct,
+    config.executionRateDays,
+  )
+
+  // D4 — falsche Schicht: Summe *oder* betroffene Tage.
+  rule(
+    'wrongShift',
+    'high',
+    (m) => m.wrongShift !== null,
+    (m) => (m.wrongShift as number) > 0,
+    config.wrongShiftDays,
+    { of: (m) => m.wrongShift as number, min: config.wrongShiftTotal },
+  )
+
+  // D4 — Rueststart im Schnitt deutlich verspaetet.
+  rule(
+    'lateStart',
+    'medium',
+    (m) => m.avgStartOffsetMin !== null,
+    (m) => (m.avgStartOffsetMin as number) > config.lateStartMin,
+    config.lateStartDays,
+  )
+
+  // D2 — ungeplante Umruestungen, Summe ueber das Fenster.
+  rule('unplanned', 'medium', (m) => m.unplanned !== null, (m) => (m.unplanned as number) > 0, 0, {
+    of: (m) => m.unplanned as number,
+    min: config.unplannedTotal,
+  })
+
+  // D3 — negativer DLP.
+  rule('negativeDlp', 'high', (m) => m.dlp !== null, (m) => (m.dlp as number) < 0, config.negativeDlpDays)
+
+  // D3 — Kmix unter Ziel. Ohne Ziel (kein Faktor, Ausgangswert noch nicht
+  // ermittelt) wartet die Regel, statt gegen eine erfundene Zahl zu pruefen.
+  if (kmixTarget === null) {
+    pending.push({ ruleId: 'lowKmix', daysWithData: 0, daysMissing: config.lowKmixDays })
+  } else {
+    rule('lowKmix', 'medium', (m) => m.kmix !== null, (m) => (m.kmix as number) < kmixTarget, config.lowKmixDays)
   }
 
   const rank: Record<Severity, number> = { high: 0, medium: 1, info: 2 }
   suggestions.sort((a, b) => rank[a.severity] - rank[b.severity])
   return { suggestions, pending }
-}
-
-/** Die laengste ununterbrochene Folge, die `hit` erfuellt; bei Gleichstand die juengste. */
-function longestRun<T>(items: readonly T[], hit: (item: T) => boolean): T[] {
-  let best: T[] = []
-  let current: T[] = []
-  for (const item of items) {
-    if (hit(item)) {
-      current.push(item)
-      if (current.length >= best.length) best = [...current]
-    } else {
-      current = []
-    }
-  }
-  return best
 }
