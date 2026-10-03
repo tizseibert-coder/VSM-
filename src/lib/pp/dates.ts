@@ -26,8 +26,18 @@ export function addDays(day: string, days: number): string {
   return formatIsoDay(date)
 }
 
-/** Der Produktionstag eines Plans: der Tag nach dem Plandatum. */
-export function productionDayForPlanDate(planDay: string): string {
+/**
+ * Der Produktionstag eines Plans: der naechste Produktionstag *nach* dem
+ * Plandatum — meist der Folgetag, nach einem Freitagsplan der Montag. Welche
+ * Wochentage produziert wird, steht in den Einstellungen (0 = Sonntag).
+ * Ohne Produktionstage (leere Liste) bleibt es beim Folgetag, statt endlos zu
+ * suchen. Die Oberflaeche laesst den Tag ausserdem von Hand ueberschreiben.
+ */
+export function productionDayForPlanDate(planDay: string, productionWeekdays: readonly number[] = [0, 1, 2, 3, 4, 5, 6]): string {
+  for (let offset = 1; offset <= 7; offset++) {
+    const day = addDays(planDay, offset)
+    if (productionWeekdays.includes(weekdaySundayFirst(day))) return day
+  }
   return addDays(planDay, 1)
 }
 

@@ -260,11 +260,13 @@ Maschinen, Artikel, Werkzeuge, Material und Tageswerte von UT/OT. Nichts davon i
   (0.18.5) hat bekannte Sicherheitslücken und kommt für hochgeladene Dateien nicht in Frage. Die Adresse
   ist in der Cloud-Umgebung dieser Sitzungen gesperrt. Bis sie freigegeben ist, arbeiten die Parser auf
   Zeilen; das Einlesen der Datei folgt danach.
-- **Offen: Plandatum.** Das Tool nimmt es zuerst aus dem Dateinamen, dann aus der Kopfzeile. Das Konzept
-  verlangt den Dateiinhalt. Diese Fassung nimmt den ersten Rüstkopf.
-- **Offen: Name → Kürzel.** Der Schichtplan trägt Namen. Gespeichert werden Kürzel; die Zuordnung
-  passiert beim Speichern und braucht eine Entscheidung (Zuordnungstabelle je Organisation oder
-  Kürzelspalte in der Vorlage).
+- **Plandatum** (entschieden 03.10.): aus dem ersten Rüstkopf, nicht aus dem Dateinamen.
+  **Produktionstag** = nächster Produktionstag nach dem Plandatum (`pp_settings.productionWeekdays`,
+  Vorgabe Mo–Fr), also meist +1, nach einem Freitagsplan Montag. Von Hand überschreibbar.
+- **Name → Kürzel** (entschieden 03.10.): Zuordnungstabelle `pp_person_aliases` je Organisation, einmal
+  gepflegt. Gespeichert wird der SHA-256-Hash von Organisation + Name, nicht der Name; die Tabelle lehnt
+  alles ab, was kein Hash ist. Neue Namen bleiben beim Import offen, mit Kürzel-Vorschlag. Die Rolle
+  hängt an der Person und wird beim Import in den Schichtplan übernommen.
 
 ## Umsetzungsreihenfolge (bei Freigabe, Schritt für Schritt)
 

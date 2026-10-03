@@ -266,6 +266,23 @@ CREATE TRIGGER set_pp_shift_roster_updated_at
   BEFORE UPDATE ON public.pp_shift_roster
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+-- Zuordnung Name → Kuerzel fuer den Schichtplan-Import. Gespeichert ist der
+-- Hash des Namens (src/lib/pp/import/people.ts), nicht der Name: Die
+-- Datenbank erkennt einen Namen wieder, ohne ihn zu enthalten.
+CREATE TABLE IF NOT EXISTS public.pp_person_aliases (
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name_hash       text NOT NULL,
+  kuerzel         text NOT NULL,
+  role            text,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (organization_id, name_hash),
+  CONSTRAINT pp_person_aliases_hash_check CHECK (name_hash ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT pp_person_aliases_kuerzel_check CHECK (btrim(kuerzel) <> '')
+);
+
+COMMENT ON COLUMN public.pp_person_aliases.role IS
+  'Rolle der Person (pp_settings.roles) — haengt an der Person, nicht an der Woche, und wird beim Import in pp_shift_roster.role uebernommen.';
+
 -- ═══════════════════════════════════════════
 -- 7) pp_no_program — Auftraege ohne Maschinenprogramm
 -- ═══════════════════════════════════════════
@@ -357,7 +374,7 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'pp_settings', 'pp_machines', 'pp_plans', 'pp_day_snapshots', 'pp_actual_changeovers',
-    'pp_reflections', 'pp_day_comments', 'pp_week_fazit', 'pp_shift_roster', 'pp_no_program',
+    'pp_reflections', 'pp_day_comments', 'pp_week_fazit', 'pp_shift_roster', 'pp_person_aliases', 'pp_no_program',
     'pp_actions', 'pp_learnings'
   ]
   LOOP

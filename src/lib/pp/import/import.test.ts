@@ -4,6 +4,7 @@ import { setupPlanRows, shiftPlanRows } from '../fixtures/files'
 import { DEFAULT_SETTINGS } from '../settings'
 import { classifySetup, parseSetupPlan } from './setupPlan'
 import { excelSerialToIsoDay, parseShiftPlan } from './shiftPlan'
+import { hashName, mapPeopleToKuerzel, suggestKuerzel } from './people'
 
 const S = DEFAULT_SETTINGS
 
@@ -131,5 +132,32 @@ describe('round trip with the invented factory', () => {
     expect(read).not.toContain('k')
     expect(read).not.toContain('h')
     expect(read.filter((c) => c === 'a').length).toBe(raw.filter((c) => c === 'k' || c === 'h').length)
+  })
+})
+
+describe('names → Kürzel', () => {
+  const org = '00000000-0000-0000-0000-000000000001'
+
+  it('recognises a name regardless of spacing and case, but not across organisations', async () => {
+    const a = await hashName(org, '  Anna  Muster ')
+    expect(a).toBe(await hashName(org, 'anna muster'))
+    expect(a).toMatch(/^[0-9a-f]{64}$/)
+    expect(a).not.toBe(await hashName('00000000-0000-0000-0000-000000000002', 'Anna Muster'))
+  })
+
+  it('suggests a free Kürzel without accents', () => {
+    expect(suggestKuerzel('Jürg', new Set())).toBe('JUR')
+    expect(suggestKuerzel('Jürg', new Set(['JUR']))).toBe('JU2')
+    expect(suggestKuerzel('Li', new Set())).toBe('LIX')
+  })
+
+  it('maps known names, removes the name and leaves new ones open with a suggestion', async () => {
+    const aliases = new Map([[await hashName(org, 'Anna Muster'), 'AMU']])
+    const r = await mapPeopleToKuerzel(org, [
+      { name: 'Anna Muster', team: 'A' },
+      { name: 'Beat Beispiel', team: 'B' },
+    ], aliases)
+    expect(r.mapped).toEqual([{ team: 'A', kuerzel: 'AMU' }])
+    expect(r.unmapped).toEqual([{ name: 'Beat Beispiel', hash: await hashName(org, 'Beat Beispiel'), suggestion: 'BEA' }])
   })
 })

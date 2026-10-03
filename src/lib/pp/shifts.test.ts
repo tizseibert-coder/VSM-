@@ -104,6 +104,14 @@ describe('normalizeRosterCode', () => {
 describe('dates', () => {
   it('puts the production day one day after the plan date', () => {
     expect(productionDayForPlanDate('2026-10-04')).toBe('2026-10-05')
+  })
+
+  it('skips non-production days: a Friday plan is for Monday', () => {
+    const monFri = [1, 2, 3, 4, 5]
+    expect(productionDayForPlanDate('2026-10-05', monFri)).toBe('2026-10-06')
+    expect(productionDayForPlanDate('2026-10-09', monFri)).toBe('2026-10-12')
+    expect(productionDayForPlanDate('2026-10-10', monFri)).toBe('2026-10-12')
+    expect(productionDayForPlanDate('2026-10-09', [])).toBe('2026-10-10')
     expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
   })
 

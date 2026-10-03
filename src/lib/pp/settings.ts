@@ -64,6 +64,12 @@ export interface PpSettings {
    */
   importCodeMap: Record<string, string>
   /**
+   * Wochentage mit Produktion, 0 = Sonntag … 6 = Samstag. Bestimmt, fuer
+   * welchen Tag ein Plan gilt: den naechsten Produktionstag nach dem
+   * Plandatum (Freitagsplan → Montag).
+   */
+  productionWeekdays: number[]
+  /**
    * Ruestnormen in Minuten je Ruesttyp: N kein Wechsel, A Werkzeug, M Material
    * oder Artikel, AM beides. Die Vorgaben sind Platzhalter fuer ein Werk ohne
    * eigene Zahlen; jedes Werk ersetzt sie durch seine — spaeter aus den
@@ -124,6 +130,7 @@ export const DEFAULT_SETTINGS: PpSettings = {
   shifts: DEFAULT_SHIFTS,
   roles: DEFAULT_ROLES,
   importCodeMap: { k: 'a', h: 'a' },
+  productionWeekdays: [1, 2, 3, 4, 5],
   setupNorms: { N: 0, A: 60, M: 30, AM: 90 },
   thresholds: {
     deviationPct: { green: 3, yellow: 8 },
@@ -162,6 +169,8 @@ export function resolveSettings(stored: Partial<PpSettings> | null | undefined):
     roles: stored.roles && stored.roles.length > 0 ? stored.roles : DEFAULT_SETTINGS.roles,
     importCodeMap: stored.importCodeMap ?? DEFAULT_SETTINGS.importCodeMap,
     setupNorms: { ...DEFAULT_SETTINGS.setupNorms, ...stored.setupNorms },
+    productionWeekdays:
+      stored.productionWeekdays && stored.productionWeekdays.length > 0 ? stored.productionWeekdays : DEFAULT_SETTINGS.productionWeekdays,
     thresholds: { ...DEFAULT_SETTINGS.thresholds, ...stored.thresholds },
     actionEngine: { ...DEFAULT_SETTINGS.actionEngine, ...stored.actionEngine },
   }
