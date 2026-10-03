@@ -70,7 +70,7 @@ Nie in eine Datei im Repository, nie in einen Chat.
 | `NEXT_PUBLIC_SITE_URL` | ist schon gesetzt; muss die echte Domain sein, weil Instagram die Kachel von dort abholt | – |
 
 Danach die Migration einspielen
-(`supabase/migrations/20260928120000_vsm_social_agent.sql`) und neu
+(`supabase/migrations/20260928145926_vsm_social_agent.sql`) und neu
 ausliefern. Unter **Verwaltung → Social Media** sollten Claude und der tägliche
 Lauf grün sein, beide Kanäle „Handbetrieb“.
 

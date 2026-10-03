@@ -8,7 +8,7 @@
 //
 // Alle laufen ueber den Service-Role-Client: Der Cron-Lauf hat keinen
 // angemeldeten Nutzer, und das Anlegen von Entwuerfen hat bewusst keine
-// Policy (siehe Migration 20260928120000). Wer sie aus einer Server Action
+// Policy (siehe Migration 20260928145926). Wer sie aus einer Server Action
 // aufruft, prueft vorher `requireStaff()`.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
