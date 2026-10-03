@@ -39,6 +39,8 @@ export interface RoleDefinition {
   weight: number
 }
 
+export type SetupType = 'N' | 'A' | 'M' | 'AM'
+
 /** Zwei Stufen, damit eine Ampel nicht an einer einzigen Zahl haengt. */
 export interface Band {
   green: number
@@ -61,6 +63,13 @@ export interface PpSettings {
    * Gesundheitsangabe und gehoert nicht ins Werkzeug.
    */
   importCodeMap: Record<string, string>
+  /**
+   * Ruestnormen in Minuten je Ruesttyp: N kein Wechsel, A Werkzeug, M Material
+   * oder Artikel, AM beides. Die Vorgaben sind Platzhalter fuer ein Werk ohne
+   * eigene Zahlen; jedes Werk ersetzt sie durch seine — spaeter aus den
+   * Ist-Ruestzeiten kalibriert.
+   */
+  setupNorms: Record<SetupType, number>
   thresholds: {
     /** Abweichung vom Soll in Prozent (PV-Stunden, UT). Kleiner ist besser. */
     deviationPct: Band
@@ -115,6 +124,7 @@ export const DEFAULT_SETTINGS: PpSettings = {
   shifts: DEFAULT_SHIFTS,
   roles: DEFAULT_ROLES,
   importCodeMap: { k: 'a', h: 'a' },
+  setupNorms: { N: 0, A: 60, M: 30, AM: 90 },
   thresholds: {
     deviationPct: { green: 3, yellow: 8 },
     dlp: { green: 0, yellow: -5 },
@@ -151,6 +161,7 @@ export function resolveSettings(stored: Partial<PpSettings> | null | undefined):
     shifts: stored.shifts && stored.shifts.length > 0 ? stored.shifts : DEFAULT_SETTINGS.shifts,
     roles: stored.roles && stored.roles.length > 0 ? stored.roles : DEFAULT_SETTINGS.roles,
     importCodeMap: stored.importCodeMap ?? DEFAULT_SETTINGS.importCodeMap,
+    setupNorms: { ...DEFAULT_SETTINGS.setupNorms, ...stored.setupNorms },
     thresholds: { ...DEFAULT_SETTINGS.thresholds, ...stored.thresholds },
     actionEngine: { ...DEFAULT_SETTINGS.actionEngine, ...stored.actionEngine },
   }

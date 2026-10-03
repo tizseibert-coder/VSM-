@@ -246,6 +246,26 @@ Bewusst anders als im Tool:
 Maschinen, Artikel, Werkzeuge, Material und Tageswerte von UT/OT. Nichts davon ist in dieses Repository
 übernommen. Die Datei gehört nicht ins Repository und nicht in Testdaten.
 
+## Stand Phase 2 (begonnen)
+
+- `src/lib/pp/import/setupPlan.ts` liest den SAP-Rüstplan im Block-Format, wie `parseRuestplanRows`, aus
+  Tabellenzeilen. Der Rüsttyp (N/A/M/AM) kommt aus dem Vergleich alt gegen neu, die Rüstnormen aus
+  `pp_settings.setupNorms` (Vorgabe sind Platzhalter, keine Werkswerte). Die Startzeit wird mit vollem
+  Datum aus dem Kopf übernommen; das Tool nahm dort nur die Uhrzeit.
+- `src/lib/pp/import/shiftPlan.ts` liest die Schichtplan-Vorlage, wie `parseShiftplanXlsx`. Datumszellen
+  kommen als Excel-Seriennummer, damit nichts an der Zeitzone des Servers hängt.
+- `src/lib/pp/fixtures/files.ts` erzeugt beide Formate für die Testfirma. Was die Parser lesen, wird
+  gegen die erzeugten Daten zurückgeprüft.
+- **Offen: xlsx-Bibliothek.** SheetJS wird über `cdn.sheetjs.com` verteilt, die aktuelle npm-Version
+  (0.18.5) hat bekannte Sicherheitslücken und kommt für hochgeladene Dateien nicht in Frage. Die Adresse
+  ist in der Cloud-Umgebung dieser Sitzungen gesperrt. Bis sie freigegeben ist, arbeiten die Parser auf
+  Zeilen; das Einlesen der Datei folgt danach.
+- **Offen: Plandatum.** Das Tool nimmt es zuerst aus dem Dateinamen, dann aus der Kopfzeile. Das Konzept
+  verlangt den Dateiinhalt. Diese Fassung nimmt den ersten Rüstkopf.
+- **Offen: Name → Kürzel.** Der Schichtplan trägt Namen. Gespeichert werden Kürzel; die Zuordnung
+  passiert beim Speichern und braucht eine Entscheidung (Zuordnungstabelle je Organisation oder
+  Kürzelspalte in der Vorlage).
+
 ## Umsetzungsreihenfolge (bei Freigabe, Schritt für Schritt)
 
 Zeiten sind grobe Schätzungen für eine Person mit Claude Code.
