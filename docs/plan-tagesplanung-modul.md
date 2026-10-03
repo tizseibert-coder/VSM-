@@ -6,8 +6,9 @@ Hier stehen die Entscheidungen und die Faktenbasis, aus der sie folgen — das F
 (Workflow-Stepper, Leitfragen, Ampel-Schwellen, Importformate) wird nicht wiederholt, sondern
 vorausgesetzt.
 
-**Stand:** Plan, noch nicht umgesetzt. Phase 0 und die Vorbedingungen (Abschnitt „Bevor echte Daten
-fliessen") gehen jedem Code mit echten Daten voraus.
+**Stand 2026-10-03:** Phase 1 umgesetzt (Rechenlogik, Testdaten-Generator, Migration — siehe
+Abschnitt „Stand Phase 1"). Die Migration ist **nicht angewendet**. Phase 0 und die Vorbedingungen
+(Abschnitt „Bevor echte Daten fliessen") gehen jedem Betrieb mit echten Daten voraus.
 
 ---
 
@@ -178,6 +179,40 @@ sein muss:
 Unabhängig von Feller, je nach Umsatz: AHV-Anmeldung als Selbständiger bei Aufnahme der Tätigkeit
 (kleiner Nebenerwerb auf Antrag beitragsbefreit), MWST- und Handelsregisterpflicht ab
 CHF 100'000 Jahresumsatz.
+
+## Stand Phase 1
+
+Umgesetzt auf `claude/plan-tagesplanung-modul`:
+
+- `src/lib/pp/` — reine Funktionen ohne Datenbank und ohne Next.js:
+  `settings.ts` (neutrale Vorgaben, kein Werkswert), `dates.ts`, `shifts.ts` (Nachtschicht-Split aus
+  Beginn und Dauer, Abbildung krank/Ferien → abwesend, unbekannte Codes zählen), `kpi.ts` (DLP, Kmix,
+  Kmix-Ziel aus Faktor oder Ausgangswert, UT-Ersatzwert, Ampeln), `execution.ts` (Plantreue,
+  Startversatz, falsche Schicht, ungeplante Umrüstungen, Rüstkonflikte), `forecast.ts` (Konfidenz,
+  Prognose mit Realisierungsgrad), `actionEngine.ts` (Regeln D1/D2/D4 mit „wartet noch n Tage"),
+  `maturity.ts` (Reifestufen), `fileDetection.ts` (Formaterkennung, Upload-Ziel), `zipRepair.ts`
+  (Streaming-ZIP).
+- `src/lib/pp/fixtures/` — Testdaten-Generator mit Startwert, ZIP-Schreiber für Streaming-Dateien.
+  Die Reifestufen sind gegen die erfundene Firma an Tag 0, 7, 14 und 60 getestet.
+- `supabase/migrations/20261003150000_vsm_pp_tagesplanung.sql` — 13 Tabellen mit RLS. Gegen eine
+  lokale Wegwerf-Postgres mit `supabase/tests/leere-datenbank-pruefen.sh` geprüft, ein zweiter Lauf
+  über den bestehenden Stand läuft fehlerfrei (idempotent), die CHECK-Constraints weisen ungültige
+  Werte zurück, Löschen der Organisation räumt alles ab. **Nicht auf Supabase angewendet.**
+  `src/types/database.ts` wird nachgezogen, sobald der erste Code die Tabellen liest (Phase 2).
+- Die ZIP-Reparatur ist zusätzlich mit Pythons `zipfile` und `unzip -t` gegengeprüft.
+
+**Annahmen, die gegen das bestehende HTML-Tool zu prüfen sind** (es lag in dieser Sitzung nicht vor):
+
+1. Streuungsanteil der Konfidenz: `1 − Variationskoeffizient`, auf 0..1 begrenzt.
+2. Prognose über den Realisierungsgrad Ist-UT ÷ Vorgabe-UT, Gewicht der Historie = Datenmengen-Anteil.
+3. „Plangemäss" = zugeordnet und in der geplanten Schicht begonnen; Zuordnung über Maschine + Artikel,
+   bei mehreren die zeitlich nächste.
+4. Regel D1 vergleicht OT-Ist mit dem PV-Plan des Tages (das Konzept nennt „OT über Plan", führt OT
+   aber ohne eigenes Soll).
+5. Regel D4 schlägt ab 2 falschen Schichtzuordnungen je Tag an 3 Tagen im Fenster an; Schwellen sind
+   Einstellungen.
+6. Erste Datenzeile des Rüstplans = erste Zeile mit Ziffern (überspringt eine Kopfzeile).
+7. Kmix-Ausgangswert ohne Faktor: Median der ersten 10 Tage.
 
 ## Umsetzungsreihenfolge (bei Freigabe, Schritt für Schritt)
 
